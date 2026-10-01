@@ -1,46 +1,78 @@
 name: youbike-logger
 
+# How this works
+# --------------
+# GitHub's cron scheduler is unreliable for new, quiet repositories (it fired only a
+# handful of times per day for this repo), so one run does not take one snapshot: it
+# stays alive for LOOP_MINUTES, takes a snapshot every 10 minutes and commits each one.
+# Just before it ends it starts its successor with workflow_dispatch, so the chain
+# continues around the clock. The hourly cron is only a backup that restarts the chain
+# if a run ever dies; a cron run that finds a loop already active exits at once.
+#
+# Normal picture on the Actions page: one long yellow run at a time (hours), plus short
+# green ones that say "another run is already logging".
+
 on:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 minutes (UTC clock, but the logger writes local time)
-  workflow_dispatch: {}      # lets you run it by hand from the Actions tab
+    - cron: "7 * * * *"            # hourly backup (often delayed or skipped by GitHub)
+  workflow_dispatch:
+    inputs:
+      parent:
+        description: "run id of the run that started this one (filled in automatically)"
+        required: false
+        default: ""
 
 permissions:
-  contents: write            # the job commits the snapshot back to this repository
-
-concurrency:
-  group: youbike-logger
-  cancel-in-progress: false  # never kill a run that is in the middle of committing
+  contents: write                  # commit snapshots back to this repository
+  actions: write                   # start the next run
 
 jobs:
   log:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 358           # GitHub kills jobs at 360
     env:
-      AREA_CODES: "12"                 # 12 = Kaohsiung
-      CENTER: "22.6273,120.2658"       # NSYSU
-      RADIUS_KM: "5"                   # stations within 5 km of NSYSU (~310); "0" = all of Kaohsiung
+      AREA_CODES: "12"             # 12 = Kaohsiung
+      CENTER: "22.6273,120.2658"   # NSYSU
+      RADIUS_KM: "5"               # stations within 5 km of NSYSU (~310); "0" = all of Kaohsiung
+      LOOP_MINUTES: "340"          # how long one run keeps logging before handing over
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Fetch snapshot
-        run: python3 logger/fetch_youbike.py
+      - name: Check that no other run is already logging
+        id: guard
+        run: |
+          sleep 60
+          decision=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/logger.yml/runs?status=in_progress&per_page=50" \
+                     | python3 logger/should_run.py "${GITHUB_RUN_ID}" "${{ inputs.parent }}")
+          echo "decision=${decision}" >> "$GITHUB_OUTPUT"
+          echo "decision: ${decision}"
 
-      - name: Commit and push
+      - name: Log every 10 minutes
+        if: steps.guard.outputs.decision == 'run'
         run: |
           git config user.name  "youbike-logger"
           git config user.email "youbike-logger@users.noreply.github.com"
-          git add -A data
-          if git diff --cached --quiet; then
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "log $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
-          for attempt in 1 2 3; do
-            git push && exit 0
-            echo "push failed (attempt $attempt), rebasing on remote"
-            git pull --rebase --autostash || true
-            sleep 5
+          end=$(( SECONDS + LOOP_MINUTES * 60 ))
+          while [ "$SECONDS" -lt "$end" ]; do
+            python3 logger/fetch_youbike.py || true
+            git add -A data
+            if ! git diff --cached --quiet; then
+              git commit -q -m "log $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
+              for attempt in 1 2 3; do
+                git push -q && break
+                echo "push failed (attempt $attempt), rebasing on remote"
+                git pull -q --rebase --autostash || true
+                sleep 5
+              done
+            fi
+            now=$(date +%s)
+            next=$(( (now / 600 + 1) * 600 ))   # next hh:00, hh:10, hh:20, ...
+            sleep $(( next - now ))
           done
-          exit 1
+
+      - name: Start the next run
+        if: always() && steps.guard.outputs.decision == 'run'
+        run: gh workflow run logger.yml --ref "${GITHUB_REF_NAME}" -f parent="${GITHUB_RUN_ID}"
