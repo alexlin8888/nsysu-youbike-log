@@ -673,6 +673,7 @@ sno,name_tw,name_en,district,lat,lng,capacity,dist_m,logged
 501207145,軍校和光街24巷口,Junxiao Heguang Street Lane 24,左營區,22.705144,120.294328,16,9137,0
 501207146,南屏南屏路249巷口,"Lane 249, Nanping Road, Nanping",左營區,22.669643,120.299009,19,5812,0
 501207148,新庄仔路73巷口,Xinzhuangzi Rd. Ln. 73,左營區,22.673556,120.300573,16,6260,0
+501207149,海軍眷村緯六路,Weiliu Rd. (Military Veterans Village),左營區,22.697468,120.291002,40,8220,0
 501208001,時代大道中華路口(西北側),Shihdai Zhonghua Rd. Intersection (Northwest),前鎮區,22.596750,120.308250,34,5525,0
 501208002,捷運凱旋站(3號出口),KRT Kaisyuan Sta. (Exit 3),前鎮區,22.597600,120.314180,30,5964,0
 501208003,捷運凱旋站(2號出口),KRT Kaisyuan Sta. (Exit 2),前鎮區,22.596730,120.315700,24,6147,0
@@ -1153,6 +1154,7 @@ sno,name_tw,name_en,district,lat,lng,capacity,dist_m,logged
 501213011,信蚵里社區聯合活動中心,Xin Oili Activity Center,梓官區,22.729490,120.254650,15,11420,0
 501213012,赤東社區活動中心,Chidong Community Activity Center,梓官區,22.738759,120.249100,15,12512,0
 501213013,赤崁老人活動中心,Chikan Elderly Activity Center,梓官區,22.736173,120.250267,15,12211,0
+501213014,廣澤漁港二路,Guangze Rd. & Yagang 2nd Rd.,梓官區,22.728665,120.253649,16,11340,0
 501214001,後備指揮部,Military base,仁武區,22.672214,120.331326,13,8376,0
 501214002,古文物公園,Guwenwu Park,仁武區,22.678936,120.345380,15,9983,0
 501214003,慈惠公園,Cihui Park,仁武區,22.676396,120.347823,15,10032,0
@@ -1201,6 +1203,7 @@ sno,name_tw,name_en,district,lat,lng,capacity,dist_m,logged
 501214047,草潭埤活動中心(八德南路),Caotanpi Activity Center (Bade South Rd.),仁武區,22.686513,120.339119,18,9998,0
 501214048,福氣運動中心,Fuqi Sports Center,仁武區,22.694563,120.319979,20,9319,0
 501214049,名湖街147巷(西南側),"Lane 147, Minghu St. (Southwest Side)",仁武區,22.685969,120.347935,21,10658,0
+501214050,九湖一九湖二街(東北側),Jiaohu 1st St. / Jiaohu 2nd St. (NE Side),仁武區,22.685934,120.327680,16,9101,0
 501215001,林園行政中心,Linyuan District Office,林園區,22.513050,120.394680,14,18344,0
 501215002,幸福公園,XInfu Park,林園區,22.500539,120.394778,17,19341,0
 501215003,中芸國小,Chunyun Elementary School,林園區,22.488220,120.395830,20,20432,0
@@ -1330,6 +1333,7 @@ sno,name_tw,name_en,district,lat,lng,capacity,dist_m,logged
 501218029,高雄市立澄清湖棒球場(公園路側),Chengching Lake Baseball Field(Gongyuan Rd.),鳥松區,22.655102,120.359943,25,10144,0
 501218030,大華公園,Dahua Park,鳥松區,22.655523,120.337817,15,8029,0
 501218031,高雄果嶺自然公園,Kaohsiung Guoling Nature Park,鳥松區,22.663295,120.339024,31,8514,0
+501218032,仁美活動中心,Renmei Community Activity Center,鳥松區,22.653547,120.393914,16,13468,0
 501219001,永芳公園,Yong Fang Park,大寮區,22.607830,120.394590,14,13396,0
 501219002,慈惠醫院,Tsyr-Huey Mental Hospital,大寮區,22.638680,120.397510,19,13577,0
 501219003,捷運大寮站(1號出口),KRT Daliao Sta. (Exit 1),大寮區,22.620750,120.390700,75,12840,0
