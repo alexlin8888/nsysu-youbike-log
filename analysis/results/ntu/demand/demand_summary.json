@@ -1,0 +1,22 @@
+{
+ "station_hours": 917366,
+ "days": 295,
+ "stations": 144,
+ "move_station_hours_share": 0.2041,
+ "truck_dropoff_per_day": 2554.2,
+ "truck_pickup_per_day": 2160.2,
+ "rentals_per_day": 25668.3,
+ "truck_share_of_rentals": 0.1,
+ "r2_quiet_hours": 0.87,
+ "r2_reproduce_with_moves": 0.984,
+ "r2_reproduce_without_moves": 0.631,
+ "campus_wd_correction_12": 1.075,
+ "campus_wd_correction_17": 1.172,
+ "campus_wd_correction_18": 1.391,
+ "campus_wd_correction_max": 2.074,
+ "campus_wd_correction_max_hod": 22,
+ "campus_wd_empty_share_1718": 0.463,
+ "campus_dropoff_share_before_bells": 0.194,
+ "campus_dropoff_peak_hod": 17,
+ "campus_pickup_peak_hod": 9
+}
