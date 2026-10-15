@@ -1,0 +1,50 @@
+{
+ "train_days": [
+  "2026-10-02",
+  "2026-10-03",
+  "2026-10-04",
+  "2026-10-05",
+  "2026-10-06",
+  "2026-10-07"
+ ],
+ "val_days": [
+  "2026-10-08",
+  "2026-10-09"
+ ],
+ "test_days": [
+  "2026-10-10",
+  "2026-10-11",
+  "2026-10-12",
+  "2026-10-13",
+  "2026-10-14",
+  "2026-10-15"
+ ],
+ "n_train": 189108,
+ "n_val": 63036,
+ "n_test": 189108,
+ "stations": 309,
+ "features": [
+  "hour",
+  "dow",
+  "offday",
+  "sem_week",
+  "in_sem",
+  "to_bell",
+  "since_bell",
+  "to_major",
+  "since_major",
+  "bikes",
+  "docks",
+  "total",
+  "fill",
+  "d10",
+  "d30",
+  "d60",
+  "min60",
+  "empty_now",
+  "empty_min60",
+  "nb3_bikes",
+  "nb3_empty",
+  "nb5_fill"
+ ]
+}
