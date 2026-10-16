@@ -1,0 +1,169 @@
+/tmp/claude-0/-home-claude/c17689f2-01ab-56e1-a159-5aeb4e947848/scratchpad/proj/code/features.py:122: RuntimeWarning: Mean of empty slice
+  nb5f = np.stack([np.nanmean(Wf[:, nb[i, :5]], axis=1) for i in range(len(st))], axis=1)
+features built: (4332960, 39) in 22s
+rate cells 6873, capacity max 99, training station-hours 660041
+train 1116288 val 323136 test 1118616 (test rows with observed inventory; 1219104 total)
+roll-out, corrected rates: roll-out table in 8s
+roll-out, naive rates: roll-out table in 7s
+MC check (3000 rows x 400 samples, 11s): {"h30": {"mean_abs_diff": 0.0077614788374191996, "max_abs_diff": 0.07280651569366453, "corr": 0.9985814654993002}, "h60": {"mean_abs_diff": 0.008941993113252847, "max_abs_diff": 0.07517403364181519, "corr": 0.9988779377055176}, "h90": {"mean_abs_diff": 0.009598516480060175, "max_abs_diff": 0.07552573204040525, "corr": 0.9989987865595946}, "h120": {"mean_abs_diff": 0.010151426724210705, "max_abs_diff": 0.08375266313552854, "corr": 0.9990264987742021}}
+h=30 logistic fitted in 12s
+h=30 inv: loaded 170 trees
+h=30 full: loaded 951 trees
+h=30 full+mc: 670 trees in 66s; p_mc gain share 0.242
+h= 30 persistence  all          n= 1090325 pos=0.209 brier=0.1242 auc=0.744 ece=0.1242
+h= 30 persistence  campus       n=  442706 pos=0.239 brier=0.1216 auc=0.776 ece=0.1216
+h= 30 persistence  classend     n=   45794 pos=0.206 brier=0.1435 auc=0.698 ece=0.1435
+h= 30 persistence  weekday_day  n=  528703 pos=0.233 brier=0.1502 auc=0.721 ece=0.1502
+h= 30 seasonal     all          n= 1090325 pos=0.209 brier=0.1256 auc=0.819 ece=0.0156
+h= 30 seasonal     campus       n=  442706 pos=0.239 brier=0.1279 auc=0.843 ece=0.0176
+h= 30 seasonal     classend     n=   45794 pos=0.206 brier=0.1247 auc=0.824 ece=0.0161
+h= 30 seasonal     weekday_day  n=  528703 pos=0.233 brier=0.1377 auc=0.816 ece=0.0161
+h= 30 mc_naive     all          n= 1090325 pos=0.209 brier=0.1051 auc=0.893 ece=0.0594
+h= 30 mc_naive     campus       n=  442706 pos=0.239 brier=0.1031 auc=0.913 ece=0.0645
+h= 30 mc_naive     classend     n=   45794 pos=0.206 brier=0.1320 auc=0.848 ece=0.1020
+h= 30 mc_naive     weekday_day  n=  528703 pos=0.233 brier=0.1318 auc=0.865 ece=0.0925
+h= 30 mc_cens      all          n= 1090325 pos=0.209 brier=0.1023 auc=0.895 ece=0.0389
+h= 30 mc_cens      campus       n=  442706 pos=0.239 brier=0.0996 auc=0.915 ece=0.0376
+h= 30 mc_cens      classend     n=   45794 pos=0.206 brier=0.1278 auc=0.853 ece=0.0874
+h= 30 mc_cens      weekday_day  n=  528703 pos=0.233 brier=0.1274 auc=0.866 ece=0.0701
+h= 30 mc_cens_cal  all          n= 1090325 pos=0.209 brier=0.1000 auc=0.895 ece=0.0122
+h= 30 mc_cens_cal  campus       n=  442706 pos=0.239 brier=0.0968 auc=0.915 ece=0.0097
+h= 30 mc_cens_cal  classend     n=   45794 pos=0.206 brier=0.1173 auc=0.853 ece=0.0302
+h= 30 mc_cens_cal  weekday_day  n=  528703 pos=0.233 brier=0.1200 auc=0.866 ece=0.0152
+h= 30 logistic     all          n= 1090325 pos=0.209 brier=0.0863 auc=0.915 ece=0.0081
+h= 30 logistic     campus       n=  442706 pos=0.239 brier=0.0822 auc=0.930 ece=0.0115
+h= 30 logistic     classend     n=   45794 pos=0.206 brier=0.1009 auc=0.879 ece=0.0211
+h= 30 logistic     weekday_day  n=  528703 pos=0.233 brier=0.1015 auc=0.898 ece=0.0144
+h= 30 lgb_inv      all          n= 1090325 pos=0.209 brier=0.0835 auc=0.922 ece=0.0121
+h= 30 lgb_inv      campus       n=  442706 pos=0.239 brier=0.0783 auc=0.937 ece=0.0095
+h= 30 lgb_inv      classend     n=   45794 pos=0.206 brier=0.0965 auc=0.889 ece=0.0187
+h= 30 lgb_inv      weekday_day  n=  528703 pos=0.233 brier=0.0983 auc=0.906 ece=0.0131
+h= 30 lgb_full     all          n= 1090325 pos=0.209 brier=0.0798 auc=0.932 ece=0.0120
+h= 30 lgb_full     campus       n=  442706 pos=0.239 brier=0.0750 auc=0.946 ece=0.0107
+h= 30 lgb_full     classend     n=   45794 pos=0.206 brier=0.0921 auc=0.906 ece=0.0165
+h= 30 lgb_full     weekday_day  n=  528703 pos=0.233 brier=0.0938 auc=0.917 ece=0.0120
+h= 30 lgb_full_mc  all          n= 1090325 pos=0.209 brier=0.0794 auc=0.933 ece=0.0117
+h= 30 lgb_full_mc  campus       n=  442706 pos=0.239 brier=0.0745 auc=0.946 ece=0.0100
+h= 30 lgb_full_mc  classend     n=   45794 pos=0.206 brier=0.0911 auc=0.908 ece=0.0149
+h= 30 lgb_full_mc  weekday_day  n=  528703 pos=0.233 brier=0.0932 auc=0.918 ece=0.0109
+h=60 logistic fitted in 10s
+h=60 inv: loaded 138 trees
+h=60 full: loaded 225 trees
+h=60 full+mc: 170 trees in 25s; p_mc gain share 0.418
+h= 60 persistence  all          n= 1062095 pos=0.279 brier=0.1772 auc=0.700 ece=0.1772
+h= 60 persistence  campus       n=  429377 pos=0.308 brier=0.1731 auc=0.732 ece=0.1731
+h= 60 persistence  classend     n=   45059 pos=0.286 brier=0.2041 auc=0.661 ece=0.2041
+h= 60 persistence  weekday_day  n=  520076 pos=0.313 brier=0.2087 auc=0.684 ece=0.2087
+h= 60 seasonal     all          n= 1062095 pos=0.279 brier=0.1484 auc=0.817 ece=0.0172
+h= 60 seasonal     campus       n=  429377 pos=0.308 brier=0.1447 auc=0.844 ece=0.0268
+h= 60 seasonal     classend     n=   45059 pos=0.286 brier=0.1441 auc=0.833 ece=0.0240
+h= 60 seasonal     weekday_day  n=  520076 pos=0.313 brier=0.1585 auc=0.816 ece=0.0177
+h= 60 mc_naive     all          n= 1062095 pos=0.279 brier=0.1327 auc=0.870 ece=0.0738
+h= 60 mc_naive     campus       n=  429377 pos=0.308 brier=0.1264 auc=0.895 ece=0.0762
+h= 60 mc_naive     classend     n=   45059 pos=0.286 brier=0.1663 auc=0.830 ece=0.1249
+h= 60 mc_naive     weekday_day  n=  520076 pos=0.313 brier=0.1619 auc=0.845 ece=0.1139
+h= 60 mc_cens      all          n= 1062095 pos=0.279 brier=0.1269 auc=0.878 ece=0.0548
+h= 60 mc_cens      campus       n=  429377 pos=0.308 brier=0.1200 auc=0.901 ece=0.0566
+h= 60 mc_cens      classend     n=   45059 pos=0.286 brier=0.1542 auc=0.844 ece=0.0985
+h= 60 mc_cens      weekday_day  n=  520076 pos=0.313 brier=0.1526 auc=0.852 ece=0.0841
+h= 60 mc_cens_cal  all          n= 1062095 pos=0.279 brier=0.1230 auc=0.878 ece=0.0153
+h= 60 mc_cens_cal  campus       n=  429377 pos=0.308 brier=0.1154 auc=0.902 ece=0.0137
+h= 60 mc_cens_cal  classend     n=   45059 pos=0.286 brier=0.1414 auc=0.844 ece=0.0290
+h= 60 mc_cens_cal  weekday_day  n=  520076 pos=0.313 brier=0.1428 auc=0.852 ece=0.0192
+h= 60 logistic     all          n= 1062095 pos=0.279 brier=0.1120 auc=0.889 ece=0.0103
+h= 60 logistic     campus       n=  429377 pos=0.308 brier=0.1053 auc=0.907 ece=0.0160
+h= 60 logistic     classend     n=   45059 pos=0.286 brier=0.1286 auc=0.860 ece=0.0215
+h= 60 logistic     weekday_day  n=  520076 pos=0.313 brier=0.1272 auc=0.874 ece=0.0163
+h= 60 lgb_inv      all          n= 1062095 pos=0.279 brier=0.1079 auc=0.899 ece=0.0128
+h= 60 lgb_inv      campus       n=  429377 pos=0.308 brier=0.0999 auc=0.917 ece=0.0113
+h= 60 lgb_inv      classend     n=   45059 pos=0.286 brier=0.1217 auc=0.874 ece=0.0176
+h= 60 lgb_inv      weekday_day  n=  520076 pos=0.313 brier=0.1224 auc=0.885 ece=0.0136
+h= 60 lgb_full     all          n= 1062095 pos=0.279 brier=0.1003 auc=0.917 ece=0.0117
+h= 60 lgb_full     campus       n=  429377 pos=0.308 brier=0.0924 auc=0.934 ece=0.0124
+h= 60 lgb_full     classend     n=   45059 pos=0.286 brier=0.1120 auc=0.899 ece=0.0139
+h= 60 lgb_full     weekday_day  n=  520076 pos=0.313 brier=0.1134 auc=0.904 ece=0.0116
+h= 60 lgb_full_mc  all          n= 1062095 pos=0.279 brier=0.0991 auc=0.919 ece=0.0108
+h= 60 lgb_full_mc  campus       n=  429377 pos=0.308 brier=0.0912 auc=0.935 ece=0.0118
+h= 60 lgb_full_mc  classend     n=   45059 pos=0.286 brier=0.1093 auc=0.904 ece=0.0079
+h= 60 lgb_full_mc  weekday_day  n=  520076 pos=0.313 brier=0.1118 auc=0.907 ece=0.0098
+h=90 logistic fitted in 12s
+h=90 inv: trained 142 trees in 16s
+h=90 full: trained 637 trees in 47s
+h=90 full+mc: 315 trees in 38s; p_mc gain share 0.535
+h= 90 persistence  all          n= 1040112 pos=0.332 brier=0.2225 auc=0.675 ece=0.2225
+h= 90 persistence  campus       n=  419656 pos=0.360 brier=0.2172 auc=0.705 ece=0.2172
+h= 90 persistence  classend     n=   44276 pos=0.344 brier=0.2535 auc=0.641 ece=0.2535
+h= 90 persistence  weekday_day  n=  511226 pos=0.371 brier=0.2575 auc=0.662 ece=0.2575
+h= 90 seasonal     all          n= 1040112 pos=0.332 brier=0.1620 auc=0.813 ece=0.0197
+h= 90 seasonal     campus       n=  419656 pos=0.360 brier=0.1546 auc=0.841 ece=0.0328
+h= 90 seasonal     classend     n=   44276 pos=0.344 brier=0.1551 auc=0.833 ece=0.0226
+h= 90 seasonal     weekday_day  n=  511226 pos=0.371 brier=0.1689 auc=0.815 ece=0.0217
+h= 90 mc_naive     all          n= 1040112 pos=0.332 brier=0.1518 auc=0.855 ece=0.0858
+h= 90 mc_naive     campus       n=  419656 pos=0.360 brier=0.1426 auc=0.883 ece=0.0870
+h= 90 mc_naive     classend     n=   44276 pos=0.344 brier=0.1869 auc=0.817 ece=0.1346
+h= 90 mc_naive     weekday_day  n=  511226 pos=0.371 brier=0.1811 auc=0.832 ece=0.1299
+h= 90 mc_cens      all          n= 1040112 pos=0.332 brier=0.1432 auc=0.866 ece=0.0670
+h= 90 mc_cens      campus       n=  419656 pos=0.360 brier=0.1330 auc=0.892 ece=0.0700
+h= 90 mc_cens      classend     n=   44276 pos=0.344 brier=0.1680 auc=0.838 ece=0.1021
+h= 90 mc_cens      weekday_day  n=  511226 pos=0.371 brier=0.1676 auc=0.843 ece=0.0974
+h= 90 mc_cens_cal  all          n= 1040112 pos=0.332 brier=0.1377 auc=0.866 ece=0.0171
+h= 90 mc_cens_cal  campus       n=  419656 pos=0.360 brier=0.1265 auc=0.893 ece=0.0138
+h= 90 mc_cens_cal  classend     n=   44276 pos=0.344 brier=0.1545 auc=0.838 ece=0.0236
+h= 90 mc_cens_cal  weekday_day  n=  511226 pos=0.371 brier=0.1553 auc=0.843 ece=0.0217
+h= 90 logistic     all          n= 1040112 pos=0.332 brier=0.1321 auc=0.867 ece=0.0117
+h= 90 logistic     campus       n=  419656 pos=0.360 brier=0.1238 auc=0.887 ece=0.0174
+h= 90 logistic     classend     n=   44276 pos=0.344 brier=0.1500 auc=0.836 ece=0.0255
+h= 90 logistic     weekday_day  n=  511226 pos=0.371 brier=0.1457 auc=0.853 ece=0.0159
+h= 90 lgb_inv      all          n= 1040112 pos=0.332 brier=0.1258 auc=0.881 ece=0.0123
+h= 90 lgb_inv      campus       n=  419656 pos=0.360 brier=0.1160 auc=0.902 ece=0.0151
+h= 90 lgb_inv      classend     n=   44276 pos=0.344 brier=0.1402 auc=0.857 ece=0.0165
+h= 90 lgb_inv      weekday_day  n=  511226 pos=0.371 brier=0.1391 auc=0.868 ece=0.0133
+h= 90 lgb_full     all          n= 1040112 pos=0.332 brier=0.1133 auc=0.908 ece=0.0138
+h= 90 lgb_full     campus       n=  419656 pos=0.360 brier=0.1025 auc=0.928 ece=0.0147
+h= 90 lgb_full     classend     n=   44276 pos=0.344 brier=0.1225 auc=0.896 ece=0.0194
+h= 90 lgb_full     weekday_day  n=  511226 pos=0.371 brier=0.1243 auc=0.898 ece=0.0140
+h= 90 lgb_full_mc  all          n= 1040112 pos=0.332 brier=0.1122 auc=0.910 ece=0.0136
+h= 90 lgb_full_mc  campus       n=  419656 pos=0.360 brier=0.1016 auc=0.929 ece=0.0141
+h= 90 lgb_full_mc  classend     n=   44276 pos=0.344 brier=0.1206 auc=0.899 ece=0.0136
+h= 90 lgb_full_mc  weekday_day  n=  511226 pos=0.371 brier=0.1231 auc=0.900 ece=0.0131
+h=120 logistic fitted in 11s
+h=120 inv: trained 467 trees in 30s
+h=120 full: trained 272 trees in 26s
+h=120 full+mc: 251 trees in 31s; p_mc gain share 0.539
+h=120 persistence  all          n= 1019119 pos=0.378 brier=0.2629 auc=0.658 ece=0.2629
+h=120 persistence  campus       n=  410492 pos=0.404 brier=0.2563 auc=0.687 ece=0.2563
+h=120 persistence  classend     n=   43364 pos=0.406 brier=0.3107 auc=0.622 ece=0.3107
+h=120 persistence  weekday_day  n=  502002 pos=0.421 brier=0.3006 auc=0.647 ece=0.3006
+h=120 seasonal     all          n= 1019119 pos=0.378 brier=0.1710 auc=0.810 ece=0.0221
+h=120 seasonal     campus       n=  410492 pos=0.404 brier=0.1609 auc=0.839 ece=0.0372
+h=120 seasonal     classend     n=   43364 pos=0.406 brier=0.1662 auc=0.828 ece=0.0291
+h=120 seasonal     weekday_day  n=  502002 pos=0.421 brier=0.1749 auc=0.812 ece=0.0251
+h=120 mc_naive     all          n= 1019119 pos=0.378 brier=0.1663 auc=0.844 ece=0.0977
+h=120 mc_naive     campus       n=  410492 pos=0.404 brier=0.1547 auc=0.874 ece=0.0985
+h=120 mc_naive     classend     n=   43364 pos=0.406 brier=0.2059 auc=0.810 ece=0.1541
+h=120 mc_naive     weekday_day  n=  502002 pos=0.421 brier=0.1949 auc=0.822 ece=0.1442
+h=120 mc_cens      all          n= 1019119 pos=0.378 brier=0.1547 auc=0.857 ece=0.0771
+h=120 mc_cens      campus       n=  410492 pos=0.404 brier=0.1417 auc=0.886 ece=0.0794
+h=120 mc_cens      classend     n=   43364 pos=0.406 brier=0.1817 auc=0.833 ece=0.1148
+h=120 mc_cens      weekday_day  n=  502002 pos=0.421 brier=0.1771 auc=0.837 ece=0.1082
+h=120 mc_cens_cal  all          n= 1019119 pos=0.378 brier=0.1477 auc=0.857 ece=0.0182
+h=120 mc_cens_cal  campus       n=  410492 pos=0.404 brier=0.1338 auc=0.886 ece=0.0158
+h=120 mc_cens_cal  classend     n=   43364 pos=0.406 brier=0.1653 auc=0.833 ece=0.0353
+h=120 mc_cens_cal  weekday_day  n=  502002 pos=0.421 brier=0.1627 auc=0.837 ece=0.0233
+h=120 logistic     all          n= 1019119 pos=0.378 brier=0.1475 auc=0.849 ece=0.0154
+h=120 logistic     campus       n=  410492 pos=0.404 brier=0.1384 auc=0.870 ece=0.0195
+h=120 logistic     classend     n=   43364 pos=0.406 brier=0.1728 auc=0.807 ece=0.0276
+h=120 logistic     weekday_day  n=  502002 pos=0.421 brier=0.1589 auc=0.838 ece=0.0174
+h=120 lgb_inv      all          n= 1019119 pos=0.378 brier=0.1375 auc=0.871 ece=0.0134
+h=120 lgb_inv      campus       n=  410492 pos=0.404 brier=0.1258 auc=0.894 ece=0.0204
+h=120 lgb_inv      classend     n=   43364 pos=0.406 brier=0.1565 auc=0.842 ece=0.0223
+h=120 lgb_inv      weekday_day  n=  502002 pos=0.421 brier=0.1488 auc=0.860 ece=0.0154
+h=120 lgb_full     all          n= 1019119 pos=0.378 brier=0.1238 auc=0.899 ece=0.0117
+h=120 lgb_full     campus       n=  410492 pos=0.404 brier=0.1111 auc=0.920 ece=0.0142
+h=120 lgb_full     classend     n=   43364 pos=0.406 brier=0.1354 auc=0.885 ece=0.0191
+h=120 lgb_full     weekday_day  n=  502002 pos=0.421 brier=0.1330 auc=0.890 ece=0.0130
+h=120 lgb_full_mc  all          n= 1019119 pos=0.378 brier=0.1218 auc=0.902 ece=0.0128
+h=120 lgb_full_mc  campus       n=  410492 pos=0.404 brier=0.1091 auc=0.923 ece=0.0155
+h=120 lgb_full_mc  classend     n=   43364 pos=0.406 brier=0.1315 auc=0.892 ece=0.0193
+h=120 lgb_full_mc  weekday_day  n=  502002 pos=0.421 brier=0.1307 auc=0.894 ece=0.0132
+done in 509s

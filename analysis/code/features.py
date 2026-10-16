@@ -64,9 +64,9 @@ def neighbors(stations, k=5):
     return np.argsort(d, axis=1)[:, :k]
 
 
-def build(panel, stations, bells, majors, semesters, flows=None, train_end=None, slots=(36, 138)):
+def build(panel, stations, bells, majors, semesters, flows=None, train_end=None, slots=(36, 138), horizons=(30, 60)):
     """panel: columns sno, ts (10-min), bikes, docks, total. stations: sno, latitude, longitude.
-    Returns a feature frame restricted to slots in [slots[0], slots[1])."""
+    Returns a feature frame restricted to slots in [slots[0], slots[1]); labels y{h} for h in horizons (minutes)."""
     st = stations.reset_index(drop=True)
     sidx = {s: i for i, s in enumerate(st.sno)}
     p = panel[panel.sno.isin(sidx)].copy()
@@ -85,13 +85,15 @@ def build(panel, stations, bells, majors, semesters, flows=None, train_end=None,
     p["empty_now"] = emp
     p["empty_min60"] = emp.groupby(p.si).transform(lambda x: x.rolling(6, min_periods=1).sum()) * 10
     p["fill"] = p.bikes / p.total.replace(0, np.nan)
-    # labels: empty at any point within the next 3 / 6 slots
-    fut3 = pd.concat([g.shift(-k) for k in (1, 2, 3)], axis=1)
-    fut6 = pd.concat([g.shift(-k) for k in (1, 2, 3, 4, 5, 6)], axis=1)
-    p["y30"] = (fut3.min(axis=1) == 0).astype(np.float32)
-    p["y60"] = (fut6.min(axis=1) == 0).astype(np.float32)
-    p.loc[fut3.isna().any(axis=1), "y30"] = np.nan
-    p.loc[fut6.isna().any(axis=1), "y60"] = np.nan
+    # labels: empty at any point within the next h/10 slots (NaN if any of those slots is unobserved)
+    kmax = max(horizons) // 10
+    fut = pd.concat([g.shift(-k) for k in range(1, kmax + 1)], axis=1)
+    fut.columns = range(1, kmax + 1)
+    for h in horizons:
+        k = h // 10
+        f = fut.loc[:, 1:k]
+        p[f"y{h}"] = (f.min(axis=1) == 0).astype(np.float32)
+        p.loc[f.isna().any(axis=1), f"y{h}"] = np.nan
 
     # ---- time features ----
     p["hour"] = (p.ts.dt.hour + p.ts.dt.minute / 60).astype(np.float32)

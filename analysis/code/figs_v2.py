@@ -255,7 +255,7 @@ grid(ax)
 save(fig, "fig_ntu_censoring.png", ax=ax)
 
 # ======================= Figure 8: model =======================
-rel = pd.read_csv(MODEL / "reliability.csv"); met = pd.read_csv(MODEL / "metrics.csv")
+rel = pd.read_csv(MODEL / "reliability.csv"); met = pd.read_csv(MODEL / "sweep" / "sweep_metrics.csv")   # same rows as Table 3
 fig = plt.figure(figsize=(W, 2.1))
 ax1 = fig.add_axes([0.11, 0.19, 0.36, 0.55]); ax2 = fig.add_axes([0.60, 0.19, 0.38, 0.55])
 ax1.plot([0, 1], [0, 1], color=MUTED, lw=0.6, ls=(0, (3, 2)))
@@ -330,7 +330,7 @@ save(fig, "fig_sim.png", ax=ax)
 D = lambda m, d: dt.date(2026, m, d)
 TODAY = D(10, 29)
 tasks = [("Data pipeline & matching", D(10, 1), D(10, 18), "PL", 1.0), ("Demand & operator moves", D(10, 10), D(10, 28), "JC", 1.0),
-         ("Stockout predictor", D(10, 19), D(11, 14), "SL", 0.8), ("Calibration & transfer", D(11, 8), D(11, 25), "JC", 0.6),
+         ("Stockout predictor", D(10, 19), D(11, 14), "SL", 0.9), ("Calibration & transfer", D(11, 8), D(11, 25), "JC", 0.7),
          ("Planner & simulator", D(11, 5), D(12, 6), "PL", 0.4), ("NSYSU live demo app", D(11, 20), D(12, 14), "SL", 0.1),
          ("Report & presentation", D(11, 22), D(12, 22), "all", 0.15)]
 ms = [(D(10, 1), "Proposal"), (D(10, 29), "Midterm"), (D(11, 26), "Video"), (D(12, 24), "Final")]

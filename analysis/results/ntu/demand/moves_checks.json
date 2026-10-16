@@ -1,0 +1,33 @@
+{
+ "station_hours": 917366,
+ "days": 295,
+ "per_day": {
+  "stock_change": -21.3,
+  "net_trips": -600.2,
+  "mv": 394.0,
+  "noise": 184.9,
+  "drop": 2554.2,
+  "pick": 2160.2,
+  "rentals": 25668.3
+ },
+ "noise_resid_mean": 0.075,
+ "noise_resid_sd": 1.64,
+ "noise_abs_q90": 2.0,
+ "noise_share_of_abs_resid": 0.285,
+ "jump_threshold": 8,
+ "p_jump_given_flag": 0.557,
+ "p_jump_given_noflag": 0.084,
+ "share_jump_windows_flagged": 0.658,
+ "jump_bikes_per_day_up": 2273.5,
+ "jump_bikes_per_day_down": 2212.2,
+ "max_hourly_rentals_any_station": 275,
+ "rate_check_rows": 14555,
+ "rate_ratio_naive_8_21": 1.123,
+ "rate_ratio_cens_8_21": 1.043,
+ "rate_ratio_naive_12": 1.019,
+ "rate_ratio_cens_12": 0.99,
+ "rate_ratio_naive_17": 1.166,
+ "rate_ratio_cens_17": 1.019,
+ "rate_ratio_naive_18": 1.182,
+ "rate_ratio_cens_18": 0.995
+}
