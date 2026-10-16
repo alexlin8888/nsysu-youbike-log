@@ -20,8 +20,8 @@ from figcheck import check  # noqa: E402
 BOXES = []   # diagram boxes of the current figure, for the spill check
 
 
-def save(fig, name, ax=None, allow_outside=False):
-    check(fig, name, boxes=BOXES or None, ax=ax, allow_outside=allow_outside)
+def save(fig, name, ax=None, allow_outside=False, marks=True, allow_on_marks=()):
+    check(fig, name, boxes=BOXES or None, ax=ax, allow_outside=allow_outside, marks=marks, allow_on_marks=allow_on_marks)
     fig.savefig(OUT / name); plt.close(fig); BOXES.clear()
 
 DATA, HW1, MODEL, SIM, DEMAND, NSYSU, OUT = [Path(a) for a in sys.argv[1:8]]
@@ -55,7 +55,7 @@ for xb, lab in [(12 + 10 / 60, "12:10"), (15 + 10 / 60, "15:10"), (17 + 20 / 60,
     ax.text(xb + 0.1, 132, lab, color=ORANGE, fontsize=6.3, va="bottom", ha="left")
 i0 = np.argmin(abs(x - 17.0)); i1 = np.argmin(abs(x - (17 + 40 / 60)))
 ax.annotate("", xy=(x[i1], P.bikes_mean[i1]), xytext=(x[i0], P.bikes_mean[i0]), arrowprops=dict(arrowstyle="-|>", color=INK, lw=0.8, shrinkA=0, shrinkB=0))
-ax.text(18.3, 300, f"−{(1 - P.bikes_mean[i1] / P.bikes_mean[i0]) * 100:.0f}% in 40 min", fontsize=6.5, color=INK, va="center")
+ax.text(18.2, 600, f"−{(1 - P.bikes_mean[i1] / P.bikes_mean[i0]) * 100:.0f}% in 40 min", fontsize=6.5, color=INK, va="center")
 ax.set_ylim(120, 830); ax.set_xlim(7, 21.6); ax.set_yticks([200, 400, 600, 800])
 ax.set_ylabel("bikes available", labelpad=2)
 ax.set_xticks(range(7, 22, 2)); ax.tick_params(axis="x", labelbottom=False, length=0)
@@ -88,7 +88,7 @@ axb.set_xlim(0, 76); axb.set_xticks([0, 20, 40, 60]); axb.set_xlabel("bikes / do
 axb.tick_params(axis="y", length=0, pad=2)
 grid(axb, "x")
 fig.text(0.01, 0.525, "(b) NSYSU area, 28 Sep 2026, 17:12 (12 min after the bell)", fontsize=7.2, fontweight="bold", va="top")
-save(fig, "fig1_motivation.png", ax=ax)
+save(fig, "fig1_motivation.png", ax=ax, allow_on_marks=("20%", "8%", "32%"))
 
 # ======================= Figure 2: pipeline =======================
 fig, ax = plt.subplots(figsize=(W, 1.5)); ax.set_xlim(-1.0, 101.0); ax.set_ylim(0, 47); ax.axis("off")
@@ -116,7 +116,7 @@ ax.add_patch(FancyBboxPatch((0.5, 1.0), 99, 10.4, boxstyle="round,pad=0.3,roundi
 ax.text(50, 6.2, "5  Evaluate:  replay real NTU trips → compare the policies\nwith the operator’s own moves → demo live at NSYSU", ha="center", va="center", fontsize=6.0, color=INK, linespacing=1.3)
 ax.add_patch(FancyArrowPatch((xs[3] + bw - 2.0, y0 - 0.2), (xs[3] + bw - 2.0, 11.8), arrowstyle="-|>", mutation_scale=6, lw=0.8, color=INK2))
 fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-save(fig, "fig2_pipeline.png", ax=ax)
+save(fig, "fig2_pipeline.png", ax=ax, marks=False)
 
 # ======================= Figure 3: architecture =======================
 fig = plt.figure(figsize=(W, 2.95))
@@ -158,7 +158,7 @@ for xx in (16, 48, 83.25):
 aarrow(48, 40, 48, 34.3); aarrow(16, 40, 16, 34.3); aarrow(31, 46.5, 33, 46.5)
 aarrow(48, 21, 48, 15.3); aarrow(33, 9, 16, 9); aarrow(16, 9, 16, 21)
 aarrow(63, 27.5, 67.5, 27.5); aarrow(83.25, 40, 83.25, 34.3); aarrow(83.25, 21, 83.25, 15.3)
-save(fig, "fig_architecture.png", ax=ax)
+save(fig, "fig_architecture.png", ax=ax, marks=False)
 
 # ======================= Figure 4a/4b: NSYSU tide (two separate figures) =======================
 prof = pd.read_csv(NSYSU / "nsysu_profile.csv")
@@ -183,7 +183,7 @@ ax.plot(x, prof.krt_wk, color=ORANGE, lw=1.5, label=f"KRT Sizihwan, 2 exits, {su
 ax.plot(x, prof.campus_we, color=BLUE, lw=0.9, ls=(0, (2, 2)), label="campus, weekend")
 for h, ha, dx in ((12, "center", 0), (16, "right", -0.12), (17, "left", 0.12)):
     ax.axvline(h, color=MUTED, lw=0.6, ls=(0, (3, 2)))
-    ax.text(h + dx, 236, f"{h}:00", fontsize=6.2, color=INK2, va="top", ha=ha)
+    ax.text(h + dx, 1.02, f"{h}:00", fontsize=6.2, color=INK2, va="bottom", ha=ha, transform=ax.get_xaxis_transform())
 ax.set_xlim(5, 24); ax.set_ylim(0, 240); ax.set_yticks([0, 100, 200])
 ax.set_xticks(range(6, 25, 3)); ax.set_xticklabels([f"{h:02d}:00" for h in range(6, 25, 3)])
 ax.set_ylabel("bikes available", labelpad=2)
@@ -202,8 +202,8 @@ axh.set_xlim(5, 24); axh.set_xticks(range(6, 25, 3)); axh.set_xticklabels([f"{h:
 axh.tick_params(axis="y", length=0)
 for h in (12, 16, 17):
     axh.axvline(h, color=SURF, lw=0.7, ls=(0, (3, 2)))
-for yy, lab in ((0.15, "campus"), (8.15, "KRT"), (10.15, "gateway")):
-    axh.text(5.15, yy, lab, fontsize=5.8, color=INK2, ha="left", va="top", style="italic")
+for yy, lab in ((4, "campus"), (9, "KRT"), (12, "gateway")):
+    axh.text(-0.31, yy, lab, fontsize=5.8, color=INK2, ha="center", va="center", rotation=90, transform=axh.get_yaxis_transform())
 cb = fig.colorbar(im, cax=cax, ticks=[0, 0.5, 1]); cb.ax.tick_params(labelsize=6, length=1.5, pad=1); cb.outline.set_linewidth(0.4)
 save(fig, "fig_nsysu_tide_b.png", ax=axh)
 
@@ -334,7 +334,7 @@ tasks = [("Data pipeline & matching", D(10, 1), D(10, 18), "PL", 1.0), ("Demand 
          ("Planner & simulator", D(11, 5), D(12, 6), "PL", 0.4), ("NSYSU live demo app", D(11, 20), D(12, 14), "SL", 0.1),
          ("Report & presentation", D(11, 22), D(12, 22), "all", 0.15)]
 ms = [(D(10, 1), "Proposal"), (D(10, 29), "Midterm"), (D(11, 26), "Video"), (D(12, 24), "Final")]
-start = D(9, 29); end = dt.date(2027, 1, 4)
+start = D(9, 29); end = dt.date(2027, 1, 7)
 fig, ax = plt.subplots(figsize=(W, 1.8))
 n = len(tasks)
 for i, (name, s, e, who, done) in enumerate(tasks):
@@ -342,14 +342,14 @@ for i, (name, s, e, who, done) in enumerate(tasks):
     ax.barh(yv, width, left=left, height=0.58, color=SEQ[2], linewidth=0)
     ax.barh(yv, width * done, left=left, height=0.58, color=BLUE if who != "all" else "#5598e7", linewidth=0)
     ax.text(left + 1.6, yv, who, va="center", ha="left", fontsize=5.8, color="white" if done > 0.15 else INK2, fontweight="bold")
-    ax.text(left + width + 1.5, yv, f"{int(done * 100)}%", va="center", ha="left", fontsize=5.8, color=INK2)
+    ax.text((end - start).days - 0.5, yv, f"{int(done * 100)}%", va="center", ha="right", fontsize=5.8, color=INK2)
 ax.set_yticks(range(n)); ax.set_yticklabels([t_[0] for t_ in tasks][::-1], fontsize=6.3)
 ax.tick_params(axis="y", length=0)
 months = [D(10, 1), D(11, 1), D(12, 1)]
 ax.set_xticks([(m - start).days for m in months]); ax.set_xticklabels(["Oct", "Nov", "Dec"])
 ax.set_xlim(0, (end - start).days)
 grid(ax, "x")
-ax.axvspan(0, (TODAY - start).days, color="#f3f3f0", zorder=0)
+ax.axvspan(0, (TODAY - start).days, color="#f3f3f0", zorder=0, gid="bg")
 for m, lab in ms:
     xm = (m - start).days
     ax.plot([xm, xm], [-0.6, n - 0.35], color=ORANGE, lw=0.7, linestyle=(0, (3, 2)), zorder=0)
@@ -359,7 +359,7 @@ ax.set_ylim(-0.6, n + 1.0)
 for spine in ["left", "bottom"]:
     ax.spines[spine].set_visible(False)
 fig.subplots_adjust(left=0.37, right=0.95, top=0.97, bottom=0.12)
-save(fig, "fig_gantt_hw3.png", ax=ax, allow_outside=True)
+save(fig, "fig_gantt_hw3.png", ax=ax, allow_outside=True, allow_on_marks=("PL", "JC", "SL", "all"))
 
 # ======================= Figure 11: demo mock-up =======================
 import math as _m

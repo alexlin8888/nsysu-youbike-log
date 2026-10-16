@@ -19,8 +19,8 @@ plt.rcParams.update({"font.size": 7, "axes.titlesize": 7.5, "axes.labelsize": 7,
                      "ytick.labelsize": 6.5, "legend.fontsize": 6.5})
 
 
-def save(fig, name, ax=None, allow_outside=False):
-    check(fig, name, ax=ax, allow_outside=allow_outside)
+def save(fig, name, ax=None, allow_outside=False, marks=True, allow_on_marks=()):
+    check(fig, name, ax=ax, allow_outside=allow_outside, marks=marks, allow_on_marks=allow_on_marks)
     fig.savefig(OUT / name); plt.close(fig)
 
 
