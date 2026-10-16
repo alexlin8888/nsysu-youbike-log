@@ -97,23 +97,23 @@ fig, ax = plt.subplots(figsize=(W, 1.5)); ax.set_xlim(-1.0, 101.0); ax.set_ylim(
 def pbox(x0, y0, w, h, title, lines, fc="#f2f6fc", ec=BLUE, tag=None):
     BOXES.append((x0, y0, x0 + w, y0 + h))
     ax.add_patch(FancyBboxPatch((x0, y0), w, h, boxstyle="round,pad=0.3,rounding_size=1.4", fc=fc, ec=ec, lw=0.8))
-    ax.text(x0 + w / 2, y0 + h - 2.4, title, ha="center", va="top", fontsize=7, fontweight="bold", color=INK)
-    ax.text(x0 + w / 2, y0 + h - 9.8, lines, ha="center", va="top", fontsize=6, color=INK2, linespacing=1.25)
+    ax.text(x0 + w / 2, y0 + h - 2.4, title, ha="center", va="top", fontsize=6.8, fontweight="bold", color=INK)
+    ax.text(x0 + w / 2, y0 + h - 9.6, lines, ha="center", va="top", fontsize=5.7, color=INK2, linespacing=1.25)
     if tag:
         ax.text(x0 + w / 2, y0 - 2.2, tag, ha="center", va="top", fontsize=5.8, color=ORANGE, fontstyle="italic")
 
 
 bw, bh, gap, y0 = 23.6, 25.0, 1.7, 18.0
 xs = [0.5 + i * (bw + gap) for i in range(4)]
-pbox(xs[0], y0, bw, bh, "1  Data", "hourly trip records\n10-min inventory\nclass timetables\nlive station feed", fc="#f7f7f5", ec=MUTED, tag="open data + timetables")
-pbox(xs[1], y0, bw, bh, "2  Reconstruct", "censored rent /\nreturn rates;\ninfer truck moves", tag="uncertainty")
-pbox(xs[2], y0, bw, bh, "3  Predict", "P(stockout in h)\nschedule-aware\nGBM, calibrated", tag="learning")
-pbox(xs[3], y0, bw, bh, "4  Plan", "rolling-horizon\nroute search\nmin E[unmet]+β·km", tag="search / agent")
+pbox(xs[0], y0, bw, bh, "1 Data", "hourly trip records\n10-min inventory\nclass timetables\nlive station feed", fc="#f7f7f5", ec=MUTED, tag="open data + timetables")
+pbox(xs[1], y0, bw, bh, "2 Reconstruct", "censored rent /\nreturn rates;\ninfer truck moves", tag="uncertainty")
+pbox(xs[2], y0, bw, bh, "3 Predict", "P(stockout in h)\nschedule-aware\nGBM, calibrated", tag="learning")
+pbox(xs[3], y0, bw, bh, "4 Plan", "rolling-horizon\nroute search\nmin E[unmet]\n+ β·km", tag="search / agent")
 for a, b in zip(xs[:-1], xs[1:]):
     ax.add_patch(FancyArrowPatch((a + bw + 0.2, y0 + bh / 2), (b - 0.3, y0 + bh / 2), arrowstyle="-|>", mutation_scale=6, lw=0.8, color=INK2))
 BOXES.append((0.5, 1.0, 99.5, 11.4))
 ax.add_patch(FancyBboxPatch((0.5, 1.0), 99, 10.4, boxstyle="round,pad=0.3,rounding_size=1.2", fc="#fff3ee", ec=ORANGE, lw=0.7))
-ax.text(50, 6.2, "5  Evaluate:  replay real NTU trips → compare the policies\nwith the operator’s own moves → demo live at NSYSU", ha="center", va="center", fontsize=6.0, color=INK, linespacing=1.3)
+ax.text(50, 6.2, "5 Evaluate: replay real NTU trips → compare the policies\nwith the operator’s own moves → demo live at NSYSU", ha="center", va="center", fontsize=6.0, color=INK, linespacing=1.3)
 ax.add_patch(FancyArrowPatch((xs[3] + bw - 2.0, y0 - 0.2), (xs[3] + bw - 2.0, 11.8), arrowstyle="-|>", mutation_scale=6, lw=0.8, color=INK2))
 fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
 save(fig, "fig2_pipeline.png", ax=ax, marks=False)
@@ -128,8 +128,8 @@ EDGE = {"src": MUTED, "tab": SEQ[5], "mod": BLUE, "out": ORANGE}
 def abox(x, y, w, h, title, lines, kind):
     BOXES.append((x, y, x + w, y + h))
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=1.2", fc=FILL[kind], ec=EDGE[kind], lw=0.8))
-    ax.text(x + w / 2, y + h - 1.3, title, ha="center", va="top", fontsize=6.6, fontweight="bold", color=INK)
-    ax.text(x + w / 2, y + 1.1, lines, ha="center", va="bottom", fontsize=5.5, color=INK2, linespacing=1.15)
+    ax.text(x + w / 2, y + h - 1.6, title, ha="center", va="top", fontsize=6.6, fontweight="bold", color=INK)
+    ax.text(x + w / 2, y + 1.4, lines, ha="center", va="bottom", fontsize=5.5, color=INK2, linespacing=1.15)
 
 
 def aarrow(x0, y0, x1, y1):
@@ -143,20 +143,20 @@ abox(1, 78, 30, 14, "Trip records [1]", "monthly zip, 10 months\n10.2 M trips, h
 abox(33, 78, 30, 14, "Snapshots [2]", "295 days, every 10 min\n2.97 M station records", "src")
 abox(67.5, 78, 31.5, 14, "Live station API [12]", "GitHub Actions logger\n309 stations, 10 min", "src")
 abox(1, 59, 30, 13, "flows_hourly", "station × hour:\nrentals, returns", "tab")
-abox(33, 59, 30, 13, "panel_10min", "station × 10 min: bikes,\ndocks; forward-filled", "tab")
+abox(33, 59, 30, 13, "panel_10min", "station × 10 min:\nbikes, docks, capacity", "tab")
 abox(67.5, 59, 31.5, 13, "NSYSU panel", "station × 10 min\n+ NSYSU calendar", "tab")
-abox(1, 40, 30, 13, "Reconcile (2.3)", "Δs − (q − r) → truck moves\nexposure → rates λ", "mod")
-abox(33, 40, 30, 13, "Features + labels (2.4)", "time, bell, state,\nneighbours, flows", "mod")
-abox(67.5, 40, 31.5, 13, "Inventory-only features", "same code, NSYSU bells\nno trip flows", "mod")
-abox(1, 21, 30, 13, "Replay simulator (2.6)", "real trips, K trucks\nunmet, empty-min, km", "out")
-abox(33, 21, 30, 13, "LightGBM predictor", "P(empty in 30 / 60 min)\nBrier, AUC, ECE", "mod")
+abox(1, 40, 30, 13, "Reconcile (2.3)", "residual → truck moves\nexposure → rates λ", "mod")
+abox(33, 40, 30, 13, "Features (2.4)", "time, bell, state,\nneighbours, flows", "mod")
+abox(67.5, 40, 31.5, 13, "NSYSU features", "same code, NSYSU bells,\nno trip flows", "mod")
+abox(1, 21, 30, 13, "Simulator (2.6)", "real trips, K trucks;\nunmet, empty-min, km", "out")
+abox(33, 21, 30, 13, "Predictor (2.4)", "GBM + Poisson roll-out,\nP(empty in 30–120 min)", "mod")
 abox(67.5, 21, 31.5, 13, "Transfer (2.5)", "zero-shot / fine-tune\nvs. NSYSU-only", "out")
-abox(33, 3, 30, 12, "Pre-emptive planner", "rentals saved per\ntruck-minute; route search", "out")
-abox(67.5, 3, 31.5, 12, "Live demo (planned)", "map, P(empty) per station,\nnext-bell truck plan", "out")
+abox(33, 2, 30, 13, "Planner (2.6)", "greedy now,\nroute search next", "out")
+abox(67.5, 2, 31.5, 13, "Live demo (2.7)", "planned: map, P(empty),\nnext-bell truck plan", "out")
 for xx in (16, 48, 83.25):
     aarrow(xx, 78, xx, 72.3); aarrow(xx, 59, xx, 53.3)
 aarrow(48, 40, 48, 34.3); aarrow(16, 40, 16, 34.3); aarrow(31, 46.5, 33, 46.5)
-aarrow(48, 21, 48, 15.3); aarrow(33, 9, 16, 9); aarrow(16, 9, 16, 21)
+aarrow(48, 21, 48, 15.3); aarrow(33, 8.5, 16, 8.5); aarrow(16, 8.5, 16, 21)
 aarrow(63, 27.5, 67.5, 27.5); aarrow(83.25, 40, 83.25, 34.3); aarrow(83.25, 21, 83.25, 15.3)
 save(fig, "fig_architecture.png", ax=ax, marks=False)
 
@@ -175,8 +175,8 @@ order = list(CAMPUS) + KRT + ["501209024", "501209062", "501209042", "501209028"
 pe = (wk[wk.sno.isin(order)].assign(e=lambda z: (z.bikes == 0).astype(float)).pivot_table(index="sno", columns="slot", values="e").reindex(order))
 x = np.arange(144) / 6
 # (a) lines
-fig = plt.figure(figsize=(W, 1.75))
-ax = fig.add_axes([0.13, 0.17, 0.82, 0.56])
+fig = plt.figure(figsize=(W, 1.55))
+ax = fig.add_axes([0.13, 0.19, 0.82, 0.5])
 ax.fill_between(x, prof.campus_wk_p25, prof.campus_wk_p75, color=SEQ[2], lw=0, label="IQR of the campus mean")
 ax.plot(x, prof.campus_wk, color=BLUE, lw=1.5, label=f"campus, 8 stations, {summ['campus_capacity']} docks")
 ax.plot(x, prof.krt_wk, color=ORANGE, lw=1.5, label=f"KRT Sizihwan, 2 exits, {summ['krt_capacity']} docks")
@@ -192,9 +192,9 @@ h_, l_ = ax.get_legend_handles_labels()
 fig.legend(h_, l_, loc="upper left", bbox_to_anchor=(0.01, 0.995), ncol=2, frameon=False, fontsize=6.2, handlelength=1.4, columnspacing=1.2, labelspacing=0.3)
 save(fig, "fig_nsysu_tide_a.png", ax=ax)
 # (b) heatmap
-fig = plt.figure(figsize=(W, 2.0))
-axh = fig.add_axes([0.24, 0.15, 0.665, 0.80])
-cax = fig.add_axes([0.922, 0.15, 0.018, 0.80])
+fig = plt.figure(figsize=(W, 1.8))
+axh = fig.add_axes([0.24, 0.15, 0.665, 0.81])
+cax = fig.add_axes([0.922, 0.15, 0.018, 0.81])
 im = axh.imshow(pe.values, aspect="auto", cmap=seq_cmap, vmin=0, vmax=1, extent=[0, 24, len(order), 0], interpolation="nearest")
 axh.set_yticks(np.arange(len(order)) + 0.5); axh.set_yticklabels([SHORT[s] for s in order], fontsize=6.0)
 axh.axhline(8, color=SURF, lw=1.4); axh.axhline(10, color=SURF, lw=1.4)
@@ -224,8 +224,8 @@ save(fig, "fig_nsysu_bells.png", ax=ax)
 
 # ======================= Figure 6: operator moves =======================
 pm = pd.read_csv(DEMAND / "moves_profile.csv"); ds = json.load(open(DEMAND / "demand_summary.json"))
-fig, ax = plt.subplots(figsize=(W, 2.0))
-fig.subplots_adjust(left=0.14, right=0.98, top=0.78, bottom=0.18)
+fig, ax = plt.subplots(figsize=(W, 1.7))
+fig.subplots_adjust(left=0.14, right=0.98, top=0.76, bottom=0.21)
 hod = np.arange(24)
 for campus, col, lab in ((1, BLUE, "campus"), (0, ORANGE, "ring")):
     c = pm[pm.campus == campus].set_index("hod").reindex(hod).fillna(0)
@@ -243,8 +243,8 @@ save(fig, "fig_ntu_moves.png", ax=ax)
 
 # ======================= Figure 7: censoring =======================
 cp = pd.read_csv(DEMAND / "censoring_profile.csv")
-fig, ax = plt.subplots(figsize=(W, 1.7))
-fig.subplots_adjust(left=0.14, right=0.98, top=0.80, bottom=0.21)
+fig, ax = plt.subplots(figsize=(W, 1.45))
+fig.subplots_adjust(left=0.14, right=0.98, top=0.77, bottom=0.25)
 ax.plot(cp.hod, cp.lam_naive, color=MUTED, lw=1.4, label="observed rentals per station-hour")
 ax.plot(cp.hod, cp.lam_cens, color=BLUE, lw=1.6, label="censoring-corrected demand rate")
 ax.fill_between(cp.hod, cp.lam_naive, cp.lam_cens, color=SEQ[2], lw=0)

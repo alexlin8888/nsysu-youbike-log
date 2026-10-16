@@ -60,8 +60,8 @@ save(fig, "fig_horizon.png", ax=ax1)
 sens = pd.read_csv(DEMAND / "moves_sensitivity.csv")
 rv = pd.read_csv(DEMAND / "rate_validation.csv")
 chk = json.load(open(DEMAND / "moves_checks.json"))
-fig = plt.figure(figsize=(W, 2.05))
-ax1 = fig.add_axes([0.13, 0.19, 0.34, 0.56]); ax2 = fig.add_axes([0.61, 0.19, 0.34, 0.56])
+fig = plt.figure(figsize=(W, 1.85))
+ax1 = fig.add_axes([0.13, 0.21, 0.34, 0.52]); ax2 = fig.add_axes([0.61, 0.21, 0.34, 0.52])
 wins = [1, 3, 6]; ths = [3, 5, 8]; xs = np.arange(len(ths)); wd = 0.26
 cols = {1: SEQ[3], 3: BLUE, 6: SEQ[10]}
 for k, w in enumerate(wins):

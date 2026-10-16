@@ -93,7 +93,8 @@ def _marks(ax, r):
     return P, rects, images, S
 
 
-def check(fig, name, boxes=None, ax=None, tol=0.5, allow_outside=False, marks=True, allow_on_marks=()):
+def check(fig, name, boxes=None, ax=None, tol=0.5, allow_outside=False, marks=True, allow_on_marks=(), pad_pt=(3.0, 1.5)):
+    """pad_pt: minimum clearance (x, y) in points between a diagram label and the edge of its box."""
     fig.canvas.draw()
     r = fig.canvas.get_renderer()
     W, H = fig.canvas.get_width_height()
@@ -112,8 +113,11 @@ def check(fig, name, boxes=None, ax=None, tol=0.5, allow_outside=False, marks=Tr
                 continue
             b = inside[0]
             bx0, by0 = ax.transData.transform((b[0], b[1])); bx1, by1 = ax.transData.transform((b[2], b[3]))
-            if bb.x0 < bx0 - tol or bb.x1 > bx1 + tol or bb.y0 < by0 - tol or bb.y1 > by1 + tol:
-                problems.append(f"spills out of its box: '{t.get_text()[:40]}' by ({bx0 - bb.x0:.0f},{bb.x1 - bx1:.0f},{by0 - bb.y0:.0f},{bb.y1 - by1:.0f}) px")
+            k = 72 / fig.dpi
+            gaps = ((bb.x0 - bx0) * k, (bx1 - bb.x1) * k, (bb.y0 - by0) * k, (by1 - bb.y1) * k)   # L, R, B, T in points
+            if min(gaps[:2]) < pad_pt[0] or min(gaps[2:]) < pad_pt[1]:
+                problems.append(f"too tight in its box: '{t.get_text()[:40]}' clearance L/R/B/T = "
+                                + "/".join(f"{g:.1f}" for g in gaps) + " pt")
     for t, bb in items:
         axx = t.axes
         if allow_outside or axx is None or t.get_transform() is not axx.transData:

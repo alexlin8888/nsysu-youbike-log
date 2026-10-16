@@ -27,32 +27,74 @@ const nsub = (t) => run(t, { subScript: true, color: BLUE });
 const nsup = (t) => run(t, { superScript: true, color: BLUE });
 
 // ---------- paragraphs ----------
-const P = (children, o = {}) => new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: 288 }, spacing: { after: 0, line: 240 }, children, ...o });
+const tagKeep = (p, keep = true, label = null) => { if (keep) p.__keep = true; if (label) p.__label = label; return p; };   // a figure may not be placed right after this
+const P = (children, o = {}) => tagKeep(new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: 288 }, spacing: { after: 0, line: 240 }, children, ...o }), !!o.keepNext);
 const body = (parts, o = {}) => P(typeof parts === "string" ? [run(parts)] : parts, o);
-const bodyB = (text, o = {}) => P([nb(text)], o);
-const h1 = (t, blue = false) => new Paragraph({ keepNext: true, spacing: { before: 120, after: 40, line: 240 }, children: [run(t, { bold: true, size: 24, color: blue ? BLUE : undefined })] });
-const h2 = (t, blue = false) => new Paragraph({ keepNext: true, spacing: { before: 90, after: 30, line: 240 }, children: [run(t, { bold: true, size: 22, color: blue ? BLUE : undefined })] });
-const h3 = (t, blue = true) => new Paragraph({ keepNext: true, spacing: { before: 60, after: 20, line: 240 }, children: [run(t, { bold: true, italics: true, size: 20, color: blue ? BLUE : undefined })] });
+const bodyB = (text, o = {}) => P([nb(text)], text.trim().endsWith(":") ? { keepNext: true, ...o } : o);
+const h1 = (t, blue = false) => tagKeep(new Paragraph({ keepNext: true, spacing: { before: 120, after: 40, line: 240 }, children: [run(t, { bold: true, size: 24, color: blue ? BLUE : undefined })] }), true, t);
+const h2 = (t, blue = false) => tagKeep(new Paragraph({ keepNext: true, spacing: { before: 90, after: 30, line: 240 }, children: [run(t, { bold: true, size: 22, color: blue ? BLUE : undefined })] }), true, t);
+const h3 = (t, blue = true) => tagKeep(new Paragraph({ keepNext: true, spacing: { before: 60, after: 20, line: 240 }, children: [run(t, { bold: true, italics: true, size: 20, color: blue ? BLUE : undefined })] }), true, t);
 // bullet: hanging indent with a dash, blue by default
 function bullet(parts, { blue = true, last = false } = {}) {
   const ch = typeof parts === "string" ? [blue ? nb(parts) : run(parts)] : parts;
-  return new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { left: 300, hanging: 180 }, spacing: { after: last ? 40 : 0, line: 240 },
-    children: [run("– ", { color: blue ? BLUE : undefined }), ...ch] });
+  return tagKeep(new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { left: 300, hanging: 180 }, spacing: { after: last ? 40 : 0, line: 240 },
+    children: [run("– ", { color: blue ? BLUE : undefined }), ...ch] }), !last);   // no figure inside a list
 }
 // numbered equation: centred with the number at the right margin
 function eq(parts, num) {
   return new Paragraph({ alignment: AlignmentType.LEFT, indent: { left: 600 }, spacing: { before: 40, after: 40, line: 240 },
     tabStops: [{ type: TabStopType.RIGHT, position: COL_W }], children: [...parts, new TextRun({ children: [new Tab(), `(${num})`], font: FONT, size: 20, color: BLUE })] });
 }
+// Figures are placed as markers first; LAYOUT (env, JSON {file: {shift, frac}}) may move a figure `shift`
+// elements later (negative = earlier) and scale it, so that no column ends with a large blank.
+const LAYOUT = process.env.LAYOUT ? JSON.parse(process.env.LAYOUT) : (fs.existsSync("layout.json") ? JSON.parse(fs.readFileSync("layout.json", "utf8")) : {});
 function figure(file, caption, { widthFrac = 1.0 } = {}) {
-  const buf = fs.readFileSync(FIG + file);
+  return [{ __fig: true, file, caption, widthFrac }];
+}
+function expandFigure(m) {
+  const buf = fs.readFileSync(FIG + m.file);
   const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
-  const W = Math.round(COL_PX * widthFrac), H = Math.round((W * h) / w);
+  const frac = (LAYOUT[m.file] && LAYOUT[m.file].frac) || m.widthFrac;
+  const W = Math.round(COL_PX * frac), H = Math.round((W * h) / w);
   return [
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 40 }, keepNext: true,
       children: [new ImageRun({ type: "png", data: buf, transformation: { width: W, height: H } })] }),
-    new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { before: 0, after: 140, line: 200 }, children: caption }),
+    new Paragraph({ alignment: AlignmentType.JUSTIFIED, keepLines: true, spacing: { before: 0, after: 140, line: 200 }, children: m.caption }),
   ];
+}
+function placeFigures(items) {
+  // base = all non-figure elements; a figure is emitted right after base element `after`
+  const base = [], figs = [];
+  for (const x of items) {
+    if (x && x.__fig) figs.push({ m: x, def: base.length - 1 });
+    else base.push(x);
+  }
+  for (const f of figs) {
+    const L = LAYOUT[f.m.file] || {};
+    f.after = L.after !== undefined ? L.after : f.def;
+  }
+  if (process.env.DUMP) {
+    base.forEach((x, i) => console.log("EL " + i + " " + (x.__keep ? "KEEP " : "") + (x.__label || x.constructor.name)
+      + figs.filter((f) => f.def === i).map((f) => "   <-- default " + f.m.file).join("")));
+  }
+  for (let k = 1; k < figs.length; k++) if (figs[k].after < figs[k - 1].after) console.log("ORDER_VIOLATION");
+  for (const f of figs) if (f.after >= 0 && base[f.after].__keep) console.log("ORDER_VIOLATION");
+  console.log("FIGS:" + JSON.stringify(figs.map((f) => f.m.file)));
+  // table groups (caption, table, spacer) may be moved as a block: LAYOUT["Table N"] = {after: element id}
+  let order = base.map((_, i) => i);
+  base.forEach((x, i) => {
+    const key = x.__label && x.__label.startsWith("Table ") ? x.__label.trim().replace(/\.$/, "") : null;
+    if (!key || !LAYOUT[key] || LAYOUT[key].after === undefined) return;
+    const grp = [i, i + 1].concat(base[i + 2] && base[i + 2].__spacer ? [i + 2] : []);
+    const tgt = LAYOUT[key].after;
+    if (base[tgt].__keep || grp.includes(tgt)) { console.log("ORDER_VIOLATION"); return; }
+    order = order.filter((k) => !grp.includes(k));
+    order.splice(order.indexOf(tgt) + 1, 0, ...grp);
+  });
+  const out = [];
+  figs.filter((f) => f.after < 0).forEach((f) => out.push(...expandFigure(f.m)));
+  order.forEach((i) => { out.push(base[i]); figs.filter((f) => f.after === i).forEach((f) => out.push(...expandFigure(f.m))); });
+  return out;
 }
 const cap = (label, text) => [bold(label, { size: 17 }), run(text, { size: 17 })];
 const capB = (label, text) => [bold(label, { size: 17, color: BLUE }), run(text, { size: 17, color: BLUE })];
@@ -76,14 +118,14 @@ function table(widths, header, rows, { aligns = null, size = 15 } = {}) {
     borders: { top: border, bottom: border, left: none, right: none, insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: "BBBBBB" }, insideVertical: none },
     rows: [
       new TableRow({ tableHeader: true, cantSplit: true, children: header.map((t, i) => cell(t, { width: widths[i], bold: true, shade: true, align: al(i), size })) }),
-      ...rows.map((r, ri) => new TableRow({ cantSplit: true, children: r.map((t, i) => cell(t, { width: widths[i], align: al(i), size, keep: ri < 1 })) })),
+      ...rows.map((r, ri) => new TableRow({ cantSplit: true, children: r.map((t, i) => cell(t, { width: widths[i], align: al(i), size, keep: ri < rows.length - 1 })) })),   // tables never split across columns
     ],
   });
 }
-const tableCaption = (label, text) => new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { before: 100, after: 50, line: 220 }, keepNext: true, children: capB(label, text) });
-const spacer = () => new Paragraph({ spacing: { before: 0, after: 80, line: 120 }, children: [run("", { size: 6 })] });
+const tableCaption = (label, text) => tagKeep(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { before: 100, after: 50, line: 220 }, keepNext: true, keepLines: true, children: capB(label, text) }), true, label);
+const spacer = () => { const p = new Paragraph({ spacing: { before: 0, after: 80, line: 120 }, children: [run("", { size: 6 })] }); p.__spacer = true; return p; };
 // one-cell box (changes summary, algorithm)
-function box(lines, { mono = false, size = 16, fill = "F4F7FD" } = {}) {
+function box(lines, { mono = false, size = 16, fill = "F4F7FD", line = 220 } = {}) {
   const border = { style: BorderStyle.SINGLE, size: 4, color: "7F9CCB" };
   return new Table({
     width: { size: COL_W, type: WidthType.DXA }, columnWidths: [COL_W],
@@ -91,7 +133,7 @@ function box(lines, { mono = false, size = 16, fill = "F4F7FD" } = {}) {
     rows: [new TableRow({ cantSplit: true, children: [new TableCell({
       width: { size: COL_W, type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 90, right: 90 },
       shading: { type: ShadingType.CLEAR, fill, color: "auto" },
-      children: lines.map((ln) => new Paragraph({ alignment: AlignmentType.LEFT, keepLines: true, spacing: { after: 0, line: 220 },
+      children: lines.map((ln) => new Paragraph({ alignment: AlignmentType.LEFT, keepLines: true, spacing: { after: 0, line },
         indent: mono ? { left: 0 } : { left: 200, hanging: 200 },
         children: typeof ln === "string" ? [new TextRun({ text: ln, font: mono ? MONO : FONT, size, color: BLUE })] : ln })),
     })] })],
@@ -159,15 +201,15 @@ const main = [
 
   // ----- changes box -----
   box([
-    [nbb("What has been done since the proposal (HW1)", { size: 17 })],
-    "1. NSYSU data: a 10-minute logger for 309 stations, running since 1 Oct (Sec. 2.2); 14 complete days analysed (Sec. 3.2).",
-    "2. NTU data: 10.2 M trips and 295 days of inventory turned into hourly flows, a 10-minute panel and a reconciliation table (Secs. 2.2–2.3).",
-    "3. Demand reconstruction and operator-move inference implemented, with four independent checks (Secs. 2.3, 3.3).",
-    "4. Stockout predictor trained, calibrated and ablated on three held-out months at 30/60/90/120 min; the proposal’s Poisson roll-out implemented and compared with it; logistic baseline; bootstrap intervals (Secs. 2.4, 3.4).",
-    "5. NTU→NSYSU transfer study completed for the predictor (Secs. 2.5, 3.5).",
-    "6. Replay simulator with four policies and 1/3/6 trucks on 28 held-out days (Secs. 2.6, 3.6).",
-    "Not yet done: route-search planner, censored-demand replay, timetable-intensity feature, live demo (Sec. 4).",
-  ], { size: 16 }),
+    [nbb("What has been done since the proposal (HW1)", { size: 16 })],
+    "1. NSYSU: a 10-minute logger for 309 stations since 1 Oct; 14 full days analysed (Secs. 2.2, 3.2).",
+    "2. NTU: 10.2 M trips and 295 days of inventory turned into three tables (Secs. 2.2, 2.3).",
+    "3. Operator-move inference with four independent checks (Secs. 2.3, 3.3).",
+    "4. Predictor at 30–120 min against the proposal’s Poisson roll-out and a logistic baseline, with bootstrap intervals (Secs. 2.4, 3.4).",
+    "5. NTU→NSYSU transfer study (Secs. 2.5, 3.5).",
+    "6. Replay simulator: four policies, 1/3/6 trucks, 28 days (Secs. 2.6, 3.6).",
+    "Not yet done: route search, censored-demand replay, timetable feature, live demo (Sec. 4).",
+  ], { size: 15, line: 205 }),
   spacer(),
 
   h1("1. Introduction"),
@@ -186,7 +228,7 @@ const main = [
   body([run("Static repositioning is a routing-and-inventory problem [4]; dynamic repositioning combines forecasts with heuristics or mixed-integer programs [5, 6]; recent work uses spatio-temporal reinforcement learning [7]. Two ingredients matter on a campus yet are rarely combined: censored-demand estimation by simulation [8] or censored Gaussian processes [9], and inferring the operator’s unpublished truck moves by subtracting trip flows from inventory changes [10]; on Taipei data this reveals 18–20 thousand unexplained bike moves on 12 Mar 2025, peaking at 07–09 and 18–20. A 2025 NTU thesis optimized dispatch near NTU with survival-model demand on one month of trips [11]. No published work, to our knowledge, (a) uses the class timetable as an explicit signal, (b) outputs calibrated stockout probabilities rather than point forecasts, or (c) tests transfer between campuses; NSYSU has never been studied and Kaohsiung publishes no trip data, so transfer is the practical question. "),
     nb("Station-level availability has been forecast hierarchically from city to cluster to station [25] and as over-demand prediction with dynamic station clusters [23]; the view of a station as a finite-capacity birth–death process, which the proposal’s Poisson roll-out computes, underlies service-level rebalancing [18, 19] and fleet sizing [20]; data-driven rebalancing at system scale was demonstrated for Citi Bike [24]. For the predictor we use gradient-boosted decision trees [13], which handle mixed count and categorical features natively, and we measure probability quality with the Brier score [15] and the expected calibration error [14] rather than accuracy, because the planner consumes probabilities.")]),
   h2("1.4. Proposed solution and status"),
-  body([run("Fig. 2 shows the pipeline. Open NTU data (hourly trips [1]; 10-minute inventory over 416 days [2]) serve to reconstruct demand and operator moves, to train a schedule-aware gradient-boosting predictor with reliability checks, and to drive a rolling-horizon route planner; policies are compared in a replay simulator fed with real trips. The predictor is then ported to NSYSU with a few weeks of locally logged inventory [12] for a live web demo that recommends a pre-bell truck plan ("), nb("Fig. 11"), run("). Contributions: (1) an uncertainty-aware pre-emptive rebalancing method reproducible from open data; (2) the first quantification of class-end stockouts at NTU and NSYSU; (3) an NTU→NSYSU transfer study. "),
+  body([run("Fig. 2 shows the pipeline. Open NTU data (hourly trips [1]; 10-minute inventory over 416 days [2]) serve to reconstruct demand and operator moves, to train a schedule-aware gradient-boosting predictor with reliability checks, and to drive a rolling-horizon route planner; policies are compared in a replay simulator fed with real trips. The predictor is then ported to NSYSU with a few weeks of locally logged inventory [12] for a live web demo that recommends a pre-bell truck plan ("), nb("Fig. 10"), run("). Contributions: (1) an uncertainty-aware pre-emptive rebalancing method reproducible from open data; (2) the first quantification of class-end stockouts at NTU and NSYSU; (3) an NTU→NSYSU transfer study. "),
     nb("Status: (2) is complete for both campuses; (1) is implemented end to end with a greedy planner and evaluated in the simulator; (3) is complete for the predictor. Code, tables and results are public [17].")]),
 
   // ===================== METHOD =====================
@@ -195,7 +237,7 @@ const main = [
   bodyB("Fig. 3 shows the system as built. The NTU lane turns two open data sets into three tables (hourly flows, a 10-minute inventory panel and an hourly reconciliation table) that feed demand reconstruction, the predictor and the simulator. The NSYSU lane produces the same inventory panel from our logger, so the inventory-only predictor and the planner run unchanged on either campus. Each module is one Python script in the repository [17]; the subsection headings name the scripts and Sec. 3.1 gives the run times."),
 
   h2("2.2. Data acquisition and panel construction", true),
-  h3("2.2.1. NSYSU inventory logger (logger/fetch_youbike.py)"),
+  h3("2.2.1. NSYSU logger (fetch_youbike.py)"),
   bodyB("YouBike publishes a JSON of every station (bikes, free docks, status, update time) but no history, so our logger runs in GitHub Actions and commits one CSV row per station and 10-minute slot for the 309 stations within 5 km of NSYSU; the eight campus stations and eleven gateway stations between campus and the KRT are tagged for analysis. GitHub throttles scheduled jobs in quiet repositories, so one run logs for 340 minutes and dispatches its successor before it ends, with an hourly cron as fallback. 144 snapshots per day have been recorded since 2 Oct (one 6-hour gap on 12 Oct); out-of-service stations are stored as such and never counted as stockouts."),
   ...figure("fig2_pipeline.png", cap("Figure 2. ", "Proposed pipeline and the course unit each stage exercises (from the proposal).")),
   h3("2.2.2. NTU trip flows (ntu_pipeline.py trips)"),
@@ -214,7 +256,7 @@ const main = [
   body([nb("and a 3-hour window whose summed residual Σ(Δ"), nbi("s"), nb(" − ("), nbi("q"), nb(" − "), nbi("r"), nb(")) reaches 5 bikes in absolute value is labelled as a truck move. The censoring-corrected rental rate per station "), nbi("i"), nb(", day type "), nbi("d"), nb(" (teaching day or off-day) and hour-of-day "), nbi("τ"), nb(" is")]),
   eq([nb("λ̂"), nsub("i"), nb("("), nbi("d"), nb(", "), nbi("τ"), nb(") = Σ"), nsub("h"), nbi(" r"), nsub("i"), nb("("), nbi("h"), nb(") / Σ"), nsub("h"), nbi(" e"), nsub("i"), nb("("), nbi("h"), nb(")")], 3),
   body([nb("where the sums run over all hours "), nbi("h"), nb(" of that type and "), nbi("e"), nsub("i"), nb("("), nbi("h"), nb(") is the share of the hour during which the station had a bike. In the implementation (ntu_pipeline.py reconcile, ntu_demand.py) the stock at the start of an hour is the panel value at hh:00, "), nbi("e"), nsub("i"), nb(" is the share of the six slots with a bike, and rates are estimated per station, day type and hour. The two validity checks the proposal asked for, the R² of Δ"), nbi("s"), nb(" against ("), nbi("q"), nb(" − "), nbi("r"), nb(") on hours without inferred moves and the R² for reproducing the next-hour stock once moves are added (required to exceed 0.8), are reported in Sec. 3.3.")]),
-  h3("2.3.1. Checks on the inferred moves and rates (validate_moves.py)"),
+  h3("2.3.1. Inference checks (validate_moves.py)"),
   bodyB("The move labels are a by-product of thresholding, so four checks that do not use the threshold were added:", { keepNext: true }),
   bullet("Conservation: per day, the change in area stock equals net trips plus flagged moves plus the unflagged residual; the unflagged part must be small and unbiased."),
   bullet("Sensitivity: the labels are recomputed for thresholds of 3, 5 and 8 bikes and windows of 1, 3 and 6 hours; volume, timing and R² must not hinge on the choice."),
@@ -277,7 +319,7 @@ const main = [
   bodyB("The operator reference injects the inferred hourly moves of Sec. 2.3 directly, without truck constraints. The route search with 2-opt and simulated annealing [16] is the next step; Algorithm 1 is its initial solution."),
 
   h2("2.7. Live demo", true),
-  bodyB("The logger already writes latest.json, a compact snapshot of the 309 stations, on every run. The demo page will read it, compute the inventory-only features, show P(empty within 30 min) per station on a map and the next-bell truck plan of the planner, as mocked in Fig. 11."),
+  bodyB("The logger already writes latest.json, a compact snapshot of the 309 stations, on every run. The demo page will read it, compute the inventory-only features, show P(empty within 30 min) per station on a map and the next-bell truck plan of the planner, as mocked in Fig. 10."),
 
   // ===================== EXPERIMENTS =====================
   h1("3. Experiments", true),
@@ -300,14 +342,13 @@ const main = [
 
   h2("3.3. Demand reconstruction and operator moves at NTU", true),
   bodyB("Reconciliation covers 917 k station-hours (144 stations, 295 days). On hours without inferred moves, trips alone explain inventory changes with R² = 0.87; adding the inferred moves reproduces the next-hour stock with R² = 0.984 (0.63 without them), so the inferred operator policy passes the proposal’s threshold. At the 144 stations the operator drops off about 2,550 and picks up about 2,160 bikes per day, 10% of the 25,700 daily rentals. Fig. 6 shows a reactive pattern: pick-ups from campus peak at 08:00–09:00 after the morning inflow, drop-offs at campus peak at 16:00–17:00, and only 19% of campus drop-offs happen in the hour before a major bell."),
-  bodyB("Fig. 7 shows the censoring correction for campus stations on weekdays: observed rentals understate demand by 8% at 12:00, 17% at 17:00, 39% at 18:00 and 2.1× at 22:00, because campus stations are empty 46% of the time at 17:00–19:00. These corrected rates are the demand input of the planner."),
-  bodyB("The checks of Sec. 2.3.1 (Fig. 8) support the inference with one qualification. Conservation: the area loses 600 bikes per day through trips, the flagged moves bring back 394 and the unflagged residual 185; that residual averages +0.08 bikes per station-hour, so small top-ups below the threshold are missed and the 2,550 drop-offs are a lower bound. Sensitivity: across thresholds 3–8 bikes and windows 1–6 h the drop-off volume ranges from 2,150 to 2,975 bikes per day, the share before a major bell stays at 18–20%, the peak hour is always 17:00 and the reproduction R² stays above 0.977. Jumps: 56% of flagged windows contain a ≥ 8-bike jump in the flagged direction against 8% of unflagged windows, and jumps alone sum to 2,270 bikes up and 2,210 down per day. Rates: on 14.6 k well-stocked campus station-hours of the test period, actual rentals are 12% above the naive rate but 4% above the corrected one; at 17:00–18:00 the naive rate is 17–18% low and the corrected rate within 2%. The volume is plausible: the area holds 8% of Taipei’s 1,768 stations but 11% of its 234,000 daily rentals [27], and 4,700 bike-moves per day is 240 truck loads of 20, while the operator reports moving over a thousand bikes a night from a single riverside spot [26]."),
+  bodyB("The censoring correction is large where it matters: at campus stations on weekdays, observed rentals understate demand by 8% at 12:00, 17% at 17:00, 39% at 18:00 and 2.1× at 22:00, because campus stations are empty 46% of the time at 17:00–19:00. These corrected rates are the demand input of the planner."),
+  bodyB("The checks of Sec. 2.3.1 (Fig. 7) support the inference with one qualification. Conservation: the area loses 600 bikes per day through trips, the flagged moves bring back 394 and the unflagged residual 185; that residual averages +0.08 bikes per station-hour, so small top-ups below the threshold are missed and the 2,550 drop-offs are a lower bound. Sensitivity: across thresholds 3–8 bikes and windows 1–6 h the drop-off volume ranges from 2,150 to 2,975 bikes per day, the share before a major bell stays at 18–20%, the peak hour is always 17:00 and the reproduction R² stays above 0.977. Jumps: 56% of flagged windows contain a ≥ 8-bike jump in the flagged direction against 8% of unflagged windows, and jumps alone sum to 2,270 bikes up and 2,210 down per day. Rates: on 14.6 k well-stocked campus station-hours of the test period, actual rentals are 12% above the naive rate but 4% above the corrected one; at 17:00–18:00 the naive rate is 17–18% low and the corrected rate within 2%. The volume is plausible: the area holds 8% of Taipei’s 1,768 stations but 11% of its 234,000 daily rentals [27], and 4,700 bike-moves per day is 240 truck loads of 20, while the operator reports moving over a thousand bikes a night from a single riverside spot [26]."),
   ...figure("fig_ntu_moves.png", capB("Figure 6. ", "Inferred truck moves per hour and day at the 59 campus and 85 ring stations (bikes dropped off above the axis, picked up below). Dashed lines: 12:10 and 17:20 bells.")),
-  ...figure("fig_ntu_censoring.png", capB("Figure 7. ", "Observed and censoring-corrected rental rates, campus stations, weekdays (spring 2025).")),
-  ...figure("fig_moves_check.png", capB("Figure 8. ", "Checks on the operator inference. (a) Inferred drop-offs per day for each threshold and window; dashed: bikes arriving in ≥ 8-bike jumps between snapshots. (b) Actual rentals divided by the training-period rate on well-stocked campus station-hours of the test period; dashed: 12:10 and 17:20 bells.")),
+  ...figure("fig_moves_check.png", capB("Figure 7. ", "Checks on the operator inference. (a) Inferred drop-offs per day for each threshold and window; dashed: bikes arriving in ≥ 8-bike jumps between snapshots. (b) Actual rentals divided by the training-period rate on well-stocked campus station-hours of the test period; dashed: 12:10 and 17:20 bells.")),
 
   h2("3.4. Stockout prediction", true),
-  bodyB("Tables 3–4 and Fig. 9 give the test results on the 1.09 M test slots whose current stock is observed. At the 30-minute horizon the full model reaches AUC 0.932 and Brier 0.080, against 0.819 / 0.126 for the seasonal baseline and 0.744 / 0.124 for persistence; the inventory-only model is close behind (0.922 / 0.084), so trip flows add little once the current stock and its trend are known, at this horizon. Calibration is good without post-processing: ECE 0.012 and a reliability curve on the diagonal up to p = 0.9 (Fig. 9a), while the seasonal baseline under-predicts at high probabilities. Performance is higher on campus stations (AUC 0.946) and lower in the 40 minutes after a major bell (0.906), where the surge is fastest. The day-level bootstrap gives half-widths of about 0.005 AUC for the GBMs and one-sided paired differences: full against inventory-only +0.010 [0.009, 0.011], inventory-only against logistic +0.007 [0.006, 0.007] and against the corrected roll-out +0.027 [0.025, 0.029]."),
+  bodyB("Tables 3–4 and Fig. 8 give the test results on the 1.09 M test slots whose current stock is observed. At the 30-minute horizon the full model reaches AUC 0.932 and Brier 0.080, against 0.819 / 0.126 for the seasonal baseline and 0.744 / 0.124 for persistence; the inventory-only model is close behind (0.922 / 0.084), so trip flows add little once the current stock and its trend are known, at this horizon. Calibration is good without post-processing: ECE 0.012 and a reliability curve on the diagonal up to p = 0.9 (Fig. 8a), while the seasonal baseline under-predicts at high probabilities. Performance is higher on campus stations (AUC 0.946) and lower in the 40 minutes after a major bell (0.906), where the surge is fastest. The day-level bootstrap gives half-widths of about 0.005 AUC for the GBMs and one-sided paired differences: full against inventory-only +0.010 [0.009, 0.011], inventory-only against logistic +0.007 [0.006, 0.007] and against the corrected roll-out +0.027 [0.025, 0.029]."),
   tableCaption("Table 3. ", "NTU test period (Apr–Jun 2025), all 144 stations, h = 30 min; 95% intervals from the day-level bootstrap. GBM + flows also uses the station id; stacked = GBM + flows + the roll-out probability."),
   table([1477, 500, 1500, 550, 650], ["Model", "Brier", "AUC [95% CI]", "ECE", "trees"], [
     ["persistence", "0.124", "0.744 [0.740, 0.748]", "0.124", "–"],
@@ -322,7 +363,7 @@ const main = [
   ]),
   spacer(),
   bodyB("The Poisson roll-out of the proposal ranks stockouts far better than the seasonal baseline (AUC 0.895 against 0.819) but below the linear model (0.915) and the GBMs (0.922 / 0.932). Its deficit is specific: for a station that is empty now it predicts a 61% chance of being empty again within 30 min, against 82% observed, because returns are not independent of the state: an empty station usually sits in a drained neighbourhood and the first bike returned is rented at once. On stations holding 1–3 bikes its AUC is 0.67 against 0.74–0.78 for the classifiers. The censoring correction helps the chain at every horizon (AUC +0.002 to +0.013, ECE 0.039 against 0.059 at 30 min), the first direct evidence that Eq. (3) improves a downstream prediction. Isotonic calibration brings its ECE to 0.012 but cannot change the ranking, so its Brier stays at 0.100 against 0.080. As a 30th feature the chain raises the full model’s AUC by only 0.001–0.003 while taking 24–54% of the split gain: real information, almost all of it already in the features. The sampler the proposal described agrees with the exact chain to a mean absolute difference of 0.008–0.010 (correlation 0.999) over 3,000 rows and four horizons."),
-  ...figure("fig_model.png", capB("Figure 9. ", "(a) Reliability of the 30-minute predictions on the NTU test months. (b) AUC on all stations, campus stations, and campus slots within 40 min after a major bell.")),
+  ...figure("fig_model.png", capB("Figure 8. ", "(a) Reliability of the 30-minute predictions on the NTU test months. (b) AUC on all stations, campus stations, and campus slots within 40 min after a major bell.")),
   tableCaption("Table 4. ", "AUC/Brier by horizon, NTU test period, all stations."),
   table([1357, 830, 830, 830, 830], ["Model", "30 min", "60 min", "90 min", "120 min"], [
     ["seasonal mean", "0.819/0.126", "0.817/0.148", "0.813/0.162", "0.810/0.171"],
@@ -381,14 +422,14 @@ const main = [
     ["Unmet rentals avoided, probabilistic", "about 50%", "7% / 17% / 27%; operator replay 61%"],
   ], { aligns: [AlignmentType.LEFT, AlignmentType.LEFT, AlignmentType.LEFT] }),
   spacer(),
-  bodyB("Fig. 10 updates the schedule: data pipeline and demand reconstruction are complete, the predictor is trained and transferred ahead of plan, and the simulator exists two weeks early with the planner still greedy. None of the proposal’s three fallbacks was needed. Remaining work:"),
+  bodyB("Fig. 9 updates the schedule: data pipeline and demand reconstruction are complete, the predictor is trained and transferred ahead of plan, and the simulator exists two weeks early with the planner still greedy. None of the proposal’s three fallbacks was needed. Remaining work:"),
   bullet("the rolling-horizon planner with 2-opt / simulated annealing and multi-stop routes, evaluated in the same simulator;"),
   bullet("a timetable-intensity feature from the course catalogue and a two-sided (empty / full) label for the pre-bell cases where the predictor is weakest;"),
   bullet("imputing the censored demand of Sec. 3.3 into the replay, so that unmet rentals include riders who never found a bike;"),
-  bullet("the live NSYSU demo (Fig. 11) and, after four more weeks of logging, a transfer study by week of local data.", { last: true }),
-  ...figure("fig_gantt_hw3.png", capB("Figure 10. ", "Schedule with completion at 29 Oct (dark = done; PL 林沛霆, JC 陳佳晨, SL 林詩穎).")),
+  bullet("the live NSYSU demo (Fig. 10) and, after four more weeks of logging, a transfer study by week of local data.", { last: true }),
+  ...figure("fig_gantt_hw3.png", capB("Figure 9. ", "Schedule with completion at 29 Oct (dark = done; PL 林沛霆, JC 陳佳晨, SL 林詩穎).")),
   bodyB("Work division: 林沛霆 (PL) built the logger, the NTU pipeline, the replay simulator and this report; 陳佳晨 (JC) owns demand reconstruction, operator inference and its checks, the calibration and transfer studies and the bootstrap; 林詩穎 (SL) owns the predictor, the roll-out comparison, the horizon sweep, the ablations and the demo. All code, tables, model files, metrics and figures are in the public repository [17] under analysis/, with a README that rebuilds every table from the raw sources."),
-  ...figure("fig3_demo_mock.png", cap("Figure 11. ", "Mock-up of the live NSYSU demo (from the proposal; real station positions and stock, probabilities and route illustrative).")),
+  ...figure("fig3_demo_mock.png", cap("Figure 10. ", "Mock-up of the live NSYSU demo (from the proposal; real station positions and stock, probabilities and route illustrative).")),
 
   h1("References"),
   ...references(),
@@ -400,7 +441,7 @@ const doc = new Document({
   styles: { default: { document: { run: { font: "Times New Roman", size: 20 } } } },
   sections: [
     { properties: { page: { size: PAGE, margin: MARGIN }, column: { count: 1 } }, children: titleBlock },
-    { properties: { type: SectionType.CONTINUOUS, page: { size: PAGE, margin: MARGIN }, column: { count: 2, space: COL_SPACE, equalWidth: true } }, children: main },
+    { properties: { type: SectionType.CONTINUOUS, page: { size: PAGE, margin: MARGIN }, column: { count: 2, space: COL_SPACE, equalWidth: true } }, children: placeFigures(main) },
   ],
 });
 Packer.toBuffer(doc).then((buf) => { fs.writeFileSync("HW3_54.docx", buf); console.log("wrote HW3_54.docx", buf.length); });
