@@ -160,7 +160,7 @@ aarrow(48, 21, 48, 15.3); aarrow(33, 9, 16, 9); aarrow(16, 9, 16, 21)
 aarrow(63, 27.5, 67.5, 27.5); aarrow(83.25, 40, 83.25, 34.3); aarrow(83.25, 21, 83.25, 15.3)
 save(fig, "fig_architecture.png", ax=ax)
 
-# ======================= Figure 4: NSYSU tide =======================
+# ======================= Figure 4a/4b: NSYSU tide (two separate figures) =======================
 prof = pd.read_csv(NSYSU / "nsysu_profile.csv")
 summ = json.load(open(NSYSU / "nsysu_summary.json"))
 df = load_logger(DATA); st = load_stations(DATA).set_index("sno")
@@ -174,10 +174,9 @@ SHORT = {"501209052": "Library", "501209070": "Xiziwan Hall", "501209051": "Engi
 order = list(CAMPUS) + KRT + ["501209024", "501209062", "501209042", "501209028"]   # campus, KRT, 4 busiest gateways
 pe = (wk[wk.sno.isin(order)].assign(e=lambda z: (z.bikes == 0).astype(float)).pivot_table(index="sno", columns="slot", values="e").reindex(order))
 x = np.arange(144) / 6
-fig = plt.figure(figsize=(W, 3.3))
-ax = fig.add_axes([0.24, 0.60, 0.665, 0.26])
-axh = fig.add_axes([0.24, 0.09, 0.665, 0.40])
-cax = fig.add_axes([0.922, 0.09, 0.018, 0.40])
+# (a) lines
+fig = plt.figure(figsize=(W, 1.75))
+ax = fig.add_axes([0.13, 0.17, 0.82, 0.56])
 ax.fill_between(x, prof.campus_wk_p25, prof.campus_wk_p75, color=SEQ[2], lw=0, label="IQR of the campus mean")
 ax.plot(x, prof.campus_wk, color=BLUE, lw=1.5, label=f"campus, 8 stations, {summ['campus_capacity']} docks")
 ax.plot(x, prof.krt_wk, color=ORANGE, lw=1.5, label=f"KRT Sizihwan, 2 exits, {summ['krt_capacity']} docks")
@@ -186,12 +185,16 @@ for h, ha, dx in ((12, "center", 0), (16, "right", -0.12), (17, "left", 0.12)):
     ax.axvline(h, color=MUTED, lw=0.6, ls=(0, (3, 2)))
     ax.text(h + dx, 236, f"{h}:00", fontsize=6.2, color=INK2, va="top", ha=ha)
 ax.set_xlim(5, 24); ax.set_ylim(0, 240); ax.set_yticks([0, 100, 200])
-ax.set_xticks(range(6, 25, 3)); ax.tick_params(axis="x", labelbottom=False, length=0)
+ax.set_xticks(range(6, 25, 3)); ax.set_xticklabels([f"{h:02d}:00" for h in range(6, 25, 3)])
 ax.set_ylabel("bikes available", labelpad=2)
 grid(ax)
 h_, l_ = ax.get_legend_handles_labels()
-fig.legend(h_, l_, loc="upper left", bbox_to_anchor=(0.01, 0.962), ncol=2, frameon=False, fontsize=6.2, handlelength=1.4, columnspacing=1.2, labelspacing=0.3)
-fig.text(0.01, 0.995, "(a) Weekday mean over 8 teaching days, Oct 2026", fontsize=7.2, fontweight="bold", va="top")
+fig.legend(h_, l_, loc="upper left", bbox_to_anchor=(0.01, 0.995), ncol=2, frameon=False, fontsize=6.2, handlelength=1.4, columnspacing=1.2, labelspacing=0.3)
+save(fig, "fig_nsysu_tide_a.png", ax=ax)
+# (b) heatmap
+fig = plt.figure(figsize=(W, 2.0))
+axh = fig.add_axes([0.24, 0.15, 0.665, 0.80])
+cax = fig.add_axes([0.922, 0.15, 0.018, 0.80])
 im = axh.imshow(pe.values, aspect="auto", cmap=seq_cmap, vmin=0, vmax=1, extent=[0, 24, len(order), 0], interpolation="nearest")
 axh.set_yticks(np.arange(len(order)) + 0.5); axh.set_yticklabels([SHORT[s] for s in order], fontsize=6.0)
 axh.axhline(8, color=SURF, lw=1.4); axh.axhline(10, color=SURF, lw=1.4)
@@ -202,8 +205,7 @@ for h in (12, 16, 17):
 for yy, lab in ((0.15, "campus"), (8.15, "KRT"), (10.15, "gateway")):
     axh.text(5.15, yy, lab, fontsize=5.8, color=INK2, ha="left", va="top", style="italic")
 cb = fig.colorbar(im, cax=cax, ticks=[0, 0.5, 1]); cb.ax.tick_params(labelsize=6, length=1.5, pad=1); cb.outline.set_linewidth(0.4)
-fig.text(0.01, 0.545, "(b) Weekday probability that a station is empty", fontsize=7.2, fontweight="bold", va="top")
-save(fig, "fig_nsysu_tide.png", ax=ax)
+save(fig, "fig_nsysu_tide_b.png", ax=axh)
 
 # ======================= Figure 5: bell-aligned drops =======================
 m_c = prof.campus_wk.values
