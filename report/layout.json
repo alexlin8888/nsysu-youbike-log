@@ -2,19 +2,13 @@
  "fig_architecture.png": {
   "after": 25
  },
- "fig_nsysu_tide_a.png": {
-  "after": 84
- },
  "fig2_pipeline.png": {
   "after": 18
  },
  "fig_ntu_moves.png": {
-  "after": 87
+  "after": 91
  },
  "fig_moves_check.png": {
-  "after": 88
- },
- "fig_gantt_hw3.png": {
-  "after": 116
+  "after": 94
  }
 }

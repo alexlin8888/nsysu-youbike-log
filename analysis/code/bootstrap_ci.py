@@ -6,7 +6,7 @@ NTU sweep:   blocks = test days; pooled AUC / Brier recomputed under day resampl
              models, so paired differences are valid). Subsets all / campus.
 NSYSU:       blocks = station-days (only 6 test days); same procedure.
 Simulator:   paired per-day differences between policies, percentile CI over day resampling.
-Writes ci_predictor.csv, ci_transfer.csv, ci_sim.csv.
+Writes ci_predictor.csv, ci_transfer.csv, ci_sim.csv (--sim-only: ci_sim.csv; --transfer-only: ci_transfer.csv).
 """
 import sys
 import time
@@ -74,9 +74,10 @@ def summarize(point, samp, models, ref, tag):
 rng = np.random.default_rng(SEED)
 t0 = time.time()
 SIM_ONLY = "--sim-only" in sys.argv
+TRANS_ONLY = "--transfer-only" in sys.argv          # recompute ci_transfer.csv only
 # ---------------------------------------------------------------- NTU sweep
 rows = []
-for h in (30, 60, 90, 120) if not SIM_ONLY else ():
+for h in (30, 60, 90, 120) if not (SIM_ONLY or TRANS_ONLY) else ():
     f = SWEEP / f"sweep_pred_{h}.parquet"
     if not f.exists():
         continue
@@ -89,7 +90,7 @@ for h in (30, 60, 90, 120) if not SIM_ONLY else ():
         point, samp = block_bootstrap(dd, y, models, blk, rng, B)
         rows += summarize(point, samp, models, "lgb_inv", {"h": h, "subset": sub, "n": len(dd), "blocks": int(pd.Series(blk).nunique())})
         print(f"NTU h={h} {sub}: {len(dd)} rows, {time.time() - t0:.0f}s")
-if not SIM_ONLY:
+if not (SIM_ONLY or TRANS_ONLY):
     pd.DataFrame(rows).to_csv(OUT / "ci_predictor.csv", index=False)
 
 # ---------------------------------------------------------------- NSYSU transfer
@@ -112,7 +113,7 @@ if not SIM_ONLY:
 
 # ---------------------------------------------------------------- simulator
 rows = []
-for k in (1, 3, 6):
+for k in (1, 3, 6) if not TRANS_ONLY else ():
     f = SIM / f"k{k}" / "sim_daily.csv"
     if not f.exists():
         continue
@@ -147,6 +148,7 @@ for k in (1, 3, 6):
                          "reduction_daily_mean": diff.mean(), "daily_sd": diff.std(), "daily_lo": np.percentile(samp, 2.5),
                          "daily_hi": np.percentile(samp, 97.5), "unmet_mean": np.nan, "unmet_sd": np.nan,
                          "share_days_first_better": float((diff > 0).mean())})
-pd.DataFrame(rows).to_csv(OUT / "ci_sim.csv", index=False)
-print(pd.DataFrame(rows).round(4).to_string())
+if not TRANS_ONLY:
+    pd.DataFrame(rows).to_csv(OUT / "ci_sim.csv", index=False)
+    print(pd.DataFrame(rows).round(4).to_string())
 print(f"done in {time.time() - t0:.0f}s")

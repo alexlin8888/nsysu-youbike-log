@@ -27,6 +27,9 @@
 | `bootstrap_ci.py` | 區塊拔靴信賴區間：台大（日）、中山（站×日）、模擬器（日，成對政策差） |
 | `ablation_bells.py` | 去掉鐘響特徵的消融 |
 | `transfer_nsysu.py` | 台大 → 中山遷移：zero-shot、fine-tune、僅中山、季節基準 |
+| `timetable.py` | 中山 115-1 課表 → 每週上課時段、每個節次下課／上課人數、課表強度特徵 |
+| `timetable_bells.py` | 每次鐘響放出的學生數 vs 鐘響後 20 分鐘校內流出（含提前 30 分鐘的對照窗） |
+| `timetable_nsysu.py` | 課表強度特徵對中山缺車預測的增益：逐日留一（10 個上課日），成對日拔靴 |
 | `ablation_transfer.py` | 遷移實驗的補充消融 |
 | `replay_sim.py` | 離散事件重播模擬器（真實騎乘、K 台卡車、四種政策） |
 | `figs_v2.py`, `figs_v3.py`, `hw3_figs.py`, `report_figs.py` | 報告圖（`figcheck.py` 自動檢查文字是否被裁切或重疊） |
@@ -54,16 +57,22 @@ for k in 1 3 6; do python code/replay_sim.py work/ntu work/model work/sim/k$k --
 python code/bootstrap_ci.py work/model/sweep work/model/transfer work/sim work/model/ci
 # 中山
 python code/nsysu_analysis.py ../data results/nsysu
+# 課表：courses_115-1.tsv 由公開課程查詢系統逐日（星期一～日）查詢匯出（需人工通過驗證碼）
+python code/timetable.py results/nsysu/timetable/courses_115-1.tsv results/nsysu/timetable
+python code/timetable_bells.py ../data results/nsysu/timetable/sessions.csv results/nsysu/timetable
+python code/timetable_nsysu.py ../data work/model results/nsysu/timetable/sessions.csv work/model/timetable
+TT_SPLIT=week python code/timetable_nsysu.py ../data work/model results/nsysu/timetable/sessions.csv work/model/timetable/week
 ```
 
 ## 結果（`results/`）
 
 - `nsysu/`：`nsysu_summary.json` 關鍵數字、`nsysu_profile.csv` 日內曲線、`nsysu_stations.csv` 站點表、
-  `nsysu_bells.csv` 鐘響後每 10 分鐘的變化、`nsysu_episodes.csv` 每次缺車事件、兩張圖。
+  `nsysu_bells.csv` 鐘響後每 10 分鐘的變化、`nsysu_episodes.csv` 每次缺車事件、兩張圖；`nsysu/timetable/` 課表
+  （`courses_115-1.tsv` 原始匯出、`sessions.csv` 上課時段、`bells.csv` 各節次下課人數、`bell_outflow.csv` 鐘響後流出）。
 - `ntu/`：`flows_hourly.parquet` 站×小時借還車、`hourly.parquet` 對帳表（庫存、流量、殘差、調度旗標、曝險）、
   `demand/` 截斷校正與調度推論的結果與圖。
 - `model/`：預測模型的指標、可靠度曲線、特徵重要性、測試集預測；`model/sweep/` 時距掃描與 Poisson 推演
-  （`sweep_metrics.csv`、`rates_train.csv`、`sweep_setup.json` 含 MC 對照）；`model/transfer/` 遷移；`model/ci/` 信賴區間。
+  （`sweep_metrics.csv`、`rates_train.csv`、`sweep_setup.json` 含 MC 對照）；`model/transfer/` 遷移；`model/ci/` 信賴區間；`model/timetable/` 課表特徵實驗（逐日留一；`week/` 為第一週訓練、第二週測試）。
 - `sim/k1,k3,k6/`：重播模擬每日結果與摘要。
 
 執行環境：Python 3.11、pandas 3.0、numpy 2.4、LightGBM 4.7、scikit-learn 1.8、2 vCPU / 7 GB RAM。

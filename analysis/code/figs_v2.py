@@ -1,7 +1,7 @@
 """Report figures, version 2: every figure at column width (3.25 in), fonts >= 6.5 pt at print size,
 legends outside the data area, no labels over marks.
 
-Usage: python figs_v2.py LOGGER_DATA_DIR HW1_DIR MODEL_DIR SIM_DIR DEMAND_DIR NSYSU_DIR OUT_DIR
+Usage: python figs_v2.py LOGGER_DATA_DIR HW1_DIR MODEL_DIR SIM_DIR DEMAND_DIR NSYSU_DIR OUT_DIR [TIMETABLE_DIR]
 """
 import datetime as dt
 import json
@@ -25,6 +25,7 @@ def save(fig, name, ax=None, allow_outside=False, marks=True, allow_on_marks=())
     fig.savefig(OUT / name); plt.close(fig); BOXES.clear()
 
 DATA, HW1, MODEL, SIM, DEMAND, NSYSU, OUT = [Path(a) for a in sys.argv[1:8]]
+TT = Path(sys.argv[8]) if len(sys.argv) > 8 else None      # timetable.py output (bells.csv), optional
 OUT.mkdir(parents=True, exist_ok=True)
 plt.rcParams.update({"font.size": 7, "axes.titlesize": 7.5, "axes.labelsize": 7, "xtick.labelsize": 6.5,
                      "ytick.labelsize": 6.5, "legend.fontsize": 6.5})
@@ -144,10 +145,10 @@ abox(33, 78, 30, 14, "Snapshots [2]", "295 days, every 10 min\n2.97 M station re
 abox(67.5, 78, 31.5, 14, "Live station API [12]", "GitHub Actions logger\n309 stations, 10 min", "src")
 abox(1, 59, 30, 13, "flows_hourly", "station × hour:\nrentals, returns", "tab")
 abox(33, 59, 30, 13, "panel_10min", "station × 10 min:\nbikes, docks, capacity", "tab")
-abox(67.5, 59, 31.5, 13, "NSYSU panel", "station × 10 min\n+ NSYSU calendar", "tab")
+abox(67.5, 59, 31.5, 13, "NSYSU panel", "station × 10 min\n+ calendar, catalogue", "tab")
 abox(1, 40, 30, 13, "Reconcile (2.3)", "residual → truck moves\nexposure → rates λ", "mod")
 abox(33, 40, 30, 13, "Features (2.4)", "time, bell, state,\nneighbours, flows", "mod")
-abox(67.5, 40, 31.5, 13, "NSYSU features", "same code, NSYSU bells,\nno trip flows", "mod")
+abox(67.5, 40, 31.5, 13, "NSYSU features", "same code + timetable\nintensity, no flows", "mod")
 abox(1, 21, 30, 13, "Simulator (2.6)", "real trips, K trucks;\nunmet, empty-min, km", "out")
 abox(33, 21, 30, 13, "Predictor (2.4)", "GBM + Poisson roll-out,\nP(empty in 30–120 min)", "mod")
 abox(67.5, 21, 31.5, 13, "Transfer (2.5)", "zero-shot / fine-tune\nvs. NSYSU-only", "out")
@@ -174,9 +175,14 @@ SHORT = {"501209052": "Library", "501209070": "Xiziwan Hall", "501209051": "Engi
 order = list(CAMPUS) + KRT + ["501209024", "501209062", "501209042", "501209028"]   # campus, KRT, 4 busiest gateways
 pe = (wk[wk.sno.isin(order)].assign(e=lambda z: (z.bikes == 0).astype(float)).pivot_table(index="sno", columns="slot", values="e").reindex(order))
 x = np.arange(144) / 6
-# (a) lines
-fig = plt.figure(figsize=(W, 1.55))
-ax = fig.add_axes([0.13, 0.19, 0.82, 0.5])
+# (a) lines, and below them the students the course catalogue releases at each period end (Mon-Fri mean)
+bells_tt = pd.read_csv(TT / "bells.csv").dropna(subset=["bell"]) if TT is not None else None
+fig = plt.figure(figsize=(W, 2.15 if bells_tt is not None else 1.55))
+if bells_tt is not None:
+    ax = fig.add_axes([0.13, 0.41, 0.82, 0.36])
+    axb = fig.add_axes([0.13, 0.135, 0.82, 0.2])
+else:
+    ax = fig.add_axes([0.13, 0.19, 0.82, 0.5])
 ax.fill_between(x, prof.campus_wk_p25, prof.campus_wk_p75, color=SEQ[2], lw=0, label="IQR of the campus mean")
 ax.plot(x, prof.campus_wk, color=BLUE, lw=1.5, label=f"campus, 8 stations, {summ['campus_capacity']} docks")
 ax.plot(x, prof.krt_wk, color=ORANGE, lw=1.5, label=f"KRT Sizihwan, 2 exits, {summ['krt_capacity']} docks")
@@ -190,6 +196,16 @@ ax.set_ylabel("bikes available", labelpad=2)
 grid(ax)
 h_, l_ = ax.get_legend_handles_labels()
 fig.legend(h_, l_, loc="upper left", bbox_to_anchor=(0.01, 0.995), ncol=2, frameon=False, fontsize=6.2, handlelength=1.4, columnspacing=1.2, labelspacing=0.3)
+if bells_tt is not None:
+    ax.set_xticklabels([])
+    rel = bells_tt[bells_tt.weekday <= 5].groupby("bell").students_released.mean() / 1000
+    axb.bar(rel.index / 60, rel.values, width=0.42, color=INK2, lw=0)
+    for h in (12, 16, 17):
+        axb.axvline(h, color=MUTED, lw=0.6, ls=(0, (3, 2)), zorder=0)
+    axb.set_xlim(5, 24); axb.set_ylim(0, 5); axb.set_yticks([0, 2, 4])
+    axb.set_xticks(range(6, 25, 3)); axb.set_xticklabels([f"{h:02d}:00" for h in range(6, 25, 3)])
+    axb.set_ylabel("released\n(thousand)", labelpad=2, fontsize=6.5)
+    grid(axb)
 save(fig, "fig_nsysu_tide_a.png", ax=ax)
 # (b) heatmap
 fig = plt.figure(figsize=(W, 1.8))
