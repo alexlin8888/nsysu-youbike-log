@@ -1,14 +1,30 @@
 {
- "fig_architecture.png": {
-  "after": 25
+ "fig1_motivation.png": {
+  "after": 6
  },
  "fig2_pipeline.png": {
   "after": 18
  },
- "fig_ntu_moves.png": {
-  "after": 91
+ "fig_architecture.png": {
+  "after": 25
  },
- "fig_moves_check.png": {
-  "after": 94
+ "fig_method.png": {
+  "after": 34
+ },
+ "fig_nsysu_tide_a.png": {
+  "after": 88
+ },
+ "fig_nsysu_tide_b.png": {
+  "after": 88
+ },
+ "fig_nsysu.png": {
+  "after": 101,
+  "frac": 0.9
+ },
+ "fig_gantt_hw3.png": {
+  "after": 112
+ },
+ "fig3_demo_mock.png": {
+  "after": 117
  }
 }
