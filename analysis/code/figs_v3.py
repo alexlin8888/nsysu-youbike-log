@@ -35,8 +35,8 @@ H = [30, 60, 90, 120]
 models = [("seasonal", MUTED, "seasonal", ":"), ("mc_cens_cal", PURPLE, "Poisson roll-out (calibrated)", "-"),
           ("logistic", AQUA, "logistic regression", "-"), ("lgb_inv", ORANGE, "GBM, inventory only", "-"),
           ("lgb_full", BLUE, "GBM + trip flows", "-")]
-fig = plt.figure(figsize=(W, 1.95))
-ax1 = fig.add_axes([0.12, 0.2, 0.37, 0.56]); ax2 = fig.add_axes([0.62, 0.2, 0.36, 0.56])
+fig = plt.figure(figsize=(W, 1.8))
+ax1 = fig.add_axes([0.12, 0.21, 0.37, 0.5]); ax2 = fig.add_axes([0.62, 0.21, 0.36, 0.5])
 for m, c, lab, ls in models:
     r = met[(met.model == m) & (met.subset == "all")].set_index("h").reindex(H)
     ax1.plot(H, r.auc, color=c, lw=1.3, ls=ls, marker="o", ms=2.6, label=lab)
@@ -53,7 +53,7 @@ ax1.set_ylim(0.78, 0.95); ax1.set_yticks([0.8, 0.85, 0.9, 0.95]); ax1.set_ylabel
 ax2.set_ylim(0.06, 0.2); ax2.set_yticks([0.08, 0.12, 0.16, 0.2]); ax2.set_ylabel("Brier score", labelpad=2)
 panel_label(ax1, "(a) Ranking quality", y=1.03); panel_label(ax2, "(b) Probability quality", y=1.03)
 h_, l_ = ax1.get_legend_handles_labels()
-fig.legend(h_, l_, loc="lower center", bbox_to_anchor=(0.5, 0.86), ncol=3, frameon=False, fontsize=6.0, handlelength=1.5, columnspacing=1.0)
+fig.legend(h_, l_, loc="lower center", bbox_to_anchor=(0.5, 0.8), ncol=3, frameon=False, fontsize=6.0, handlelength=1.5, columnspacing=1.0)
 save(fig, "fig_horizon.png", ax=ax1)
 
 # ======================= operator-inference checks =======================

@@ -32,7 +32,7 @@
 | `timetable_nsysu.py` | 課表強度特徵對中山缺車預測的增益：逐日留一（10 個上課日），成對日拔靴 |
 | `ablation_transfer.py` | 遷移實驗的補充消融 |
 | `replay_sim.py` | 離散事件重播模擬器（真實騎乘、K 台卡車、四種政策） |
-| `figs_v2.py`, `figs_v3.py`, `hw3_figs.py`, `report_figs.py` | 報告圖（`figcheck.py` 自動檢查文字是否被裁切或重疊） |
+| `figs_v2.py`, `figs_v3.py`, `figs_v4.py`, `hw3_figs.py`, `report_figs.py` | 報告圖（`figcheck.py` 自動檢查文字是否被裁切或重疊）；`figs_v4.py` 畫方法示意圖（單站一日的對帳、截斷與生滅鏈）、鐘響散佈圖、中山遷移與課表特徵的信賴區間圖、模擬器信賴區間圖 |
 | `figstyle.py` | 圖表共用樣式 |
 
 重跑台大管線（騎乘紀錄的 zip 約 75 MB/月，不放進 repo）：
