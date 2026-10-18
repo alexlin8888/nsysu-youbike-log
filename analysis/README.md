@@ -31,7 +31,10 @@
 | `timetable_bells.py` | 每次鐘響放出的學生數 vs 鐘響後 20 分鐘校內流出（含提前 30 分鐘的對照窗） |
 | `timetable_nsysu.py` | 課表強度特徵對中山缺車預測的增益：逐日留一（10 個上課日），成對日拔靴 |
 | `ablation_transfer.py` | 遷移實驗的補充消融 |
-| `replay_sim.py` | 離散事件重播模擬器（真實騎乘、K 台卡車、四種政策） |
+| `replay_sim.py` | 離散事件重播模擬器（真實騎乘、K 台卡車）：三種貪婪政策、路徑搜尋（`route`）與同一套價值的單步版本（`route1`）、業者調度重播；`--period val` 改用 2025-03 的 16 個驗證日 |
+| `route_planner.py` | 路徑搜尋規劃器：生滅鏈（截斷校正費率）算出每站每個庫存水準在未來 H 分鐘的預期未滿足租借；給定停靠順序時載量用動態規劃求最佳，順序用貪婪插入、模擬退火與 2-opt 改進；每台車開完前兩站就重新規劃 |
+| `tune_route.sh`、`run_route_test.sh` | 在驗證日調整地平線 H、時間成本 β、每次執行幾站；用選定設定跑 28 個測試日（1/3/6 台車） |
+| `merge_sim.py`、`sim_numbers.py` | 合併新舊模擬結果；報告用的減少比例與成對日拔靴區間 |
 | `figs_v2.py`, `figs_v3.py`, `figs_v4.py`, `hw3_figs.py`, `report_figs.py` | 報告圖（`figcheck.py` 自動檢查文字是否被裁切或重疊）；`figs_v4.py` 畫方法示意圖（單站一日的對帳、截斷與生滅鏈）、鐘響散佈圖、中山遷移與課表特徵的信賴區間圖、模擬器信賴區間圖 |
 | `figstyle.py` | 圖表共用樣式 |
 
@@ -54,7 +57,11 @@ python code/validate_moves.py work/ntu work/ntu/demand
 python code/horizon_sweep.py work/ntu work/model work/model/sweep
 python code/transfer_nsysu.py ../data work/model work/model/transfer
 for k in 1 3 6; do python code/replay_sim.py work/ntu work/model work/sim/k$k --trucks $k; done
-python code/bootstrap_ci.py work/model/sweep work/model/transfer work/sim work/model/ci
+bash code/tune_route.sh work/ntu work/model work/sim_tune          # 只用 2025-03 的驗證日
+bash code/run_route_test.sh work/ntu work/model work/sim_route
+python code/merge_sim.py work/sim work/sim_route work/sim_v2
+python code/sim_numbers.py work/sim_v2 work/sim_v2/sim_numbers.json
+python code/bootstrap_ci.py work/model/sweep work/model/transfer work/sim_v2 work/model/ci
 # 中山
 python code/nsysu_analysis.py ../data results/nsysu
 # 課表：courses_115-1.tsv 由公開課程查詢系統逐日（星期一～日）查詢匯出（需人工通過驗證碼）
@@ -73,6 +80,6 @@ TT_SPLIT=week python code/timetable_nsysu.py ../data work/model results/nsysu/ti
   `demand/` 截斷校正與調度推論的結果與圖。
 - `model/`：預測模型的指標、可靠度曲線、特徵重要性、測試集預測；`model/sweep/` 時距掃描與 Poisson 推演
   （`sweep_metrics.csv`、`rates_train.csv`、`sweep_setup.json` 含 MC 對照）；`model/transfer/` 遷移；`model/ci/` 信賴區間；`model/timetable/` 課表特徵實驗（逐日留一；`week/` 為第一週訓練、第二週測試）。
-- `sim/k1,k3,k6/`：重播模擬每日結果與摘要。
+- `sim/k1,k3,k6/`：重播模擬每日結果與摘要（含 `route`、`route1`）；`sim/route/` 路徑搜尋的原始輸出與設定；`sim/tuning/sim_tune_summary.csv` 驗證日調參結果；`sim/sim_numbers.json` 報告引用的數字與區間。
 
 執行環境：Python 3.11、pandas 3.0、numpy 2.4、LightGBM 4.7、scikit-learn 1.8、2 vCPU / 7 GB RAM。

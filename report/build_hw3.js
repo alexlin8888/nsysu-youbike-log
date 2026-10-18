@@ -12,8 +12,9 @@ const COL_SPACE = 544;
 const COL_W = (PAGE.width - MARGIN.left - MARGIN.right - COL_SPACE) / 2; // 4677 twips
 const COL_PX = Math.floor((COL_W / 1440) * 96) - 2;
 const BLUE = "0000FF";
-const FONT = { ascii: "Times New Roman", hAnsi: "Times New Roman", cs: "Times New Roman", eastAsia: "PMingLiU" };
-const MONO = { ascii: "Courier New", hAnsi: "Courier New", cs: "Courier New", eastAsia: "PMingLiU" };
+const KAI = "標楷體";   // all Chinese text in 標楷體 (DFKai-SB)
+const FONT = { ascii: "Times New Roman", hAnsi: "Times New Roman", cs: "Times New Roman", eastAsia: KAI };
+const MONO = { ascii: "Courier New", hAnsi: "Courier New", cs: "Courier New", eastAsia: KAI };
 
 // ---------- runs ----------
 const run = (text, o = {}) => new TextRun({ text, font: FONT, size: 20, ...o });
@@ -200,7 +201,7 @@ const main = [
   new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 40, line: 240 }, children: [run("Abstract", { bold: true, size: 24 })] }),
   new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: 202 }, spacing: { after: 80, line: 240 }, children: [
     ital("Docks near a university empty within minutes of a class ending. Because the timetable makes this surge predictable, we cast rebalancing as an AI decision problem: one truck moves bikes before the bell instead of after the stockout. We (i) reconstruct censored demand and the operator’s actual truck moves from public trip records and inventory snapshots, (ii) learn a schedule-aware, calibrated predictor of P(stockout within h min) per station, and (iii) plan truck routes by rolling-horizon search that minimizes expected unmet rentals plus travel cost. "),
-    nbi("This midterm report delivers stages (i)–(iii) on real data. A logger has recorded the 309 stations within 5 km of NSYSU every 10 minutes since 1 October; on teaching days the eight campus stations fall from 193 bikes at 10:00 to 7 at 18:00, and 55% of the campus stock leaves within 20 minutes of the 12:00 bell. On 10 months of Taipei trips and 295 days of 10-minute inventory for 144 stations around NTU, our reconciliation recovers the operator’s truck moves (R² = 0.98) and shows that observed rentals understate demand by up to 2× at campus stations in the evening. A gradient-boosting predictor reaches AUC 0.93 and ECE 0.012 at a 30-minute horizon on three held-out months, keeps AUC 0.90 at two hours, and transfers to NSYSU zero-shot (AUC 0.93 on 309 stations, 0.94 on campus). The course catalogue explains which bells drain the campus (ρ = 0.59) but adds no measurable AUC as a feature. The proposal’s Poisson roll-out, implemented exactly as a birth–death chain, reaches AUC 0.895; censoring correction improves it at every horizon, but it misses that an empty station rarely refills, which the classifier learns. A discrete-event replay simulator with greedy truck policies avoids 7%, 17% and 27% of unmet rentals with 1, 3 and 6 trucks. The route-search planner and the live NSYSU demo are the remaining work."),
+    nbi("This midterm report delivers stages (i)–(iii) on real data. A logger has recorded the 309 stations within 5 km of NSYSU every 10 minutes since 1 October; on teaching days the eight campus stations fall from 193 bikes at 10:00 to 7 at 18:00, and 55% of the campus stock leaves within 20 minutes of the 12:00 bell. On 10 months of Taipei trips and 295 days of 10-minute inventory for 144 stations around NTU, our reconciliation recovers the operator’s truck moves (R² = 0.98) and shows that observed rentals understate demand by up to 2× at campus stations in the evening. A gradient-boosting predictor reaches AUC 0.93 and ECE 0.012 at a 30-minute horizon on three held-out months, keeps AUC 0.90 at two hours, and transfers to NSYSU zero-shot (AUC 0.93 on 309 stations, 0.94 on campus). The course catalogue explains which bells drain the campus (ρ = 0.59) but adds no measurable AUC as a feature. The proposal’s Poisson roll-out, implemented exactly as a birth–death chain, ranks below the classifier (AUC 0.895) because it misses that an empty station rarely refills, but it prices every stock level: in a replay of real trips, a route search built on it avoids 13%, 30% and 45% of unmet rentals with 1, 3 and 6 trucks, against at most 27% for greedy policies. The live NSYSU demo is the remaining work."),
   ] }),
 
   // ----- changes box -----
@@ -211,8 +212,8 @@ const main = [
     "3. Operator-move inference with four independent checks (Secs. 2.3, 3.3).",
     "4. Predictor at 30–120 min against the proposal’s Poisson roll-out and a logistic baseline, with bootstrap intervals (Secs. 2.4, 3.4).",
     "5. NTU→NSYSU transfer and course-catalogue features (Secs. 2.5, 3.5).",
-    "6. Replay simulator: four policies, 1/3/6 trucks, 28 days (Secs. 2.6, 3.6).",
-    "Not yet done: route search, censored-demand replay, live demo (Sec. 4).",
+    "6. Simulator and route-search planner, 1/3/6 trucks (Secs. 2.6, 3.6).",
+    "Not yet done: censored-demand replay, live demo (Sec. 4).",
   ], { size: 15, line: 205 }),
   spacer(),
 
@@ -226,14 +227,14 @@ const main = [
   body([run("Station "), ital("i"), run(" has capacity "), ital("c"), sub("i"), run(" and inventory "), ital("s"), sub("i"), run("("), ital("t"), run("); rentals "), ital("r"), sub("i"), run("("), ital("t"), run(") and returns "), ital("q"), sub("i"), run("("), ital("t"), run(") are counts whose rates depend on time of day, day of week and, our key assumption, the time to the next bell "), ital("b"), run("("), ital("t"), run("). Rentals are censored: when "), ital("s"), sub("i"), run("("), ital("t"), run(") = 0, lost rentals are unrecorded. One truck of capacity "), ital("Q"), run(" visits stations with travel times "), ital("d"), sub("ij"), run(". Before each bell we choose a route and load plan "), ital("π"), run(" minimizing expected unmet rentals over a horizon "), ital("H"), run(" plus "), ital("β"), run("·travel time under capacity and deadline constraints. This is the course’s rational-agent view: acting under uncertainty to maximize expected utility, coupling probabilistic reasoning, learning and search.")]),
   body([nb("Two sub-problems are now defined precisely. "), nbb("Stockout prediction: "), nb("for every station "), nbi("i"), nb(" and 10-minute slot "), nbi("t"), nb(", output")]),
   eq([nbi("p"), nsub("i"), nb("("), nbi("t"), nb(", "), nbi("h"), nb(") = P( min"), nsub("τ∈(t, t+h]"), nbi(" s"), nsub("i"), nb("(τ) = 0 )")], 1),
-  body([nb("for horizons "), nbi("h"), nb(" ∈ {30, 60, 90, 120} min. "), nbb("Rebalancing: "), nb("with "), nbi("K"), nb(" trucks, choose moves (source, target, "), nbi("k"), nb(" bikes) that maximize the expected rentals saved per truck-minute, and evaluate every policy by replaying the real trips of held-out days (Sec. 2.6).")]),
+  body([nb("for horizons "), nbi("h"), nb(" ∈ {30, 60, 90, 120} min. "), nbb("Rebalancing: "), nb("with "), nbi("K"), nb(" trucks, choose routes and loads that minimize this objective, and evaluate every policy by replaying the real trips of held-out days (Sec. 2.6).")]),
   ...figure("fig1_motivation.png", cap("Figure 1. ", "Class-end stockouts are real and predictable. (a) Mean bikes available at 59 NTU campus stations over 20 weekdays, Mar 2025 [2]; orange = period ends; strip = share of empty stations. (b) NSYSU at 17:12, 28 Sep 2026 [12].")),
   h2("1.3. Existing solutions and literature"),
   body([run("Static repositioning is a routing-and-inventory problem [4]; dynamic repositioning combines forecasts with heuristics or mixed-integer programs [5, 6]; recent work uses spatio-temporal reinforcement learning [7]. Two ingredients matter on a campus yet are rarely combined: censored-demand estimation by simulation [8] or censored Gaussian processes [9], and inferring the operator’s unpublished truck moves by subtracting trip flows from inventory changes [10]; on Taipei data this reveals 18–20 thousand unexplained bike moves on 12 Mar 2025, peaking at 07–09 and 18–20. A 2025 NTU thesis optimized dispatch near NTU with survival-model demand on one month of trips [11]. No published work, to our knowledge, (a) uses the class timetable as an explicit signal, (b) outputs calibrated stockout probabilities rather than point forecasts, or (c) tests transfer between campuses; NSYSU has never been studied and Kaohsiung publishes no trip data, so transfer is the practical question. "),
     nb("Station-level availability has been forecast hierarchically from city to cluster to station [25] and as over-demand prediction with dynamic station clusters [23]; the view of a station as a finite-capacity birth–death process, which the proposal’s Poisson roll-out computes, underlies service-level rebalancing [18, 19] and fleet sizing [20]; data-driven rebalancing at system scale was demonstrated for Citi Bike [24]. For the predictor we use gradient-boosted decision trees [13], which handle mixed count and categorical features natively, and we measure probability quality with the Brier score [15] and the expected calibration error [14] rather than accuracy, because the planner consumes probabilities.")]),
   h2mix([["1.4. Proposed solution", false], [" and status", true]]),
   body([run("Fig. 2 shows the pipeline. Open NTU data (hourly trips [1]; 10-minute inventory over 416 days [2]) serve to reconstruct demand and operator moves, to train a schedule-aware gradient-boosting predictor with reliability checks, and to drive a rolling-horizon route planner; policies are compared in a replay simulator fed with real trips. The predictor is then ported to NSYSU with a few weeks of locally logged inventory [12] for a live web demo that recommends a pre-bell truck plan ("), nb("Fig. 15"), run("). Contributions: (1) an uncertainty-aware pre-emptive rebalancing method reproducible from open data; (2) the first quantification of class-end stockouts at NTU and NSYSU; (3) an NTU→NSYSU transfer study. "),
-    nb("Status: (2) is complete for both campuses; (1) is implemented end to end with a greedy planner and evaluated in the simulator; (3) is complete for the predictor. Code, tables and results are public [17].")]),
+    nb("Status: (2) is complete for both campuses; (1) is implemented end to end, including the route search, and evaluated in the simulator; (3) is complete for the predictor. Code, tables and results are public [17].")]),
 
   // ===================== METHOD =====================
   h1("2. Method"),
@@ -249,7 +250,7 @@ const main = [
   h3("2.2.3. NTU inventory panel (ntu_pipeline.py snapshots)"),
   bodyB("The snapshot repository [2] stores one row per station update. Stations report only when something changes, so values are forward-filled onto a 10-minute grid and marked unknown when the last report is older than 120 min during 07:00–23:00 or 600 min otherwise: 6.1 M station-slots, 7.9% unknown, mostly from a collection outage on 1–16 Oct 2024."),
   h3("2.2.4. Study area and calendars"),
-  bodyB("The NTU study area is the 144 stations within 1.2 km of the campus centroid (59 on campus, 85 in the surrounding ring). Bell times are the period ends of each campus (NTU: 09:00, 10:00, 11:10, 12:10, 13:10, 14:10, 15:10, 16:20, 17:20, 18:20, 19:15, 20:10; NSYSU, from the official period table: 07:50, 09:00, on the hour from 10:00 to 18:00, then 19:10, 20:05, 21:00, 21:55). Taiwanese public holidays and the semester calendars (NTU: 2 Sep 2024–10 Jan 2025 and 17 Feb–13 Jun 2025; NSYSU: from 7 Sep 2026) define the off-day and semester-week features."),
+  bodyB("The NTU study area is the 144 stations within 1.2 km of the campus centroid (59 on campus, 85 in the surrounding ring). Bell times are the period ends of each campus (NTU: 09:00, 10:00, 11:10, 12:10, 13:10, 14:10, 15:10, 16:20, 17:20, 18:20, 19:15, 20:10; NSYSU, from the official period table: 07:50, 09:00, on the hour from 10:00 to 18:00, then 19:10, 20:05, 21:00, 21:55). Taiwanese public holidays and the semester calendars (NTU: 2 Sep 2024–10 Jan 2025 and 17 Feb–13 Jun 2025; NSYSU: from 7 Sep 2026) define the off-day and semester-week features. The major bells of feature group B are 12:10, 15:10 and 17:20 at NTU and 12:00, 16:00 and 17:00 at NSYSU."),
 
   ...figure("fig_architecture.png", capB("Figure 3. ", "Architecture as implemented: sources (grey), tables (light blue), learning (blue), decision and evaluation (orange); numbers are sections of this report.")),
 
@@ -302,7 +303,7 @@ const main = [
 
   h2mix([["2.6.", true], [" Pre-emptive planner and ", false], ["replay simulator", true]]),
   body([run("State: truck position and load, station stocks and predicted rates; actions: (station, ±"), ital("k"), run(" bikes); objective "), ital("J"), run("("), ital("π"), run(") = Σ"), sub("i"), run(" E[max(0, "), ital("D"), sub("i"), run(" − "), ital("s"), sub("i"), run(")] + "), ital("β"), run("·"), ital("T"), run("("), ital("π"), run("), with "), ital("D"), sub("i"), run(" the predicted demand. Every 10 minutes we rank stations by expected unmet rentals, build a greedy surplus-to-deficit route under capacity "), ital("Q"), run(" and the bell deadline, and improve it by 2-opt local search and simulated annealing. A discrete-event replay simulator consumes real held-out trips (Apr–Jun 2025): a rental is served only if stock > 0, otherwise it counts as unmet, while the truck follows the policy under test. We compare none, reactive (after an observed stockout), predictive-point and predictive-probabilistic (ours), plus the inferred operator moves, which must first reproduce observed inventories ("), ital("R"), run("2", { superScript: true }), run(" > 0.8). Metrics: unmet rentals, empty station-minutes, truck-km.")]),
-  bodyB("The simulator, the greedy step and the four policy comparisons are implemented; the 2-opt / simulated-annealing improvement is not yet, so every policy below uses the greedy step alone. The operator-move check passed with R² = 0.984 (Sec. 3.3)."),
+  bodyB("The simulator, three greedy baselines (Sec. 2.6.2) and the route search with 2-opt and simulated annealing (Sec. 2.6.3) are implemented. The operator-move check passed with R² = 0.984 (Sec. 3.3)."),
   h3("2.6.1. Replay simulator (replay_sim.py)"),
   body([nb("Each day runs from 06:00 to 23:00 from the 06:00 snapshot. Recorded rentals at the 144 stations are placed uniformly at random within their recorded hour (seeded); a served rental generates the return of that ride after its recorded duration, an unserved one disappears, and rides from outside the area arrive as recorded. A full station redirects a return to the nearest station with a free dock. Trucks: "), nbi("K"), nb(" ∈ {1, 3, 6}, capacity 20, 15 km/h on 1.3× straight-line distance, 3 min per stop and 6 s per bike. Outputs per day: unmet rentals, empty station-minutes (counted every 10 min), bikes moved, truck-km.")]),
   h3("2.6.2. Greedy planner and the three policies"),
@@ -324,7 +325,29 @@ const main = [
     "return (i, j, k) with max score; claim i, j",
   ], { mono: true, size: 14 }),
   spacer(),
-  bodyB("The operator reference injects the inferred hourly moves of Sec. 2.3 directly, without truck constraints. The route search with 2-opt and simulated annealing [16] is the next step; Algorithm 1 is its initial solution."),
+  bodyB("The operator reference injects the inferred hourly moves of Sec. 2.3 directly, without truck constraints."),
+  h3("2.6.3. Route search (route_planner.py)"),
+  body([nb("Algorithm 1 serves one target per trip and does not ask how many rentals a delivered bike will serve. The route search prices every stock level with the birth–death chain of Sec. 2.4.1, run with its corrected rates and without the absorbing state. A backward pass over the horizon "), nbi("H"), nb(" gives "), nbi("V"), nsub("a"), nb("("), nbi("s"), nb("), the expected unmet rentals from step "), nbi("a"), nb(" to "), nbi("H"), nb(" if the station holds "), nbi("s"), nb(" bikes at step "), nbi("a"), nb(", and a forward pass from the current stock gives the distribution "), nbi("P"), nsub("a"), nb(" of the stock at step "), nbi("a"), nb(". Changing the stock of station "), nbi("i"), nb(" by "), nbi("d"), nb(" bikes in step "), nbi("a"), nb(" then saves")]),
+  eq([nbi("B"), nsub("i"), nb("("), nbi("a"), nb(", "), nbi("d"), nb(") = Σ"), nsub("s"), nbi(" P"), nsub("a"), nb("("), nbi("s"), nb(") ["), nbi("V"), nsub("a"), nb("("), nbi("s"), nb(") − "), nbi("V"), nsub("a"), nb("(["), nbi("s"), nb(" + "), nbi("d"), nb("]"), nsub("0..c"), nb(")]")], 4),
+  body([nb("expected unmet rentals, where [·]"), nsub("0..c"), nb(" clips to the station’s capacity: positive for a drop-off, negative for a pick-up, and larger for a bike that arrives before a bell than after it. For a sequence of up to six stations the loads follow exactly from dynamic programming over the truck load 0…"), nbi("Q"), nb(", and the sequence scores "), nbi("J"), nb(" = Σ"), nsub("l"), nbi(" B"), nsub("l"), nb("("), nbi("a"), nsub("l"), nb(", "), nbi("d"), nsub("l"), nb(") − "), nbi("β"), nb("·"), nbi("T"), nb(", with "), nbi("a"), nsub("l"), nb(" the arrival step and "), nbi("T"), nb(" the minutes the route takes.")], { spacing: { after: 70, line: 240 } }),
+  box([
+    [nbb("Algorithm 2  Route search for one idle truck", { size: 16 })],
+    "input: stock s, position, load L, values B (4)",
+    "T = 12 stations with the largest drop-off value",
+    "S = 12 stations with the cheapest pick-up",
+    "r = best pair (j in S, i in T)        if L < 3",
+    "repeat: insert the station that most raises J",
+    "  until no gain or |r| = 6",
+    "for n = 1..400:                  # annealing",
+    "  r' = insert / remove / swap / replace /",
+    "       reverse a segment of r",
+    "  keep r' if J(r') > J(r) or u < exp(ΔJ/τ_n)",
+    "r = 2-opt(best r)",
+    "loads = argmax J(r) over loads   # DP, 0..Q",
+    "drive the first C stops, then plan again",
+  ], { mono: true, size: 14 }),
+  spacer(),
+  body([nb("Each idle truck starts from the best pick-up–drop-off pair among the 12 most valuable targets and the 12 cheapest sources, adds stations by greedy insertion, improves the sequence by 400 steps of simulated annealing [16] (insert, remove, swap or replace a station, reverse a segment) and a final 2-opt pass, drives the first "), nbi("C"), nb(" stops and plans again (Algorithm 2); stations on another truck’s route are skipped. On the validation weekdays (Sec. 3.1) we set "), nbi("H"), nb(" = 90 min, "), nbi("β"), nb(" = 0.25 unmet rentals per minute and "), nbi("C"), nb(" = 2; a plan takes about 20 ms. A single-move variant with the same values (one pick-up and one drop-off, no annealing) separates the effect of the values from that of the routes.")]),
 
   h2("2.7. Live demo", true),
   bodyB("The logger already writes latest.json, a compact snapshot of the 309 stations, on every run. The demo page will read it, compute the inventory-only features, show P(empty within 30 min) per station on a map and the next-bell truck plan of the planner, as mocked in Fig. 15."),
@@ -332,7 +355,7 @@ const main = [
   // ===================== EXPERIMENTS =====================
   h1("3. Experiments", true),
   h2("3.1. Datasets, splits and environment", true),
-  bodyB("Table 2 lists the data. NTU rows are split by time: training 1 Sep 2024–9 Mar 2025, validation 10–31 Mar 2025 (early stopping), test 1 Apr–22 Jun 2025 (1.22 M station-slots never seen by the model). NSYSU uses 2–7 Oct for training, 8–9 Oct for validation and 10–15 Oct for testing; the timetable test leaves out one teaching day of 2–16 Oct at a time. The replay simulator uses the 28 in-semester weekdays of the test period with ≥ 95% snapshot coverage. On a 2-vCPU, 7 GB container (Python 3.11, LightGBM 4.7) every experiment runs in under 20 min; one simulated day takes about 3 s. All random steps use fixed seeds."),
+  bodyB("Table 2 lists the data. NTU rows are split by time: training 1 Sep 2024–9 Mar 2025, validation 10–31 Mar 2025 (early stopping), test 1 Apr–22 Jun 2025 (1.22 M station-slots never seen by the model). NSYSU uses 2–7 Oct for training, 8–9 Oct for validation and 10–15 Oct for testing; the timetable test leaves out one teaching day of 2–16 Oct at a time. The replay simulator uses the 28 in-semester weekdays of the test period with ≥ 95% snapshot coverage; the route-search settings were chosen on the 16 such weekdays of 10–31 Mar 2025. On a 2-vCPU, 7 GB container (Python 3.11, LightGBM 4.7) every experiment runs in under 20 min; one simulated day takes about 3 s. All random steps use fixed seeds."),
   tableCaption("Table 2. ", "Data used in this report."),
   table([1500, 1877, 1300], ["Source", "Coverage / resolution", "Rows used"], [
     ["Taipei YouBike 2.0 trip records [1]", "Sep 2024–Jun 2025, hourly, 1,519 stations", "10.2 M rides touching the 144 NTU-area stations"],
@@ -359,7 +382,7 @@ const main = [
   ...figure("fig_moves_check.png", capB("Figure 9. ", "Checks on the operator inference. (a) Inferred drop-offs per day by threshold and window; dashed: bikes arriving in ≥ 8-bike jumps. (b) Actual rentals over the training-period rate on well-stocked campus station-hours; dashed: 12:10 and 17:20 bells.")),
 
   h2("3.4. Stockout prediction", true),
-  bodyB("Table 3 and Figs. 10–11 give the test results on the 1.09 M test slots whose current stock is observed. At the 30-minute horizon the full model reaches AUC 0.932 and Brier 0.080, against 0.819 / 0.126 for the seasonal baseline and 0.744 / 0.124 for persistence; the inventory-only model is close behind (0.922 / 0.084), so trip flows add little once the current stock and its trend are known, at this horizon. Calibration is good without post-processing: ECE 0.012 and a reliability curve on the diagonal up to p = 0.9 (Fig. 10a), while the seasonal baseline under-predicts at high probabilities. The day-level bootstrap gives half-widths of about 0.005 AUC for the GBMs, and every paired difference has an interval that excludes zero: full against inventory-only +0.010 [0.009, 0.011], inventory-only against logistic +0.007 [0.006, 0.007] and against the corrected roll-out +0.027 [0.025, 0.029]."),
+  bodyB("Table 3 and Figs. 10–11 give the test results on the 1.09 M test slots whose current stock is observed. At the 30-minute horizon the full model reaches AUC 0.932 and Brier 0.080, against 0.819 / 0.126 for the seasonal baseline and 0.744 / 0.124 for persistence; the inventory-only model is close behind (0.922 / 0.084), so trip flows add little once the current stock and its trend are known, at this horizon. A constant forecast of the 21% base rate would score Brier 0.165, so the full model removes half of that error. Calibration is good without post-processing: ECE 0.012 and a reliability curve on the diagonal up to p = 0.9 (Fig. 10a), while the seasonal baseline under-predicts at high probabilities. The day-level bootstrap gives half-widths of about 0.005 AUC for the GBMs, and every paired difference has an interval that excludes zero: full against inventory-only +0.010 [0.009, 0.011], inventory-only against logistic +0.007 [0.006, 0.007] and against the corrected roll-out +0.027 [0.025, 0.029]."),
   tableCaption("Table 3. ", "NTU test period (Apr–Jun 2025), all 144 stations, h = 30 min; 95% intervals from the day-level bootstrap. GBM + flows also uses the station id; stacked = GBM + flows + the roll-out probability."),
   table([1477, 500, 1500, 550, 650], ["Model", "Brier", "AUC [95% CI]", "ECE", "trees"], [
     ["persistence", "0.124", "0.744 [0.740, 0.748]", "0.124", "–"],
@@ -385,31 +408,31 @@ const main = [
   ...figure("fig_nsysu.png", capB("Figure 12. ", "NSYSU. (a) Test days 10–15 Oct, h = 30 min: AUC with 95% station-day intervals. (b) AUC change from the five catalogue features, leave-one-day-out, 95% day intervals; pre-bell: campus, ≥ 5 bikes, 30 min before a bell; AM: 07:00–10:00.")),
 
   h2("3.6. Replay simulation", true),
-  bodyB("Over the 28 replayed weekdays the area records 32,100 rentals per day; without rebalancing 3,390 of them (10.5%) find an empty station and the 144 stations spend 17,800 station-minutes empty per day. Fig. 13 gives the results per policy. One truck avoids 5–7% of unmet rentals, three trucks 16–17% and six trucks 25–27%. The probabilistic policy is best on every fleet size and the point-forecast policy worst, but the margins on unmet rentals are small. The clearest difference is in empty station-minutes, which the probabilistic and reactive policies cut by 41% with six trucks against 14% for the point policy, because the latter waits for a forecast deficit instead of acting on an empty station. Replaying the inferred operator moves, which inject about 5,100 bikes per day without any truck constraint, avoids 61%; it is an upper reference, not a policy. In paired per-day differences the probabilistic policy beats the point policy by 2.0–2.4 points of unmet rentals with every fleet size (95% intervals exclude zero), but its margin over the reactive policy, 0.0–0.4 points, has intervals that include zero."),
-  ...figure("fig_sim_ci.png", capB("Figure 13. ", "Replay of 28 NTU weekdays: share of (a) unmet rentals and (b) empty station-minutes avoided against no rebalancing, with 95% day-bootstrap intervals; trucks drive 55–67, 192–223 and 396–456 km per day with 1, 3 and 6 trucks.")),
-  bodyB("The ranking shows that at this stage the forecast is not the bottleneck: Algorithm 1 serves one target per truck at a time, cannot combine a pick-up with several drop-offs, and ignores the deadline structure of the bells. The rolling-horizon route search planned for November attacks exactly this, and the simulator now gives it a fixed benchmark."),
+  bodyB("Over the 28 replayed weekdays the area records 32,100 rentals per day; without rebalancing 3,390 of them (10.5%) find an empty station and the 144 stations spend 17,800 station-minutes empty per day. Fig. 13 gives the results per policy. With the greedy step, one truck avoids 5–7% of unmet rentals, three trucks 16–17% and six trucks 25–27%; per day the probabilistic policy beats the point policy by 2.0–2.4 points (95% intervals exclude zero) but not the reactive one (0.0–0.4 points), and the point policy, which waits for a forecast deficit instead of acting on an empty station, cuts empty station-minutes least (14% against 41% with six trucks). Replaying the inferred operator moves, which inject about 5,100 bikes per day without any truck constraint, avoids 61%; it is an upper reference, not a policy."),
+  ...figure("fig_sim_ci.png", capB("Figure 13. ", "Replay of 28 NTU weekdays: share of (a) unmet rentals and (b) empty station-minutes avoided against no rebalancing, with 95% day-bootstrap intervals; trucks drive 55–70, 192–232 and 396–456 km per day with 1, 3 and 6 trucks.")),
+  bodyB("The route search avoids 13%, 30% and 45% of unmet rentals with 1, 3 and 6 trucks and drives about as far as the greedy policies (65, 219 and 430 km per day). Per day it beats the greedy probabilistic policy by 6.1 [5.2, 7.0], 14.0 [12.0, 16.0] and 19.3 [17.4, 21.2] points, on all 28 days at every fleet size. Most of the gain comes from how moves are priced: the single-move variant with the same values already avoids 12%, 28% and 44%. The routes add 0.7–2.1 points of unmet rentals (the one-truck interval includes zero) and 1.6–8.4 points of empty station-minutes; with one truck the route search cuts empty minutes less than the greedy probabilistic and reactive policies (6% against 7–8%), because its values count rentals, not empty time. Annealing and 2-opt improve the route found by greedy insertion in 40–49% of the plans and raise the total planned value by 8–9%. On the validation days the time cost mattered most: without it the search builds long routes that collect more value at a lower rate, and driving whole six-stop routes was the worst setting tried (2,814 against 2,567 unmet rentals per day with three trucks)."),
 
   // ===================== CONCLUSION =====================
   h1("4. Progress, risks and next steps", true),
-  bodyB("Table 4 sets the numbers the proposal expected against what the midterm experiments gave. The predictor met every target, and transfer was easier than expected. The simulator numbers fall short of the proposal’s 50%, for three reasons that the next phase addresses: the planner is the greedy initial solution without route search; the replay contains only recorded rentals, so the demand that was lost at empty stations, which rebalancing would serve, is not yet counted; and the operator reference injects bikes without any truck constraint."),
+  bodyB("Table 4 sets the numbers the proposal expected against what the midterm experiments gave. The predictor met every target, and transfer was easier than expected. The route search raised the simulator numbers to 13%, 30% and 45% with 1, 3 and 6 trucks, approaching the proposal’s 50% with six trucks. The replay also understates what rebalancing can do, because it contains only recorded rentals: the demand that was lost at empty stations, which rebalancing would serve, is not yet counted. The operator replay (61%) injects about 5,100 bikes per day without any truck constraint and is a reference, not a reachable target."),
   tableCaption("Table 4. ", "Proposal expectations (HW1, Sec. 3) against midterm results."),
   table([1877, 1300, 1500], ["Quantity", "Expected (HW1)", "Midterm"], [
     ["Predictor AUC, h = 30 min", "> 0.85", "0.93 (NTU), 0.93 (NSYSU zero-shot); 0.90 at 120 min"],
-    ["Poisson + Monte-Carlo roll-out", "the predictor of Sec. 2.4", "built exactly; AUC 0.895, so the classifier (0.922–0.932) is used"],
+    ["Poisson + Monte-Carlo roll-out", "the predictor of Sec. 2.4", "built exactly; AUC 0.895, so the classifier (0.922–0.932) predicts and the chain prices bikes for the planner"],
     ["Predictor ECE, h = 30 min", "< 0.05", "0.012 (NTU), 0.023 (NSYSU zero-shot)"],
     ["NSYSU transfer", "zero-shot drop, closed within 5 AUC points after 2–4 weeks", "no drop: 0.934 zero-shot vs. 0.940 with 6 local days"],
     ["Unmet rentals avoided, reactive", "about 20%", "7% / 17% / 26% with 1 / 3 / 6 trucks"],
     ["Unmet rentals avoided, point forecast", "about 40%", "5% / 16% / 25%"],
-    ["Unmet rentals avoided, probabilistic", "about 50%", "7% / 17% / 27%; operator replay 61%"],
+    ["Unmet rentals avoided, probabilistic", "about 50%", "13% / 30% / 45% (route search); greedy 7% / 17% / 27%"],
   ], { aligns: [AlignmentType.LEFT, AlignmentType.LEFT, AlignmentType.LEFT] }),
   spacer(),
-  bodyB("Fig. 14 updates the schedule: data pipeline and demand reconstruction are complete, the predictor is trained and transferred ahead of plan, and the simulator exists two weeks early with the planner still greedy. None of the proposal’s three fallbacks was needed. Remaining work:"),
-  bullet("the rolling-horizon planner with 2-opt / simulated annealing and multi-stop routes, evaluated in the same simulator;"),
+  bodyB("Fig. 14 updates the schedule: data pipeline and demand reconstruction are complete, the predictor is trained and transferred ahead of plan, and the simulator and the route-search planner exist ahead of plan. None of the proposal’s three fallbacks was needed. Remaining work:"),
+  bullet("rates for the planner at NSYSU, where no trip data exist, estimated from the logged inventory changes (lower bounds on rentals and returns);"),
   bullet("a two-sided (empty / full) label for the pre-bell cases where the predictor is weakest;"),
   bullet("imputing the censored demand of Sec. 3.3 into the replay, so that unmet rentals include riders who never found a bike;"),
   bullet("the live NSYSU demo (Fig. 15) and, after four more weeks of logging, a transfer study by week of local data.", { last: true }),
   ...figure("fig_gantt_hw3.png", capB("Figure 14. ", "Schedule with completion at 29 Oct (dark = done; PL 林沛霆, JC 陳佳晨, SL 林詩穎).")),
-  bodyB("Work division: 林沛霆 (PL) built the logger, the NTU pipeline, the replay simulator and this report; 陳佳晨 (JC) owns demand reconstruction, operator inference and its checks, the calibration and transfer studies and the bootstrap; 林詩穎 (SL) owns the predictor, the roll-out comparison, the horizon sweep, the ablations and the demo. All code, tables, model files, metrics and figures are in the public repository [17] under analysis/, with a README that rebuilds every table from the raw sources."),
+  bodyB("Work division: 林沛霆 (PL) built the logger, the NTU pipeline, the replay simulator, the route search and this report; 陳佳晨 (JC) owns demand reconstruction, operator inference and its checks, the calibration and transfer studies and the bootstrap; 林詩穎 (SL) owns the predictor, the roll-out comparison, the horizon sweep, the ablations and the demo. All code, tables, model files, metrics and figures are in the public repository [17] under analysis/, with a README that rebuilds every table from the raw sources."),
   ...figure("fig3_demo_mock.png", capNum("Figure 15. ", "Mock-up of the live NSYSU demo (real station positions and stock; probabilities and route illustrative).")),
 
   h1("References"),
@@ -419,10 +442,13 @@ const main = [
 const doc = new Document({
   creator: "NSYSU Group 54",
   title: "Beat the Bell — Midterm Report",
-  styles: { default: { document: { run: { font: "Times New Roman", size: 20 } } } },
+  styles: { default: { document: { run: { font: FONT, size: 20 } } } },
   sections: [
     { properties: { page: { size: PAGE, margin: MARGIN }, column: { count: 1 } }, children: titleBlock },
     { properties: { type: SectionType.CONTINUOUS, page: { size: PAGE, margin: MARGIN }, column: { count: 2, space: COL_SPACE, equalWidth: true } }, children: placeFigures(main) },
+    // a continuous section break after the two-column text balances the two columns of the last page
+    { properties: { type: SectionType.CONTINUOUS, page: { size: PAGE, margin: MARGIN }, column: { count: 1 } },
+      children: [new Paragraph({ spacing: { before: 0, after: 0, line: 20 }, children: [run("", { size: 2 })] })] },
   ],
 });
 Packer.toBuffer(doc).then((buf) => { fs.writeFileSync("HW3_54.docx", buf); console.log("wrote HW3_54.docx", buf.length); });

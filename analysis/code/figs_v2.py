@@ -152,7 +152,7 @@ abox(67.5, 40, 31.5, 13, "NSYSU features", "same code + timetable\nintensity, no
 abox(1, 21, 30, 13, "Simulator (2.6)", "real trips, K trucks;\nunmet, empty-min, km", "out")
 abox(33, 21, 30, 13, "Predictor (2.4)", "GBM + Poisson roll-out,\nP(empty in 30–120 min)", "mod")
 abox(67.5, 21, 31.5, 13, "Transfer (2.5)", "zero-shot / fine-tune\nvs. NSYSU-only", "out")
-abox(33, 2, 30, 13, "Planner (2.6)", "greedy now,\nroute search next", "out")
+abox(33, 2, 30, 13, "Planner (2.6)", "route search with\nannealing and 2-opt", "out")
 abox(67.5, 2, 31.5, 13, "Live demo (2.7)", "planned: map, P(empty),\nnext-bell truck plan", "out")
 for xx in (16, 48, 83.25):
     aarrow(xx, 78, xx, 72.3); aarrow(xx, 59, xx, 53.3)
@@ -347,7 +347,7 @@ D = lambda m, d: dt.date(2026, m, d)
 TODAY = D(10, 29)
 tasks = [("Data pipeline & matching", D(10, 1), D(10, 18), "PL", 1.0), ("Demand & operator moves", D(10, 10), D(10, 28), "JC", 1.0),
          ("Stockout predictor", D(10, 19), D(11, 14), "SL", 0.9), ("Calibration & transfer", D(11, 8), D(11, 25), "JC", 0.7),
-         ("Planner & simulator", D(11, 5), D(12, 6), "PL", 0.4), ("NSYSU live demo app", D(11, 20), D(12, 14), "SL", 0.1),
+         ("Planner & simulator", D(11, 5), D(12, 6), "PL", 0.8), ("NSYSU live demo app", D(11, 20), D(12, 14), "SL", 0.1),
          ("Report & presentation", D(11, 22), D(12, 22), "all", 0.15)]
 ms = [(D(10, 1), "Proposal"), (D(10, 29), "Midterm"), (D(11, 26), "Video"), (D(12, 24), "Final")]
 start = D(9, 29); end = dt.date(2027, 1, 7)

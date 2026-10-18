@@ -137,7 +137,8 @@ for k in (1, 3, 6) if not TRANS_ONLY else ():
                      "unmet_mean": wide[pol].mean(), "unmet_sd": wide[pol].std()})
     # paired policy differences (share of the no-rebalancing unmet rentals / empty minutes)
     wide_e = d.pivot(index="date", columns="policy", values="empty_station_min")
-    for a, b_ in (("prob", "reactive"), ("prob", "point"), ("reactive", "point")):
+    for a, b_ in (("prob", "reactive"), ("prob", "point"), ("reactive", "point"),
+                  ("route", "prob"), ("route", "reactive"), ("route", "route1"), ("route1", "prob")):
         if a not in wide or b_ not in wide:
             continue
         for metric, w_ in (("unmet", wide), ("empty_min", wide_e)):

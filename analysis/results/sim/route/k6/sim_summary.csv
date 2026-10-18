@@ -1,0 +1,3 @@
+policy,days,rentals,unmet,unmet_campus,empty_station_min,empty_campus_min,truck_km,bikes_moved,moves,unmet_reduction
+route,28,32141.1,1856.9,871.4,9906.8,3880.7,429.5,3717.1,590.2,
+route1,28,32141.1,1887.9,886.0,11386.8,4365.4,441.2,3955.7,564.2,

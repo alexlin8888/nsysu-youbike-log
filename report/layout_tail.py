@@ -5,11 +5,11 @@ import itertools, json, sys
 from layout_seq import run
 
 base = json.load(open("layout.json"))
-SIM = [104, 106, 107]
-GANTT = [109, 112, 117, 118]
-DEMO = [112, 117, 118]
-T4 = [None, 117, 118]
-DEF = {"fig_sim_ci.png": 106, "fig_gantt_hw3.png": 117, "fig3_demo_mock.png": 118}
+SIM = [111, 113, 114]
+GANTT = [116, 119, 124, 125]
+DEMO = [119, 124, 125]
+T4 = [None, 124, 125]
+DEF = {"fig_sim_ci.png": 113, "fig_gantt_hw3.png": 124, "fig3_demo_mock.png": 125}
 
 
 def score(res):

@@ -1,6 +1,8 @@
 """Discrete-event replay simulator with one rebalancing truck, driven by real NTU trips.
 
-Usage: python replay_sim.py NTU_DIR MODEL_DIR OUT_DIR [--days N] [--policies none,reactive,point,prob,operator]
+Usage: python replay_sim.py NTU_DIR MODEL_DIR OUT_DIR [--days N] [--trucks K] [--workers W]
+           [--policies none,reactive,point,prob,operator,route,route1] [--period test|val]
+           [--horizon MIN] [--beta B] [--stops M] [--iters I] [--commit C]
 
 Each simulated day (06:00-23:00) replays the recorded rentals at the 144 study-area stations: a rental is
 served only if the station has a bike, otherwise it is counted as unmet and the trip disappears. Returns
@@ -8,6 +10,12 @@ of served trips arrive after the recorded duration; returns from outside the are
 A full station redirects the return to the nearest station with a free dock. Policies decide, every
 10 minutes while the truck is idle, one source->target move (greedy); the truck travels at 15 km/h on
 1.3 x straight-line distance, with 3 min per stop + 6 s per bike handling, capacity 20.
+
+route / route1: the route-search planner of route_planner.py. Every idle truck plans a route of up to
+--stops stations over the next --horizon minutes, valued with the birth-death chain (censoring-corrected
+rates of the roll-out, model/sweep/rates_train.csv), executes it and plans again (rolling horizon). route1
+is the same planner restricted to one pick-up and one drop-off without annealing (a greedy single move
+under the same values). --period val replays validation weekdays (10-31 Mar 2025) for tuning.
 """
 import heapq
 import json
@@ -22,11 +30,17 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 from features import NTU_BELLS, INV_FEATS, TW_HOLIDAYS, _bell_minutes, _to_since, neighbors  # noqa: E402
+from route_planner import ChainValues, RoutePlanner  # noqa: E402
 
 NTU = Path(sys.argv[1]); MODELS = Path(sys.argv[2]); OUT = Path(sys.argv[3]); OUT.mkdir(parents=True, exist_ok=True)
 NDAYS = int(sys.argv[sys.argv.index("--days") + 1]) if "--days" in sys.argv else 30
 K = int(sys.argv[sys.argv.index("--trucks") + 1]) if "--trucks" in sys.argv else 1
 POLICIES = sys.argv[sys.argv.index("--policies") + 1].split(",") if "--policies" in sys.argv else ["none", "reactive", "point", "prob", "operator"]
+ARG = lambda name, default, cast: cast(sys.argv[sys.argv.index(name) + 1]) if name in sys.argv else default
+PERIOD = ARG("--period", "test", str)
+WORKERS = ARG("--workers", 1, int)
+R_HORIZON, R_BETA, R_STOPS, R_ITERS = ARG("--horizon", 90, int), ARG("--beta", 0.0, float), ARG("--stops", 6, int), ARG("--iters", 400, int)
+R_COMMIT = ARG("--commit", 0, int)          # stops executed before the truck plans again (0 = the whole route)
 TRAIN_END = pd.Timestamp("2025-03-31")
 T0, T1 = 6 * 60, 23 * 60                 # simulated window, minutes of day
 Q, SPEED_KMH, STOP_MIN, PER_BIKE_MIN = 20, 15.0, 3.0, 0.1
@@ -62,6 +76,28 @@ RATES = np.zeros((N, 2, 24))
 for row in r.itertuples():
     RATES[sidx[row.sno], row.offday, row.hod] = row.lam
 BELLS, MAJ = _bell_minutes(NTU_BELLS, MAJORS)
+
+# chain rates for the route planner: the censoring-corrected, shrunk rates of the roll-out (Sec. 2.4.1)
+CHAIN_R, CHAIN_Q = np.zeros((N, 2, 24)), np.zeros((N, 2, 24))
+if any(p.startswith("route") for p in POLICIES):
+    cr = pd.read_csv(MODELS / "sweep" / "rates_train.csv", dtype={"sno": str})
+    cr = cr[cr.sno.isin(sidx)]
+    pri = cr.groupby(["offday", "hod"]).agg(pr=("pr", "first"), pq=("pq", "first"))
+    for off in (0, 1):
+        for hod in range(24):
+            CHAIN_R[:, off, hod] = pri.loc[(off, hod), "pr"] if (off, hod) in pri.index else 0.0
+            CHAIN_Q[:, off, hod] = pri.loc[(off, hod), "pq"] if (off, hod) in pri.index else 0.0
+    for row in cr.itertuples():
+        CHAIN_R[sidx[row.sno], row.offday, row.hod] = row.lam_r_cens
+        CHAIN_Q[sidx[row.sno], row.offday, row.hod] = row.lam_q_cens
+TRAVEL_MIN = DIST_KM / SPEED_KMH * 60
+_VALUES = {}
+
+
+def chain_values(offday):
+    if offday not in _VALUES:
+        _VALUES[offday] = ChainValues(CHAIN_R[:, offday], CHAIN_Q[:, offday], CAP, R_HORIZON, Q)
+    return _VALUES[offday]
 BOOSTER = lgb.Booster(model_file=str(MODELS / "lgb_inv_60.txt"))
 
 # inferred operator moves (for the replay-the-operator policy): station-hour residuals flagged as moves
@@ -139,7 +175,14 @@ def policy_prob(state, pos):
     return choose(state, need, p, p <= 0.2, pos)
 
 
-POLICY = {"none": None, "reactive": policy_reactive, "point": policy_point, "prob": policy_prob, "operator": "operator"}
+POLICY = {"none": None, "reactive": policy_reactive, "point": policy_point, "prob": policy_prob, "operator": "operator",
+          "route": "route", "route1": "route"}
+
+
+def make_planner(policy_name):
+    if policy_name == "route1":
+        return RoutePlanner(TRAVEL_MIN, Q, STOP_MIN, 1.0, R_HORIZON, beta=R_BETA, max_stops=2, iters=0, anneal=False)
+    return RoutePlanner(TRAVEL_MIN, Q, STOP_MIN, 1.0, R_HORIZON, beta=R_BETA, max_stops=R_STOPS, iters=R_ITERS)
 
 
 def features_now(t_min, bikes, hist, date):
@@ -182,6 +225,12 @@ def run_day(date, policy_name, rent, outret, b0):
     pol = POLICY[policy_name]
     trucks = [{"pos": None, "load": 0, "busy": False} for _ in range(K)]
     next_decision = T0
+    if pol == "route":
+        values = chain_values(offday)
+        planner = make_planner(policy_name)
+        prng = np.random.default_rng(SEED + int(date.strftime("%Y%m%d")))
+        claimed_until = np.full(N, -1.0)
+        n_routes = 0; route_stops = 0; t_value = 0.0; t_plan = 0.0; n_plans = 0
     while ev:
         m, kind, a, b = heapq.heappop(ev)
         if m >= T1:
@@ -214,6 +263,35 @@ def run_day(date, policy_name, rent, outret, b0):
                         heapq.heappush(ev, (t_dst + STOP_MIN + k * PER_BIKE_MIN, 2, dst, (ti, +k)))
                         trucks[ti]["busy"] = True
                         n_moves += 1
+            elif pol == "route":
+                idle = [ti for ti, tr in enumerate(trucks) if not tr["busy"]]
+                if idle:
+                    tv = time.perf_counter()
+                    B = values.benefit(td, bikes)
+                    t_value += time.perf_counter() - tv
+                    for ti in idle:
+                        tr = trucks[ti]
+                        tp = time.perf_counter()
+                        stops = planner.plan(B, bikes, CAP, tr["pos"], tr["load"], claimed_until > td, prng)
+                        t_plan += time.perf_counter() - tp; n_plans += 1
+                        if not stops:
+                            continue
+                        if R_COMMIT > 0 and policy_name == "route":
+                            stops = stops[:R_COMMIT]
+                        t, prev = float(td), tr["pos"]
+                        for li, (stn, d, _) in enumerate(stops):
+                            leg = TRAVEL_MIN[prev, stn] if prev is not None else 5.0
+                            truck_km += DIST_KM[prev, stn] if prev is not None else 0.0
+                            t += leg
+                            service = STOP_MIN + abs(d) * PER_BIKE_MIN
+                            # pick-ups take bikes on arrival, drop-offs release them at the end of the stop
+                            heapq.heappush(ev, (t if d < 0 else t + service, 5, stn, (ti, d)))
+                            t += service
+                            prev = stn
+                        heapq.heappush(ev, (t, 6, prev, (ti, 0)))
+                        claimed_until[[stn for stn, _, _ in stops]] = t
+                        tr["busy"] = True
+                        n_moves += len(stops); n_routes += 1; route_stops += len(stops)
             next_decision += 10
         if kind == 0:                          # rental at station a
             if bikes[a] > 0:
@@ -253,6 +331,23 @@ def run_day(date, policy_name, rent, outret, b0):
                 bikes[a] += k; tr["load"] -= k; moved += k
                 tr["pos"] = a
                 tr["busy"] = False
+        elif kind == 5:                        # route stop: b = (truck id, planned change of the station stock)
+            ti, d = b
+            tr = trucks[ti]
+            if d < 0:
+                k = min(-d, int(bikes[a]), Q - tr["load"])
+                bikes[a] -= k; tr["load"] += k
+                if bikes[a] == 0 and k > 0:
+                    empty_since[a] = m
+            else:
+                k = min(d, tr["load"], int(CAP[a] - bikes[a]))
+                if bikes[a] == 0 and k > 0:
+                    empty_since[a] = -1
+                bikes[a] += k; tr["load"] -= k; moved += k
+            tr["pos"] = a
+        elif kind == 6:                        # route finished
+            trucks[b[0]]["busy"] = False
+            trucks[b[0]]["pos"] = a
         elif kind == 3:                        # inferred operator move
             k = int(np.clip(b, -bikes[a], CAP[a] - bikes[a]))
             if bikes[a] == 0 and k > 0:
@@ -264,28 +359,52 @@ def run_day(date, policy_name, rent, outret, b0):
                 bikes[a] += k
             moved += abs(k); n_moves += 1
     day_min = (T1 - T0)
-    return {"date": date.strftime("%Y-%m-%d"), "policy": policy_name, "rentals": int(len(rent)),
-            "served": int(served.sum()), "unmet": int(unmet.sum()), "unmet_campus": int(unmet[campus].sum()),
-            "empty_station_min": float(empty_min.sum()), "empty_station_min_campus": float(empty_min[campus].sum()),
-            "redirected_returns": int(redirected), "truck_km": round(float(truck_km), 1), "bikes_moved": int(moved),
-            "moves": int(n_moves), "trucks": K}
+    row = {"date": date.strftime("%Y-%m-%d"), "policy": policy_name, "rentals": int(len(rent)),
+           "served": int(served.sum()), "unmet": int(unmet.sum()), "unmet_campus": int(unmet[campus].sum()),
+           "empty_station_min": float(empty_min.sum()), "empty_station_min_campus": float(empty_min[campus].sum()),
+           "redirected_returns": int(redirected), "truck_km": round(float(truck_km), 1), "bikes_moved": int(moved),
+           "moves": int(n_moves), "trucks": K}
+    if pol == "route":
+        row.update({"routes": n_routes, "stops_per_route": round(route_stops / max(n_routes, 1), 2),
+                    "plan_ms": round(1000 * t_plan / max(n_plans, 1), 1), "value_s": round(t_value, 2),
+                    "searched": planner.stats["searched"], "sa_improved": planner.stats["improved"],
+                    "v_greedy": round(planner.stats["v_greedy"], 1), "v_final": round(planner.stats["v_final"], 1)})
+    return row
+
+
+def simulate_day(d):
+    rent, outret, b0 = load_day(d)
+    t = time.time()
+    rows = [run_day(d, pol, rent, outret, b0) for pol in POLICIES]
+    print(f"{d.date()} rentals={rows[0]['rentals']} " + " ".join(f"{r['policy']}:unmet={r['unmet']}/{r['unmet_campus']} km={r['truck_km']}" for r in rows) + f"  ({time.time() - t:.0f}s)", flush=True)
+    return rows
+
+
+def sim_days(period):
+    """in-semester weekdays with >= 95% snapshot coverage: test = Apr-Jun 2025, val = 10-31 Mar 2025."""
+    lo, hi = ("2025-04-01", "2025-06-13") if period == "test" else ("2025-03-10", "2025-03-31")
+    q = panel[(panel.ts >= lo) & (panel.ts <= hi)]
+    cov = q.groupby(q.ts.dt.normalize()).bikes.apply(lambda x: 1 - x.isna().mean())
+    return [d for d, c in cov.items() if c >= 0.95 and d.dayofweek < 5 and d.strftime("%Y-%m-%d") not in TW_HOLIDAYS]
 
 
 if __name__ == "__main__":
-    # candidate days: in-semester weekdays of the test period with good snapshot coverage
-    q = panel[(panel.ts >= "2025-04-01") & (panel.ts <= "2025-06-13")]
-    cov = q.groupby(q.ts.dt.normalize()).bikes.apply(lambda x: 1 - x.isna().mean())
-    days = [d for d, c in cov.items() if c >= 0.95 and d.dayofweek < 5 and d.strftime("%Y-%m-%d") not in TW_HOLIDAYS]
-    days = days[:NDAYS]
-    print(f"{len(days)} simulation days: {days[0].date()} .. {days[-1].date()}; policies {POLICIES}")
-    rows = []
+    days = sim_days(PERIOD)[:NDAYS]
+    print(f"{len(days)} simulation days: {days[0].date()} .. {days[-1].date()}; policies {POLICIES}; trucks {K}", flush=True)
+    if any(p.startswith("route") for p in POLICIES):
+        print(f"route planner: horizon {R_HORIZON} min, beta {R_BETA}, stops {R_STOPS}, iters {R_ITERS}, commit {R_COMMIT}", flush=True)
+        chain_values(0)                                  # build the value tables once, before forking
     t0 = time.time()
-    for d in days:
-        rent, outret, b0 = load_day(d)
-        for pol in POLICIES:
-            rows.append(run_day(d, pol, rent, outret, b0))
-        last = rows[-len(POLICIES):]
-        print(f"{d.date()} rentals={last[0]['rentals']} " + " ".join(f"{r['policy']}:unmet={r['unmet']}/{r['unmet_campus']} km={r['truck_km']}" for r in last) + f"  ({time.time() - t0:.0f}s)")
+    if WORKERS > 1 and "prob" in POLICIES:
+        print("LightGBM prediction deadlocks in forked workers: running the days in one process", flush=True)
+        WORKERS = 1
+    if WORKERS > 1:
+        import multiprocessing as mp
+        with mp.get_context("fork").Pool(WORKERS) as pool:
+            rows = [r for day_rows in pool.map(simulate_day, days, chunksize=1) for r in day_rows]
+    else:
+        rows = [r for d in days for r in simulate_day(d)]
+    print(f"done in {time.time() - t0:.0f}s", flush=True)
     res = pd.DataFrame(rows)
     res.to_csv(OUT / "sim_daily.csv", index=False)
     summ = res.groupby("policy").agg(days=("date", "nunique"), rentals=("rentals", "mean"), unmet=("unmet", "mean"),
@@ -297,4 +416,6 @@ if __name__ == "__main__":
     summ.to_csv(OUT / "sim_summary.csv")
     print(summ.to_string())
     json.dump({"days": [d.strftime("%Y-%m-%d") for d in days], "Q": Q, "trucks": K, "speed_kmh": SPEED_KMH, "stop_min": STOP_MIN,
-               "per_bike_min": PER_BIKE_MIN, "horizon_min": HORIZON_MIN, "window": [T0, T1]}, open(OUT / "sim_setup.json", "w"), indent=1)
+               "per_bike_min": PER_BIKE_MIN, "horizon_min": HORIZON_MIN, "window": [T0, T1], "period": PERIOD,
+               "route": {"horizon_min": R_HORIZON, "beta": R_BETA, "stops": R_STOPS, "iters": R_ITERS, "commit": R_COMMIT}},
+              open(OUT / "sim_setup.json", "w"), indent=1)

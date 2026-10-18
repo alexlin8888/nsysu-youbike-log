@@ -5,7 +5,8 @@ a small penalty for moving away from the source position. Writes layout.json."""
 import json, os, subprocess, sys, time
 import pdfplumber
 from layout_lib import ROOT, TOP, BOTTOM, COLS, SOFFICE
-import layout_v10_space as SP
+import importlib
+SP = importlib.import_module(os.environ.get("LAYOUT_SPACE", "layout_v14_space"))
 
 SPACE = SP.SPACE
 ORDER = [f for f in SPACE if f.endswith(".png")]
@@ -66,6 +67,8 @@ if __name__ == "__main__":
     layout = json.load(open(sys.argv[1])) if len(sys.argv) > 1 else {}
     t0 = time.time()
     for k, f in enumerate(ORDER):
+        if k < int(os.environ.get("SEQ_START", "0")):
+            continue
         best = None
         for a in SPACE[f][0]:
             for fr in SPACE[f][1]:

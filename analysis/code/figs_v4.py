@@ -180,7 +180,9 @@ title(fig, 0.53, 0.995, "(b) Timetable features")
 save(fig, "fig_nsysu.png", ax=ax1)
 
 # ======================= simulator: avoided unmet rentals and empty minutes =======================
-POL = [("reactive", MUTED, "reactive", "o"), ("point", ORANGE, "point forecast", "s"), ("prob", BLUE, "probabilistic (ours)", "D")]
+POL = [("reactive", MUTED, "greedy reactive", "o"), ("point", ORANGE, "greedy point", "s"),
+       ("prob", AQUA, "greedy probabilistic", "v"), ("route1", PURPLE, "single move, chain values", "^"),
+       ("route", BLUE, "route search (ours)", "D")]
 KS = [1, 3, 6]
 rows = []
 for k in KS:
@@ -190,27 +192,30 @@ for k in KS:
         nd = len(w)
         idx = [rng.integers(0, nd, nd) for _ in range(1000)]
         for pol, *_ in POL:
+            if pol not in w:
+                continue
             red = 1 - w[pol].sum() / w["none"].sum()
             bs = np.array([1 - w[pol].values[i].sum() / w["none"].values[i].sum() for i in idx])
             rows.append({"K": k, "metric": metric, "policy": pol, "red": red, "lo": np.percentile(bs, 2.5), "hi": np.percentile(bs, 97.5)})
 R = pd.DataFrame(rows)
 R.to_csv(OUT / "fig_sim_data.csv", index=False)
-fig = plt.figure(figsize=(W, 1.62))
-axes = [fig.add_axes([0.105, 0.14, 0.36, 0.62]), fig.add_axes([0.615, 0.14, 0.36, 0.62])]
-for ax, metric, ylab, ylim, yt in ((axes[0], "unmet", "% unmet rentals avoided", (0, 32), [0, 10, 20, 30]),
-                                    (axes[1], "empty_station_min", "% empty minutes avoided", (0, 48), [0, 10, 20, 30, 40])):
+POL = [p_ for p_ in POL if p_[0] in set(R.policy)]
+fig = plt.figure(figsize=(W, 1.85))
+axes = [fig.add_axes([0.105, 0.125, 0.36, 0.56]), fig.add_axes([0.615, 0.125, 0.36, 0.56])]
+for ax, metric, ylab in ((axes[0], "unmet", "% unmet rentals avoided"), (axes[1], "empty_station_min", "% empty minutes avoided")):
+    top = float(np.ceil(R[R.metric == metric].hi.max() * 10)) * 10
     for j, (pol, col, lab, mk) in enumerate(POL):
         d = R[(R.metric == metric) & (R.policy == pol)].set_index("K").reindex(KS)
-        x = np.arange(len(KS)) + (j - 1) * 0.13
+        x = np.arange(len(KS)) + (j - (len(POL) - 1) / 2) * 0.1
         ax.plot(x, d.red * 100, color=col, lw=1.0, marker=mk, ms=3.0, label=lab)
         ax.vlines(x, d.lo * 100, d.hi * 100, color=col, lw=0.9)
     ax.set_xticks(range(len(KS))); ax.set_xticklabels([f"{k} truck" + ("s" if k > 1 else "") for k in KS])
-    ax.set_xlim(-0.4, len(KS) - 0.6); ax.set_ylim(*ylim); ax.set_yticks(yt)
+    ax.set_xlim(-0.45, len(KS) - 0.55); ax.set_ylim(0, top); ax.set_yticks(np.arange(0, top + 1, 10))
     ax.set_ylabel(ylab, labelpad=2)
     grid(ax)
 h_, l_ = axes[0].get_legend_handles_labels()
-fig.legend(h_, l_, loc="upper left", bbox_to_anchor=(0.005, 0.925), ncol=3, frameon=False, handlelength=1.6, columnspacing=1.0,
-           fontsize=6.2)
+fig.legend(h_, l_, loc="upper left", bbox_to_anchor=(0.005, 0.935), ncol=3, frameon=False, handlelength=1.6, columnspacing=0.9,
+           fontsize=6.0)
 title(fig, 0.01, 0.995, "(a) Unmet rentals")
 title(fig, 0.515, 0.995, "(b) Empty station-minutes")
 save(fig, "fig_sim_ci.png", ax=axes[0])
