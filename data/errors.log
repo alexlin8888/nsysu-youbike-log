@@ -69,3 +69,4 @@
 2026-10-19T10:30:00+08:00 fetch failed after 3 attempts: HTTP Error 503: Service Unavailable
 2026-10-19T10:40:00+08:00 fetch failed after 3 attempts: HTTP Error 503: Service Unavailable
 2026-10-20T15:10:00+08:00 fetch failed after 3 attempts: IncompleteRead(6328996 bytes read, 12 more expected)
+2026-10-20T15:20:00+08:00 fetch failed after 3 attempts: Expecting ':' delimiter: line 1 column 4379895 (char 4379894)
