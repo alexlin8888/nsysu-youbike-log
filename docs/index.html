@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="中山大學周邊 309 個 YouBike 站的即時缺車機率與下一次鐘響前的卡車調度路線（人工智慧導論期末專案，第 54 組）">
+<meta property="og:title" content="Beat the Bell · 中山大學 YouBike 即時缺車預測與調度">
+<meta property="og:description" content="每 10 分鐘更新：每站 30／60 分內的缺車機率、未來 90 分預期借不到車的人次、建議的卡車路線。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%231f6fd0' stroke-width='3'/%3E%3Cpath d='M16 3 A13 13 0 1 1 4.7 22.5' fill='none' stroke='%238e8c86' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23d6502a'/%3E%3C/svg%3E">
 <title>Beat the Bell 中山即時調度</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <style>
@@ -662,6 +666,8 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
 /* truck plan */
 .truck-sum { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--fg2); margin: 0 0 10px; }
 .truck-sum b { color: var(--fg); font-weight: 600; }
+h2 .copy { border: 1px solid var(--line2); background: var(--panel2); border-radius: 6px; padding: 2px 8px; font-size: 11.5px; cursor: pointer; color: var(--fg2); letter-spacing: 0; text-transform: none; font-weight: 500; }
+h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
 .stops { list-style: none; margin: 0; padding: 0; position: relative; }
 .stops::before { content: ""; position: absolute; left: 12px; top: 12px; bottom: 12px; width: 2px; background: var(--line2); }
 .stop { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: start; padding: 6px 0; position: relative; cursor: pointer; border-radius: 6px; }
@@ -685,6 +691,7 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
 .risk li.sel { background: var(--accent-soft); }
 .risk .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .risk .nm .tag { display: inline-block; font-size: 10px; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 0 4px; margin-left: 5px; vertical-align: 1px; }
+.risk .nm .tag.gw { color: var(--fg2); border-color: var(--line2); }
 .risk .bk { font-family: var(--font-num); font-size: 12px; color: var(--fg2); text-align: right; font-variant-numeric: tabular-nums; }
 .bar { position: relative; height: 8px; background: var(--r0); border-radius: 2px; overflow: hidden; }
 .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--r3); }
@@ -713,7 +720,11 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
 .replaybar { position: absolute; right: 12px; bottom: 26px; width: min(600px, calc(100% - 200px)); background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 8px 12px; z-index: 500; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow); }
 .replaybar button { border: 1px solid var(--line2); background: var(--panel2); border-radius: 6px; width: 34px; height: 30px; cursor: pointer; font-size: 14px; }
-.replaybar input[type="range"] { flex: 1; accent-color: var(--route); min-width: 0; }
+.replaybar .sliderwrap { flex: 1; min-width: 0; position: relative; padding-bottom: 8px; }
+.replaybar input[type="range"] { width: 100%; accent-color: var(--route); min-width: 0; margin: 0; display: block; }
+.replaybar .sticks { position: absolute; left: 7px; right: 7px; bottom: 0; height: 6px; }
+.replaybar .sticks i { position: absolute; top: 0; width: 1.5px; height: 6px; background: var(--muted); transform: translateX(-50%); }
+.replaybar .sticks i.major { background: var(--fg2); height: 8px; top: -1px; }
 .replaybar .t { font-family: var(--font-num); font-size: 13px; min-width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
 .about summary { cursor: pointer; font-size: 12px; color: var(--fg2); }
 .about .body { font-size: 12px; color: var(--fg2); line-height: 1.55; margin-top: 8px; display: grid; gap: 6px; }
@@ -780,13 +791,13 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
       </section>
 
       <section>
-        <h2 id="hPlan">下一次鐘響前的卡車路線</h2>
+        <h2><span id="hPlan">下一次鐘響前的卡車路線</span><button class="copy" id="copyAll" type="button" hidden>複製路線</button></h2>
         <div id="plans"></div>
       </section>
 
       <section>
         <h2><span id="hRisk">缺車風險最高的站</span>
-          <span class="seg" role="group" aria-label="horizon"><button id="h30" aria-pressed="true">30 分</button><button id="h60" aria-pressed="false">60 分</button></span></h2>
+          <span class="seg" role="group" aria-label="horizon"><button id="h30" aria-pressed="true">30 分</button><button id="h60" aria-pressed="false">60 分</button><button id="hU" aria-pressed="false">90 分缺口</button></span></h2>
         <ol class="risk" id="risk"></ol>
       </section>
 
@@ -798,7 +809,7 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
       <div class="legend" id="legend"></div>
       <div class="replaybar" id="replaybar" hidden>
         <button id="play" aria-label="play">▶</button>
-        <input type="range" id="slider" min="0" max="0" value="0" aria-label="time">
+        <span class="sliderwrap"><input type="range" id="slider" min="0" max="0" value="0" aria-label="time"><span class="sticks" id="sticks"></span></span>
         <span class="t" id="sliderT">–</span>
       </div>
     </section>
@@ -817,7 +828,7 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
           saved: "依建議路線可避免（人次）", plan: "下一次鐘響前的卡車路線", riskH: "缺車風險最高的站", min: "分", toBell: "距下一次鐘響 {b}", noBellToday: "今天沒有鐘響",
           offday: "假日：校園站不會因下課被借空", dayOver: "今天的課結束了", bellTime: "現在 {t}", pick: "載走 {n} 台", drop: "送 {n} 台", now: "目前 {b} / {c}", eta: "+{t} 分",
           onTruck: "車上 {n} 台", truck: "卡車 {k}", stops: "{n} 站", about: "約 {t} 分、{k} km", avoid: "預計避免 {v} 人次借不到車", noPlan: "目前沒有值得出車的調度：未來 {h} 分內各站預期的缺車都很少，出車的時間成本高於能避免的人次。",
-          window: "規劃器只在 06:00–23:00 運作。", campus: "校內", legend: "缺車機率（{h} 分內）", legCampus: "校內站（藍圈）", legRing: "外圈 = 車柱裡有車的比例", legRoute: "建議卡車路線",
+          window: "規劃器只在 06:00–23:00 運作。", campus: "校內", gateway: "門戶", unmetH: "未來 90 分缺口最大的站", modeU: "90 分缺口", legendU: "未來 {h} 分預期借不到車（人次）", copy: "複製路線", copied: "已複製", stalebig: "紀錄器已 {m} 分鐘沒有新資料，顯示的是最後一筆快照。", legend: "缺車機率（{h} 分內）", legCampus: "校內站（藍圈）", legRing: "外圈 = 車柱裡有車的比例", legRoute: "建議卡車路線",
           legGrey: "灰色 = 暫停服務或無資料", bikes: "車", docks: "空位", p30: "30 分缺車", p60: "60 分缺車", unmetS: "90 分預期借不到", stale2: "資料 {m} 分鐘前更新", oos: "暫停服務",
           excluded: "旗津區，不納入卡車路線", todayStock: "今天的車數（06:00 起，虛線 = 鐘響）", aboutSum: "方法與數據",
           aboutBody: "<div><b>資料</b> 紀錄器每 10 分鐘抓官方 API，中山周邊 5 km 內 309 站，自 10/1 起。</div><div><b>缺車機率</b> 在臺大 10 個月資料上訓練的 LightGBM 模型，只用庫存與時間特徵，直接用於中山（zero-shot）；臺大測試 AUC 0.93，中山 0.93。</div><div><b>借還速率</b> 高雄沒有騎乘紀錄，改用規劃器的生滅鏈對紀錄器的 10 分鐘變化做最大概似估計；最後 7 天檢驗，比只數毛變化量的下界準。</div><div><b>卡車路線</b> 用生滅鏈算每站未來 {h} 分預期借不到車的人次，路線搜尋（貪婪插入、模擬退火、2-opt）選最值得的停靠與載量，每台車 {q} 台、時速 {s} km/h、每站停 {st} 分。臺大真實騎乘重播：1／3／6 台車分別少 13%／30%／45% 借不到車的人次。</div><div><b>限制</b> 車程用直線距離 × 1.3 估，旗津的站排除；模型未用中山資料微調。</div><div>程式與資料：<a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" },
@@ -826,17 +837,20 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
           saved: "Avoided by the suggested route", plan: "Truck route before the next bell", riskH: "Highest stockout risk", min: "min", toBell: "until the {b} bell", noBellToday: "No bells today",
           offday: "Off-day: campus stations are not drained by class ends", dayOver: "Classes are over for today", bellTime: "now {t}", pick: "Pick up {n}", drop: "Drop off {n}", now: "now {b} / {c}", eta: "+{t} min",
           onTruck: "{n} on truck", truck: "Truck {k}", stops: "{n} stops", about: "about {t} min, {k} km", avoid: "avoids about {v} unmet rentals", noPlan: "Nothing worth dispatching now: the expected stockouts over the next {h} min are too small to pay for the truck time.",
-          window: "The planner runs 06:00–23:00 only.", campus: "campus", legend: "P(empty within {h} min)", legCampus: "campus station (blue ring)", legRing: "outer ring = share of docks with a bike", legRoute: "suggested truck route",
+          window: "The planner runs 06:00–23:00 only.", campus: "campus", gateway: "gateway", unmetH: "Largest expected shortfall, next 90 min", modeU: "shortfall", legendU: "Expected unmet rentals, next {h} min", copy: "Copy route", copied: "Copied", stalebig: "The logger has not reported for {m} min; this is the last snapshot.", legend: "P(empty within {h} min)", legCampus: "campus station (blue ring)", legRing: "outer ring = share of docks with a bike", legRoute: "suggested truck route",
           legGrey: "grey = out of service or no data", bikes: "bikes", docks: "docks", p30: "P(empty) 30 min", p60: "P(empty) 60 min", unmetS: "unmet, next 90 min", stale2: "reported {m} min ago", oos: "out of service",
           excluded: "Qijin district, not served by the truck", todayStock: "Bikes today since 06:00 (dashed = bells)", aboutSum: "Method and numbers",
           aboutBody: "<div><b>Data</b> A logger reads the official API every 10 minutes for the 309 stations within 5 km of NSYSU, since 1 Oct.</div><div><b>Stockout probability</b> A LightGBM model trained on 10 months of NTU data from inventory and time features only, applied to NSYSU without fine-tuning (zero-shot): AUC 0.93 on the NTU test months, 0.93 at NSYSU.</div><div><b>Rental and return rates</b> Kaohsiung publishes no trip data, so the planner's birth–death chain is fitted by maximum likelihood to the logger's 10-minute changes; on the last 7 days it beats the gross-change lower bound.</div><div><b>Truck route</b> The chain prices every station by the unmet rentals expected in the next {h} min; a route search (greedy insertion, simulated annealing, 2-opt) picks the stops and loads: {q} bikes per truck, {s} km/h, {st} min per stop. In a replay of real NTU trips, 1 / 3 / 6 trucks avoid 13% / 30% / 45% of unmet rentals.</div><div><b>Limits</b> Travel times are straight-line × 1.3; Qijin stations are excluded; the model is not fine-tuned on NSYSU data.</div><div>Code and data: <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" }
   };
-  var lang = "zh", mode = "live", horizon = 30, live = null, replay = null, slot = 0, playing = false, playTimer = null, selected = null, fitted = false;
+  var lang = "zh", mode = "live", horizon = 30, GATEWAY = { "501209024": 1, "501209062": 1, "501209042": 1, "501209036": 1, "501209026": 1, "501209023": 1, "501209022": 1, "501209032": 1, "501209025": 1, "501209104": 1, "501209028": 1 }, live = null, replay = null, slot = 0, playing = false, playTimer = null, selected = null, fitted = false;
   var map, tiles, glyphLayer, routeLayer, markers = {};
   var css = getComputedStyle(document.documentElement);
   function tok(n) { return css.getPropertyValue(n).trim(); }
   function t(k, v) { var s = T[lang][k] || k; if (v) Object.keys(v).forEach(function (x) { s = s.split("{" + x + "}").join(v[x]); }); return s; }
   function ramp(p) { if (p == null) return tok("--muted"); return tok(p < 0.1 ? "--r0" : p < 0.3 ? "--r1" : p < 0.5 ? "--r2" : p < 0.75 ? "--r3" : "--r4"); }
+  function rampU(u) { if (u == null) return tok("--muted"); return tok(u < 0.5 ? "--r0" : u < 2 ? "--r1" : u < 5 ? "--r2" : u < 10 ? "--r3" : "--r4"); }
+  function keyOf() { return horizon === 30 ? "p30" : horizon === 60 ? "p60" : "unmet"; }
+  function colorOf(v, i) { return horizon === 90 ? rampU(v.unmet ? v.unmet[i] : null) : ramp(v[keyOf()][i]); }
   function fmt(x, d) { return x == null ? "–" : Number(x).toFixed(d == null ? 0 : d); }
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function hm(m) { return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
@@ -880,7 +894,7 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
     var R = glyphR(cap), S = 2 * R + 6, c = S / 2, rr = Math.max(2, R - 3.5), labels = map.getZoom() >= 15;
     var frac = observed && cap > 0 ? Math.max(0, Math.min(1, bikes / cap)) : 0;
     var ring = CAMPUS[s.sno] ? tok("--accent") : tok("--line");
-    var inner = observed ? ramp(p) : tok("--r0");
+    var inner = observed ? p : tok("--r0");
     var arc = "";
     if (frac > 0) {
       var a = frac * 2 * Math.PI - Math.PI / 2, x = c + R * Math.cos(a), y = c + R * Math.sin(a), big = frac > 0.5 ? 1 : 0;
@@ -894,13 +908,12 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
   }
   function drawStations(v) {
     glyphLayer.clearLayers(); markers = {};
-    var key = horizon === 30 ? "p30" : "p60";
     if (!fitted) { fitted = true; var near = v.stations.filter(function (s) { return Math.hypot((s.lat - 22.6273) * 111, (s.lng - 120.2658) * 102.5) <= 2.6; });
       map.fitBounds(L.latLngBounds(near.map(function (s) { return [s.lat, s.lng]; })), { padding: [24, 24] }); }
     v.stations.forEach(function (s, i) {
       var observed = v.bikes[i] != null, cap = s.cap;
       var R = glyphR(cap), S = 2 * R + 6;
-      var m = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: glyphHtml(s, v.bikes[i], v[key][i], observed, cap, selected === i), iconSize: [S, S], iconAnchor: [S / 2, S / 2] }),
+      var m = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: glyphHtml(s, v.bikes[i], colorOf(v, i), observed, cap, selected === i), iconSize: [S, S], iconAnchor: [S / 2, S / 2] }),
         zIndexOffset: CAMPUS[s.sno] ? 500 : (selected === i ? 800 : 0), keyboard: false });
       m.on("click", function (e) { L.DomEvent.stopPropagation(e); select(i); });
       m.addTo(glyphLayer); markers[i] = m;
@@ -951,6 +964,13 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
   function renderPlans(v) {
     document.getElementById("hPlan").textContent = t("plan");
     var el = document.getElementById("plans"); el.innerHTML = "";
+    var cb = document.getElementById("copyAll"); cb.hidden = !(v.in_window && v.plans && v.plans.length); cb.textContent = t("copy");
+    cb.onclick = function () {
+      var text = v.snapshot_at + "\n" + v.plans.map(function (pl) { return t("truck", { k: pl.truck }) + "\n" + pl.stops.map(function (st, i) { var ss = v.stations[st.i]; return (i + 1) + ". " + (st.d > 0 ? t("drop", { n: st.d }) : t("pick", { n: -st.d })) + " " + nameOf(ss) + " (" + t("now", { b: v.bikes[st.i], c: ss.cap }) + ", " + t("eta", { t: fmt(st.eta) }) + ")"; }).join("\n"); }).join("\n");
+      var done = function () { cb.textContent = t("copied"); setTimeout(function () { cb.textContent = t("copy"); }, 1500); };
+      var fallback = function (tx) { var ta = document.createElement("textarea"); ta.value = tx; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { fallback(text); done(); }); else { fallback(text); done(); }
+    };
     if (!v.in_window) { el.innerHTML = "<div class=\"empty-note\">" + t("window") + "</div>"; return; }
     if (!v.plans || !v.plans.length) { el.innerHTML = "<div class=\"empty-note\">" + t("noPlan", { h: v.meta.horizon_min }) + "</div>"; return; }
     v.plans.forEach(function (pl) {
@@ -971,13 +991,16 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
   }
   function renderRisk(v) {
     document.getElementById("hRisk").textContent = t("riskH");
-    var key = horizon === 30 ? "p30" : "p60", idx = [];
-    v.stations.forEach(function (s, i) { if (v[key][i] != null) idx.push(i); });
-    idx.sort(function (a, b) { return v[key][b] - v[key][a]; });
+    var key = keyOf(), arr = key === "unmet" ? (v.unmet || []) : v[key], idx = [];
+    v.stations.forEach(function (s, i) { if (arr[i] != null) idx.push(i); });
+    idx.sort(function (a, b) { return arr[b] - arr[a]; });
+    document.getElementById("hRisk").textContent = key === "unmet" ? t("unmetH") : t("riskH");
     var ol = document.getElementById("risk"); ol.innerHTML = "";
+    var top = key === "unmet" ? Math.max(1, arr[idx[0]] || 1) : 1;
     idx.slice(0, 10).forEach(function (i) {
       var s = v.stations[i], li = document.createElement("li"); li.tabIndex = 0; if (selected === i) li.className = "sel";
-      li.innerHTML = "<span class=\"nm\">" + nameOf(s) + (CAMPUS[s.sno] ? "<span class=\"tag\">" + t("campus") + "</span>" : "") + "</span><span class=\"bk\">" + v.bikes[i] + " / " + s.cap + "</span><span class=\"bar\"><i style=\"width:" + Math.round(v[key][i] * 100) + "%\"></i></span><span class=\"pv\">" + v[key][i].toFixed(2) + "</span>";
+      var tag = CAMPUS[s.sno] ? "<span class=\"tag\">" + t("campus") + "</span>" : (GATEWAY[s.sno] ? "<span class=\"tag gw\">" + t("gateway") + "</span>" : "");
+      li.innerHTML = "<span class=\"nm\">" + nameOf(s) + tag + "</span><span class=\"bk\">" + v.bikes[i] + " / " + s.cap + "</span><span class=\"bar\"><i style=\"width:" + Math.round(100 * arr[i] / top) + "%\"></i></span><span class=\"pv\">" + (key === "unmet" ? arr[i].toFixed(1) : arr[i].toFixed(2)) + "</span>";
       var go = function () { select(i); map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15)); };
       li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
       ol.appendChild(li);
@@ -1018,7 +1041,8 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
     wrap.hidden = false;
   }
   function renderLegend(v) {
-    document.getElementById("legend").innerHTML = "<div>" + t("legend", { h: horizon }) + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\"><span>0</span><span>0.5</span><span>1</span></div>" +
+    var ends = horizon === 90 ? "<span>0</span><span>5</span><span>10+</span>" : "<span>0</span><span>0.5</span><span>1</span>";
+    document.getElementById("legend").innerHTML = "<div>" + (horizon === 90 ? t("legendU", { h: v.meta.horizon_min }) : t("legend", { h: horizon })) + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\">" + ends + "</div>" +
       "<div class=\"row\">" + t("legRing") + "</div><div class=\"row\">" + t("legCampus") + "</div><div class=\"row\"><span class=\"ln\"></span>" + t("legRoute") + "</div><div class=\"row\">" + t("legGrey") + "</div>";
   }
   function renderStatus(v) {
@@ -1028,25 +1052,31 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
     var n = taipeiNow(), snap = v.snapshot_at, agoMin = Math.max(0, Math.round((n - new Date(snap.replace(" ", "T") + ":00")) / 60000));
     if (agoMin > 25) st.classList.add("stale");
     tx.textContent = t("liveAt", { t: snap.slice(11) }) + t("ago", { m: agoMin });
+    var el = document.getElementById("err");
+    if (agoMin > 60) { el.hidden = false; el.textContent = t("stalebig", { m: agoMin }); } else if (el.textContent.indexOf("HTTP") < 0) { el.hidden = true; }
   }
   function renderChrome() {
     document.getElementById("title").textContent = t("title"); document.title = lang === "zh" ? "Beat the Bell 中山即時調度" : "Beat the Bell NSYSU Live";
     document.getElementById("mLive").textContent = t("live"); document.getElementById("mReplay").textContent = t("replay");
     document.getElementById("aboutSum").textContent = t("aboutSum");
-    document.getElementById("h30").textContent = "30 " + t("min"); document.getElementById("h60").textContent = "60 " + t("min");
+    document.getElementById("h30").textContent = "30 " + t("min"); document.getElementById("h60").textContent = "60 " + t("min"); document.getElementById("hU").textContent = t("modeU");
     var v = view(); var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
     document.getElementById("aboutBody").innerHTML = t("aboutBody", { h: v ? v.meta.horizon_min : 90, q: s.Q, s: s.speed_kmh, st: s.stop_min });
   }
   function render() {
     var v = view(); renderChrome(); if (!v) return;
     renderStatus(v); renderBell(v); renderKpis(v); renderPlans(v); renderRisk(v); renderCard(v); renderLegend(v); drawStations(v); drawRoute(v);
-    if (mode === "replay") { var sl = document.getElementById("slider"); sl.max = replay.slots.length - 1; sl.value = slot; document.getElementById("sliderT").textContent = replay.slots[slot].snapshot_at.slice(11); }
+    if (mode === "replay") { var sl = document.getElementById("slider"); sl.max = replay.slots.length - 1; sl.value = slot; document.getElementById("sliderT").textContent = replay.slots[slot].snapshot_at.slice(11);
+      var n = replay.slots.length, t0 = replay.slots[0].t_min, t1 = replay.slots[n - 1].t_min, hh = "";
+      replay.bells.forEach(function (b) { var bm = parseInt(b.slice(0, 2), 10) * 60 + parseInt(b.slice(3), 10); if (bm < t0 || bm > t1) return; hh += "<i class=\"" + (replay.major_bells.indexOf(b) >= 0 ? "major" : "") + "\" style=\"left:" + (100 * (bm - t0) / (t1 - t0)).toFixed(2) + "%\"></i>"; });
+      document.getElementById("sticks").innerHTML = hh; }
   }
   function select(i) { selected = i; var v = view(); if (!v) return; renderCard(v); renderRisk(v); drawStations(v); if (i != null && markers[i]) markers[i].setZIndexOffset(800); }
 
   // ---------- data ----------
   function loadLive() {
-    return fetch("state.json", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    var url = /claude\.ai$/.test(location.hostname) || location.protocol === "file:" ? "state.json" : "state.json?t=" + Math.floor(Date.now() / 60000);
+    return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function (s) { live = s; document.getElementById("err").hidden = true; if (mode === "live") render(); })
       .catch(function (e) { var el = document.getElementById("err"); el.hidden = false; el.textContent = (live ? t("stale", { t: live.snapshot_at.slice(11) }) : e.message); if (live && mode === "live") { render(); document.getElementById("status").classList.add("stale"); } });
   }
@@ -1074,7 +1104,8 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
   function setLang(l) { lang = l; document.getElementById("lZh").setAttribute("aria-pressed", l === "zh"); document.getElementById("lEn").setAttribute("aria-pressed", l === "en"); document.documentElement.lang = l === "zh" ? "zh-Hant" : "en"; try { localStorage.setItem("btb-lang", l); } catch (e) {} render(); }
   document.getElementById("h30").addEventListener("click", function () { setH(30); });
   document.getElementById("h60").addEventListener("click", function () { setH(60); });
-  function setH(h) { horizon = h; document.getElementById("h30").setAttribute("aria-pressed", h === 30); document.getElementById("h60").setAttribute("aria-pressed", h === 60); render(); }
+  document.getElementById("hU").addEventListener("click", function () { setH(90); });
+  function setH(h) { horizon = h; document.getElementById("h30").setAttribute("aria-pressed", h === 30); document.getElementById("h60").setAttribute("aria-pressed", h === 60); document.getElementById("hU").setAttribute("aria-pressed", h === 90); render(); }
   document.getElementById("play").addEventListener("click", togglePlay);
   document.getElementById("slider").addEventListener("input", function (e) { stopPlay(); slot = parseInt(e.target.value, 10); render(); });
   try { var saved = localStorage.getItem("btb-lang"); if (saved === "en") { lang = "en"; document.getElementById("lZh").setAttribute("aria-pressed", "false"); document.getElementById("lEn").setAttribute("aria-pressed", "true"); } } catch (e) {}
