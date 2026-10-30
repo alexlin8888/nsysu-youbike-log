@@ -35,6 +35,8 @@
 | `route_planner.py` | 路徑搜尋規劃器：生滅鏈（截斷校正費率）算出每站每個庫存水準在未來 H 分鐘的預期未滿足租借；給定停靠順序時載量用動態規劃求最佳，順序用貪婪插入、模擬退火與 2-opt 改進；每台車開完前兩站就重新規劃 |
 | `tune_route.sh`、`run_route_test.sh` | 在驗證日調整地平線 H、時間成本 β、每次執行幾站；用選定設定跑 28 個測試日（1/3/6 台車） |
 | `merge_sim.py`、`sim_numbers.py` | 合併新舊模擬結果；報告用的減少比例與成對日拔靴區間 |
+| `nsysu_rates.py` | 中山各站的借還速率：高雄沒有騎乘紀錄，改把紀錄器每 10 分鐘的庫存變化用規劃器的生滅鏈做最大概似估計（空站、滿站的截斷由鏈本身處理，不是下界）；每格（站×上課日／假日×小時）用 3 小時曝險的先驗往全站同時段平均收縮；鏈給的機率低於 1e-5 的轉移視為卡車調度排除；`--holdout 7` 以最後 7 天檢驗 |
+| `demo_state.py` | 即時 demo 的狀態：最新快照 → 特徵 → 臺大模型（zero-shot）算 30／60 分缺車機率 → 生滅鏈算各站未來 90 分預期借不到車 → 路線搜尋排卡車路線，寫成 `docs/state.json`；紀錄器的 workflow 每 10 分鐘跑一次 |
 | `figs_v2.py`, `figs_v3.py`, `figs_v4.py`, `hw3_figs.py`, `report_figs.py` | 報告圖（`figcheck.py` 自動檢查文字是否被裁切或重疊）；`figs_v4.py` 畫方法示意圖（單站一日的對帳、截斷與生滅鏈）、鐘響散佈圖、中山遷移與課表特徵的信賴區間圖、模擬器信賴區間圖 |
 | `figstyle.py` | 圖表共用樣式 |
 
@@ -62,6 +64,10 @@ bash code/run_route_test.sh work/ntu work/model work/sim_route
 python code/merge_sim.py work/sim work/sim_route work/sim_v2
 python code/sim_numbers.py work/sim_v2 work/sim_v2/sim_numbers.json
 python code/bootstrap_ci.py work/model/sweep work/model/transfer work/sim_v2 work/model/ci
+# 中山的借還速率與即時 demo
+python code/nsysu_rates.py ../data results/nsysu/rates --holdout 7
+python code/demo_state.py ../data results ../docs/state.json --trucks 1            # --at "2026-10-28 15:30" 可重播過去的時刻
+python code/demo_state.py ../data results ../docs/replay_2026-10-28.json --replay 2026-10-28   # 一天的每個時段，給頁面的重播模式
 # 中山
 python code/nsysu_analysis.py ../data results/nsysu
 # 課表：courses_115-1.tsv 由公開課程查詢系統逐日（星期一～日）查詢匯出（需人工通過驗證碼）
@@ -80,6 +86,7 @@ TT_SPLIT=week python code/timetable_nsysu.py ../data work/model results/nsysu/ti
   `demand/` 截斷校正與調度推論的結果與圖。
 - `model/`：預測模型的指標、可靠度曲線、特徵重要性、測試集預測；`model/sweep/` 時距掃描與 Poisson 推演
   （`sweep_metrics.csv`、`rates_train.csv`、`sweep_setup.json` 含 MC 對照）；`model/transfer/` 遷移；`model/ci/` 信賴區間；`model/timetable/` 課表特徵實驗（逐日留一；`week/` 為第一週訓練、第二週測試）。
+- `nsysu/rates/`：中山各站速率 `rates.csv`（`lam_r`、`lam_q` 每小時；`lam_*_gross` 為毛變化量下界）、全站同時段平均 `rates_prior.csv`、最後 7 天的檢驗 `rates_holdout.csv`（每筆轉移的對數概似：鏈估計 −1.51、毛變化量 −1.59、同時段平均 −1.72）。
 - `sim/k1,k3,k6/`：重播模擬每日結果與摘要（含 `route`、`route1`）；`sim/route/` 路徑搜尋的原始輸出與設定；`sim/tuning/sim_tune_summary.csv` 驗證日調參結果；`sim/sim_numbers.json` 報告引用的數字與區間。
 
 執行環境：Python 3.11、pandas 3.0、numpy 2.4、LightGBM 4.7、scikit-learn 1.8、2 vCPU / 7 GB RAM。

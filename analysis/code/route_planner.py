@@ -27,6 +27,20 @@ from scipy.stats import poisson
 STEP = 10                 # minutes per chain step
 
 
+def kernel1(lam_r, lam_q, c):
+    """One-step transition matrix (c+1, c+1) of a single station with hourly rates lam_r, lam_q (float64)."""
+    a, b = lam_r * STEP / 60, lam_q * STEP / 60
+    M = int(max(a, b) + 8 * math.sqrt(max(a, b)) + 20) + c
+    r = np.arange(M + 1)
+    pr, pq = poisson.pmf(r, a), poisson.pmf(r, b)
+    K = np.zeros((c + 1, c + 1))
+    for i in range(c + 1):
+        prc = pr[:i + 1].copy(); prc[i] = pr[i:].sum()
+        pqc = pq[:c - i + 1].copy(); pqc[c - i] = pq[c - i:].sum()
+        K[i] = np.convolve(pqc, prc[::-1])
+    return K
+
+
 def kernels(lam_r, lam_q, cap, C):
     """One-step transition matrices K (N, C+1, C+1) and expected unmet rentals per step u (N, C+1).
     Rentals ~ Poisson(lam_r / 6) censored at the stock, returns ~ Poisson(lam_q / 6) censored at the free docks.
@@ -74,6 +88,7 @@ class ChainValues:
             V[a] = self.u[hods[a]] + np.einsum("nij,nj->ni", self.K[hods[a]], V[a + 1])
         P = np.zeros((N, C + 1), np.float32)
         P[np.arange(N), np.clip(bikes, 0, self.cap)] = 1.0
+        self.last_unmet = V[0][np.arange(N), np.clip(bikes, 0, self.cap)]   # expected unmet rentals per station without action
         B = np.empty((N, A, 2 * Q + 1), np.float32)
         for a in range(A):
             ev = (P * V[a]).sum(1)

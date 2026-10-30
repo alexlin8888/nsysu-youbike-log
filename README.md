@@ -54,7 +54,13 @@
 `data/stations.csv`：高雄全部 1,512 站的站號、中英文名、行政區、座標、車柱數、距中山距離（公尺）、
 是否在記錄範圍內（`logged`）。內容有變才會重寫。
 
-`data/latest.json`：最新一次快照，之後 demo 網頁直接讀這個檔。
+`data/latest.json`：最新一次快照。
+
+## 即時 demo
+
+`docs/index.html` 是即時頁面：每站 30／60 分內的缺車機率、未來 90 分預期借不到車的人次，以及下一次鐘響前的卡車路線。資料來自 `docs/state.json`，由紀錄器的 workflow 在每次快照後用 `analysis/code/demo_state.py` 重算（約 5 秒）；`docs/replay_2026-10-28.json` 是 10/28 全天每 10 分鐘的狀態，頁面的「重播」模式用它。
+
+公開網址要在 repo 的 **Settings → Pages** 設定一次：Source 選 *Deploy from a branch*，Branch 選 `main`、資料夾選 `/docs`，Save。之後網址是 `https://alexlin8888.github.io/nsysu-youbike-log/`，每次 commit 後約一分鐘更新。
 
 ## 改設定
 

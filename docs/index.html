@@ -1,0 +1,1089 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beat the Bell 中山即時調度</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+.leaflet-tile::selection {
+	background: transparent;
+}
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+.leaflet-container img.leaflet-tile {
+	mix-blend-mode: plus-lighter;
+}
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+.leaflet-pane         { z-index: 400; }
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	display: inline-block;
+	position: absolute;
+	}
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; 
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; 
+	pointer-events: auto;
+	}
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+.leaflet-default-icon-path { 
+	}
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+	margin: -10px auto 0;
+	pointer-events: auto;
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+@media print {
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+/* layout: a top bar, a 420px side panel (countdown, KPIs, truck plan, risk list, station card) beside a full-height map;
+   on phones the map sits on top and the panel scrolls below it */
+:root {
+  --bg: #f3f2ed; --panel: #ffffff; --panel2: #f8f7f3; --fg: #1a1a17; --fg2: #5b5955; --muted: #8e8c86; --line: #e2e0da; --line2: #cfccc4;
+  --accent: #1f6fd0; --accent-soft: #dce9fa; --route: #e2602a; --route-soft: #fbe6da; --good: #1f9a5e; --warn: #c9871a;
+  --map-bg: #e8ebee; --tile-filter: saturate(0.25) brightness(1.04) contrast(0.92);
+  --r0: #eceae2; --r1: #f6d8bf; --r2: #ec9a6b; --r3: #d6502a; --r4: #8c1a0a;
+  --shadow: 0 2px 12px rgba(20, 20, 10, 0.12);
+  --font-ui: "IBM Plex Sans", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121418; --panel: #1a1d23; --panel2: #20242b; --fg: #ebe9e2; --fg2: #b3b1aa; --muted: #7d7b75; --line: #2d3139; --line2: #3c414b;
+  --accent: #76aef2; --accent-soft: #1f2d42; --route: #ff8a5c; --route-soft: #3b2920; --good: #4fc083; --warn: #e0a84a;
+  --map-bg: #1b1e24; --tile-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.78) contrast(0.9);
+  --r0: #2a2e36; --r1: #5a3f33; --r2: #a0563a; --r3: #e0603a; --r4: #ff9a6a;
+  --shadow: 0 2px 14px rgba(0, 0, 0, 0.5); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121418; --panel: #1a1d23; --panel2: #20242b; --fg: #ebe9e2; --fg2: #b3b1aa; --muted: #7d7b75; --line: #2d3139; --line2: #3c414b;
+  --accent: #76aef2; --accent-soft: #1f2d42; --route: #ff8a5c; --route-soft: #3b2920; --good: #4fc083; --warn: #e0a84a;
+  --map-bg: #1b1e24; --tile-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.78) contrast(0.9);
+  --r0: #2a2e36; --r1: #5a3f33; --r2: #a0563a; --r3: #e0603a; --r4: #ff9a6a;
+  --shadow: 0 2px 14px rgba(0, 0, 0, 0.5); color-scheme: dark; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.shell { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+.top { display: flex; align-items: center; gap: 14px; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--panel); border-bottom: 1px solid var(--line); min-width: 0; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand .eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2); font-weight: 600; white-space: nowrap; }
+.brand h1 { font-size: 15px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .spacer { flex: 1; }
+.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 7px; overflow: hidden; background: var(--panel2); }
+.seg button { background: transparent; border: 0; padding: 5px 11px; font-size: 12.5px; cursor: pointer; color: var(--fg2); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--panel); }
+.status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--fg2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.status.stale .dot { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 25%, transparent); }
+.status.replay .dot { background: var(--route); box-shadow: 0 0 0 3px color-mix(in srgb, var(--route) 25%, transparent); }
+.app { display: grid; grid-template-columns: 420px 1fr; min-height: 0; }
+.panel { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; min-width: 0;
+  padding-block: 16px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: grid; gap: 18px; align-content: start; }
+.mapwrap { position: relative; min-width: 0; background: var(--map-bg); }
+#map { position: absolute; inset: 0; background: var(--map-bg); }
+.leaflet-tile-pane { filter: var(--tile-filter); }
+h2 { font-size: 11.5px; font-weight: 600; color: var(--fg2); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); font-size: 11.5px; }
+
+/* countdown + bell strip */
+.bell { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel2); }
+.bell .row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.bell .big { font-family: var(--font-num); font-size: 30px; font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+.bell .big small { font-size: 14px; color: var(--fg2); margin-left: 4px; font-family: var(--font-ui); }
+.bell .lbl { color: var(--fg2); font-size: 12.5px; }
+.strip { position: relative; height: 34px; margin-top: 10px; }
+.strip .axis { position: absolute; left: 0; right: 0; top: 14px; height: 2px; background: var(--line2); border-radius: 1px; }
+.strip .tick { position: absolute; top: 9px; width: 2px; height: 12px; background: var(--muted); transform: translateX(-1px); border-radius: 1px; }
+.strip .tick.major { background: var(--fg2); height: 16px; top: 7px; }
+.strip .tick.next { background: var(--route); }
+.strip .tlabel { position: absolute; top: 24px; font-family: var(--font-num); font-size: 9.5px; color: var(--muted); transform: translateX(-50%); }
+.strip .tlabel.next { color: var(--route); font-weight: 500; }
+.strip .now { position: absolute; top: 3px; width: 10px; height: 24px; transform: translateX(-5px); }
+.strip .now::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+.strip .now::after { content: ""; position: absolute; left: 1px; top: -1px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.strip .hlabel { position: absolute; top: 24px; font-family: var(--font-num); font-size: 9.5px; color: var(--muted); transform: translateX(-50%); }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.tile { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; background: var(--panel); }
+.tile .v { font-family: var(--font-num); font-size: 24px; font-weight: 500; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.tile .v small { font-size: 12px; color: var(--fg2); font-family: var(--font-ui); margin-left: 3px; letter-spacing: 0; }
+.tile .k { font-size: 11.5px; color: var(--fg2); margin-top: 3px; line-height: 1.3; }
+.tile.plan { border-color: var(--route); background: var(--route-soft); }
+.tile.plan .v { color: var(--route); }
+
+/* truck plan */
+.truck-sum { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--fg2); margin: 0 0 10px; }
+.truck-sum b { color: var(--fg); font-weight: 600; }
+.stops { list-style: none; margin: 0; padding: 0; position: relative; }
+.stops::before { content: ""; position: absolute; left: 12px; top: 12px; bottom: 12px; width: 2px; background: var(--line2); }
+.stop { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: start; padding: 6px 0; position: relative; cursor: pointer; border-radius: 6px; }
+.stop:hover { background: var(--panel2); }
+.stop .n { width: 26px; height: 26px; border-radius: 50%; background: var(--route); color: #fff; font-family: var(--font-num); font-size: 12px; font-weight: 500; display: grid; place-items: center; border: 3px solid var(--panel); position: relative; }
+.stop .act { font-weight: 600; font-size: 13.5px; }
+.stop .act.pick { color: var(--accent); }
+.stop .act.drop { color: var(--route); }
+.stop .nm { font-size: 13.5px; }
+.stop .meta { color: var(--fg2); font-size: 12px; margin-top: 1px; }
+.stop .eta { font-family: var(--font-num); color: var(--fg2); font-size: 12px; white-space: nowrap; padding-top: 4px; font-variant-numeric: tabular-nums; text-align: right; }
+.stop .eta small { display: block; font-family: var(--font-ui); color: var(--muted); font-size: 10.5px; }
+.loadbar { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 5px; width: 120px; }
+.loadbar i { display: block; height: 100%; background: var(--accent); }
+.empty-note { font-size: 12.5px; color: var(--fg2); border: 1px dashed var(--line2); border-radius: 8px; padding: 10px 12px; }
+
+/* risk list */
+.risk { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.risk li { display: grid; grid-template-columns: 1fr 52px 64px 38px; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; border-radius: 6px; padding: 4px 6px; }
+.risk li:hover, .risk li:focus-visible { background: var(--panel2); outline: none; }
+.risk li.sel { background: var(--accent-soft); }
+.risk .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.risk .nm .tag { display: inline-block; font-size: 10px; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 0 4px; margin-left: 5px; vertical-align: 1px; }
+.risk .bk { font-family: var(--font-num); font-size: 12px; color: var(--fg2); text-align: right; font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 8px; background: var(--r0); border-radius: 2px; overflow: hidden; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--r3); }
+.risk .pv { font-family: var(--font-num); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* station card */
+.card { border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; background: var(--panel); box-shadow: var(--shadow); }
+.card .hd { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.card .nm { font-weight: 600; font-size: 15px; }
+.card .en { color: var(--fg2); font-size: 12px; }
+.card .x { border: 0; background: transparent; color: var(--fg2); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; }
+.card .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.card .fact .v { font-family: var(--font-num); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.card .fact .k { font-size: 11px; color: var(--fg2); }
+.card .spark { margin-top: 10px; }
+.card .spark svg { width: 100%; height: 86px; display: block; }
+.card .foot { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* legend, replay bar, about */
+.legend { position: absolute; left: 10px; bottom: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 11px; z-index: 500; color: var(--fg2); box-shadow: var(--shadow); }
+.legend .ramp { display: flex; height: 8px; width: 150px; margin: 4px 0 2px; border-radius: 2px; overflow: hidden; }
+.legend .ramp i { flex: 1; }
+.legend .ends { display: flex; justify-content: space-between; font-family: var(--font-num); }
+.legend .row { display: flex; align-items: center; gap: 7px; margin-top: 5px; }
+.legend .ln { width: 18px; height: 3px; background: var(--route); border-radius: 2px; }
+.replaybar { position: absolute; right: 12px; bottom: 26px; width: min(600px, calc(100% - 200px)); background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 12px; z-index: 500; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow); }
+.replaybar button { border: 1px solid var(--line2); background: var(--panel2); border-radius: 6px; width: 34px; height: 30px; cursor: pointer; font-size: 14px; }
+.replaybar input[type="range"] { flex: 1; accent-color: var(--route); min-width: 0; }
+.replaybar .t { font-family: var(--font-num); font-size: 13px; min-width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+.about summary { cursor: pointer; font-size: 12px; color: var(--fg2); }
+.about .body { font-size: 12px; color: var(--fg2); line-height: 1.55; margin-top: 8px; display: grid; gap: 6px; }
+.about b { color: var(--fg); font-weight: 600; }
+.about a { color: var(--accent); }
+.err { color: var(--route); font-size: 12px; }
+
+/* map glyphs */
+.glyph { position: relative; }
+.glyph svg { display: block; overflow: visible; }
+.glyph .lbl { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--fg); padding: 1px 4px; background: color-mix(in srgb, var(--panel) 82%, transparent); border-radius: 3px; pointer-events: none; }
+.glyph.sel svg { filter: drop-shadow(0 0 4px var(--accent)); }
+.stopicon { background: var(--route); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; font: 500 11.5px var(--font-num); border: 2px solid var(--panel); box-shadow: var(--shadow); }
+.route-line { stroke-dasharray: 10 8; animation: march 1.2s linear infinite; }
+@keyframes march { to { stroke-dashoffset: -18; } }
+.leaflet-container { font-family: var(--font-ui); }
+.leaflet-popup-content-wrapper { background: var(--panel); color: var(--fg); border-radius: 8px; font-family: var(--font-ui); font-size: 12.5px; box-shadow: var(--shadow); }
+.leaflet-popup-tip { background: var(--panel); }
+.leaflet-popup-content { margin: 9px 12px; line-height: 1.4; }
+.leaflet-bar a { background: var(--panel); color: var(--fg); border-bottom-color: var(--line); }
+.leaflet-bar a:hover { background: var(--panel2); }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--panel) 85%, transparent); color: var(--muted); font-size: 10px; }
+.leaflet-control-attribution a { color: var(--accent); }
+.leaflet-control-scale-line { background: color-mix(in srgb, var(--panel) 85%, transparent); color: var(--fg2); border-color: var(--muted); }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 46vh 1fr; }
+  .panel { border-right: 0; border-top: 1px solid var(--line); order: 2; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .mapwrap { order: 1; }
+  .replaybar { width: calc(100% - 20px); bottom: 10px; }
+  .legend { display: none; }
+  .brand h1 { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .route-line { animation: none; } * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="brand"><span class="eyebrow">Beat the Bell · Group 54</span><h1 id="title">中山大學 YouBike 即時缺車預測與調度</h1></div>
+    <span class="spacer"></span>
+    <span class="seg" role="group" aria-label="mode"><button id="mLive" aria-pressed="true">即時</button><button id="mReplay" aria-pressed="false">重播 10/28</button></span>
+    <span class="seg" role="group" aria-label="language"><button id="lZh" aria-pressed="true">中</button><button id="lEn" aria-pressed="false">EN</button></span>
+    <span class="status" id="status"><span class="dot"></span><span id="statusText">讀取中…</span></span>
+  </header>
+  <div class="app">
+    <aside class="panel">
+      <section class="bell">
+        <div class="row"><div class="big" id="bellBig">–</div><div class="lbl" id="bellLbl"></div></div>
+        <div class="strip" id="strip"></div>
+      </section>
+
+      <section id="cardWrap" hidden><div class="card" id="card"></div></section>
+
+      <section>
+        <h2 id="hKpi">目前狀態</h2>
+        <div class="kpis">
+          <div class="tile"><div class="v" id="tEmpty">–</div><div class="k" id="kEmpty">目前空站（共 – 站有資料）</div></div>
+          <div class="tile"><div class="v" id="tRisk">–</div><div class="k" id="kRisk">30 分內缺車機率 ≥ 50% 的站</div></div>
+          <div class="tile"><div class="v" id="tUnmet">–</div><div class="k" id="kUnmet">未來 90 分預期借不到車（人次）</div></div>
+          <div class="tile plan"><div class="v" id="tSaved">–</div><div class="k" id="kSaved">依建議路線可避免（人次）</div></div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="hPlan">下一次鐘響前的卡車路線</h2>
+        <div id="plans"></div>
+      </section>
+
+      <section>
+        <h2><span id="hRisk">缺車風險最高的站</span>
+          <span class="seg" role="group" aria-label="horizon"><button id="h30" aria-pressed="true">30 分</button><button id="h60" aria-pressed="false">60 分</button></span></h2>
+        <ol class="risk" id="risk"></ol>
+      </section>
+
+      <details class="about"><summary id="aboutSum">方法與數據</summary><div class="body" id="aboutBody"></div></details>
+      <div class="err" id="err" hidden></div>
+    </aside>
+    <section class="mapwrap">
+      <div id="map" role="img" aria-label="map"></div>
+      <div class="legend" id="legend"></div>
+      <div class="replaybar" id="replaybar" hidden>
+        <button id="play" aria-label="play">▶</button>
+        <input type="range" id="slider" min="0" max="0" value="0" aria-label="time">
+        <span class="t" id="sliderT">–</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  var CAMPUS = { "501209052": 1, "501209070": 1, "501209051": 1, "501209054": 1, "501209039": 1, "501209069": 1, "501209040": 1, "501209071": 1 };
+  var SHORT = { "501209052": ["圖資", "Library"], "501209070": ["西灣藝廊", "Xiziwan Hall"], "501209051": ["工學院", "Engineering"], "501209054": ["材料", "Materials"],
+                "501209039": ["社科院", "Social Sci."], "501209069": ["體育館", "Gym"], "501209040": ["海工館", "Marine Eng."], "501209071": ["海資館", "Marine Res."] };
+  var T = {
+    zh: { title: "中山大學 YouBike 即時缺車預測與調度", live: "即時", replay: "重播 10/28", loading: "讀取中…", liveAt: "即時 · 快照 {t}", ago: "（{m} 分鐘前）", replayAt: "重播 {d} · {t}",
+          stale: "暫時讀不到新資料，顯示 {t} 的快照", kpi: "目前狀態", empty: "目前空站（共 {n} 站有資料）", risk: "30 分內缺車機率 ≥ 50% 的站", unmet: "未來 {h} 分預期借不到車（人次）",
+          saved: "依建議路線可避免（人次）", plan: "下一次鐘響前的卡車路線", riskH: "缺車風險最高的站", min: "分", toBell: "距下一次鐘響 {b}", noBellToday: "今天沒有鐘響",
+          offday: "假日：校園站不會因下課被借空", dayOver: "今天的課結束了", bellTime: "現在 {t}", pick: "載走 {n} 台", drop: "送 {n} 台", now: "目前 {b} / {c}", eta: "+{t} 分",
+          onTruck: "車上 {n} 台", truck: "卡車 {k}", stops: "{n} 站", about: "約 {t} 分、{k} km", avoid: "預計避免 {v} 人次借不到車", noPlan: "目前沒有值得出車的調度：未來 {h} 分內各站預期的缺車都很少，出車的時間成本高於能避免的人次。",
+          window: "規劃器只在 06:00–23:00 運作。", campus: "校內", legend: "缺車機率（{h} 分內）", legCampus: "校內站（藍圈）", legRing: "外圈 = 車柱裡有車的比例", legRoute: "建議卡車路線",
+          legGrey: "灰色 = 暫停服務或無資料", bikes: "車", docks: "空位", p30: "30 分缺車", p60: "60 分缺車", unmetS: "90 分預期借不到", stale2: "資料 {m} 分鐘前更新", oos: "暫停服務",
+          excluded: "旗津區，不納入卡車路線", todayStock: "今天的車數（06:00 起，虛線 = 鐘響）", aboutSum: "方法與數據",
+          aboutBody: "<div><b>資料</b> 紀錄器每 10 分鐘抓官方 API，中山周邊 5 km 內 309 站，自 10/1 起。</div><div><b>缺車機率</b> 在臺大 10 個月資料上訓練的 LightGBM 模型，只用庫存與時間特徵，直接用於中山（zero-shot）；臺大測試 AUC 0.93，中山 0.93。</div><div><b>借還速率</b> 高雄沒有騎乘紀錄，改用規劃器的生滅鏈對紀錄器的 10 分鐘變化做最大概似估計；最後 7 天檢驗，比只數毛變化量的下界準。</div><div><b>卡車路線</b> 用生滅鏈算每站未來 {h} 分預期借不到車的人次，路線搜尋（貪婪插入、模擬退火、2-opt）選最值得的停靠與載量，每台車 {q} 台、時速 {s} km/h、每站停 {st} 分。臺大真實騎乘重播：1／3／6 台車分別少 13%／30%／45% 借不到車的人次。</div><div><b>限制</b> 車程用直線距離 × 1.3 估，旗津的站排除；模型未用中山資料微調。</div><div>程式與資料：<a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" },
+    en: { title: "NSYSU YouBike: live stockout prediction and rebalancing", live: "Live", replay: "Replay Oct 28", loading: "Loading…", liveAt: "Live · snapshot {t}", ago: " ({m} min ago)", replayAt: "Replay {d} · {t}",
+          stale: "No new data for now; showing the {t} snapshot", kpi: "Right now", empty: "Empty stations (of {n} reporting)", risk: "Stations with P(empty in 30 min) ≥ 0.5", unmet: "Expected unmet rentals, next {h} min",
+          saved: "Avoided by the suggested route", plan: "Truck route before the next bell", riskH: "Highest stockout risk", min: "min", toBell: "until the {b} bell", noBellToday: "No bells today",
+          offday: "Off-day: campus stations are not drained by class ends", dayOver: "Classes are over for today", bellTime: "now {t}", pick: "Pick up {n}", drop: "Drop off {n}", now: "now {b} / {c}", eta: "+{t} min",
+          onTruck: "{n} on truck", truck: "Truck {k}", stops: "{n} stops", about: "about {t} min, {k} km", avoid: "avoids about {v} unmet rentals", noPlan: "Nothing worth dispatching now: the expected stockouts over the next {h} min are too small to pay for the truck time.",
+          window: "The planner runs 06:00–23:00 only.", campus: "campus", legend: "P(empty within {h} min)", legCampus: "campus station (blue ring)", legRing: "outer ring = share of docks with a bike", legRoute: "suggested truck route",
+          legGrey: "grey = out of service or no data", bikes: "bikes", docks: "docks", p30: "P(empty) 30 min", p60: "P(empty) 60 min", unmetS: "unmet, next 90 min", stale2: "reported {m} min ago", oos: "out of service",
+          excluded: "Qijin district, not served by the truck", todayStock: "Bikes today since 06:00 (dashed = bells)", aboutSum: "Method and numbers",
+          aboutBody: "<div><b>Data</b> A logger reads the official API every 10 minutes for the 309 stations within 5 km of NSYSU, since 1 Oct.</div><div><b>Stockout probability</b> A LightGBM model trained on 10 months of NTU data from inventory and time features only, applied to NSYSU without fine-tuning (zero-shot): AUC 0.93 on the NTU test months, 0.93 at NSYSU.</div><div><b>Rental and return rates</b> Kaohsiung publishes no trip data, so the planner's birth–death chain is fitted by maximum likelihood to the logger's 10-minute changes; on the last 7 days it beats the gross-change lower bound.</div><div><b>Truck route</b> The chain prices every station by the unmet rentals expected in the next {h} min; a route search (greedy insertion, simulated annealing, 2-opt) picks the stops and loads: {q} bikes per truck, {s} km/h, {st} min per stop. In a replay of real NTU trips, 1 / 3 / 6 trucks avoid 13% / 30% / 45% of unmet rentals.</div><div><b>Limits</b> Travel times are straight-line × 1.3; Qijin stations are excluded; the model is not fine-tuned on NSYSU data.</div><div>Code and data: <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" }
+  };
+  var lang = "zh", mode = "live", horizon = 30, live = null, replay = null, slot = 0, playing = false, playTimer = null, selected = null, fitted = false;
+  var map, tiles, glyphLayer, routeLayer, markers = {};
+  var css = getComputedStyle(document.documentElement);
+  function tok(n) { return css.getPropertyValue(n).trim(); }
+  function t(k, v) { var s = T[lang][k] || k; if (v) Object.keys(v).forEach(function (x) { s = s.split("{" + x + "}").join(v[x]); }); return s; }
+  function ramp(p) { if (p == null) return tok("--muted"); return tok(p < 0.1 ? "--r0" : p < 0.3 ? "--r1" : p < 0.5 ? "--r2" : p < 0.75 ? "--r3" : "--r4"); }
+  function fmt(x, d) { return x == null ? "–" : Number(x).toFixed(d == null ? 0 : d); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function hm(m) { return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
+  function nameOf(s) { if (lang === "zh") return s.name; return CAMPUS[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || s.name); }
+  function taipeiNow() { var n = new Date(); return new Date(n.getTime() + (n.getTimezoneOffset() + 480) * 60000); }
+  function isDark() { var th = document.documentElement.getAttribute("data-theme"); return th ? th === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; }
+
+  // ---------- current view: live state or one replay slot, in one shape ----------
+  function view() {
+    if (mode === "replay" && replay) {
+      var sl = replay.slots[slot];
+      return { meta: replay, stations: replay.stations, snapshot_at: sl.snapshot_at, t_min: sl.t_min, offday: replay.offday, in_window: true, next_bell: sl.next_bell,
+               totals: sl.totals, plans: sl.plans, bikes: sl.bikes, docks: null, status: null, age: null, p30: sl.p30, p60: sl.p60, unmet: sl.unmet,
+               history: { from: replay.slots[0].snapshot_at.slice(11), step: 10, at: function (i) { return replay.slots.slice(0, slot + 1).map(function (x) { return x.bikes[i]; }); } } };
+    }
+    if (!live) return null;
+    return { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell,
+             totals: live.totals, plans: live.plans, bikes: live.bikes, docks: live.docks, status: live.status, age: live.age, p30: live.p30, p60: live.p60, unmet: live.unmet,
+             history: { from: live.history.from, step: live.history.step, at: function (i) { return live.history.bikes[i]; } } };
+  }
+
+  // ---------- map ----------
+  function tileUrl() { return "https://tile.openstreetmap.org/{z}/{x}/{y}.png"; }
+  function initMap() {
+    map = L.map("map", { zoomControl: true, attributionControl: true }).setView([22.633, 120.29], 13);
+    tiles = L.tileLayer(tileUrl(), { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>" }).addTo(map);
+    map.on("zoomend", function () { var v = view(); if (v) drawStations(v); });
+    L.control.scale({ imperial: false }).addTo(map);
+    glyphLayer = L.layerGroup().addTo(map);
+    routeLayer = L.layerGroup().addTo(map);
+    map.on("click", function () { select(null); });
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", retheme);
+    new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  }
+  function retheme() { css = getComputedStyle(document.documentElement); render(); }
+
+  function zscale() { var z = map.getZoom(), ph = window.innerWidth < 860 ? 0.85 : 1; return ph * (z <= 12 ? 0.5 : z <= 13 ? 0.65 : z <= 14 ? 0.82 : 1); }
+  function glyphR(cap) { return (5 + Math.sqrt(cap) * 1.0) * zscale(); }
+  function glyphHtml(s, bikes, p, observed, cap, sel) {
+    var R = glyphR(cap), S = 2 * R + 6, c = S / 2, rr = Math.max(2, R - 3.5), labels = map.getZoom() >= 15;
+    var frac = observed && cap > 0 ? Math.max(0, Math.min(1, bikes / cap)) : 0;
+    var ring = CAMPUS[s.sno] ? tok("--accent") : tok("--line");
+    var inner = observed ? ramp(p) : tok("--r0");
+    var arc = "";
+    if (frac > 0) {
+      var a = frac * 2 * Math.PI - Math.PI / 2, x = c + R * Math.cos(a), y = c + R * Math.sin(a), big = frac > 0.5 ? 1 : 0;
+      arc = frac >= 0.999 ? "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + tok("--muted") + "\" stroke-width=\"2.5\" stroke-opacity=\"0.85\"/>"
+        : "<path d=\"M " + c + " " + (c - R) + " A " + R + " " + R + " 0 " + big + " 1 " + x.toFixed(2) + " " + y.toFixed(2) + "\" fill=\"none\" stroke=\"" + tok("--muted") + "\" stroke-width=\"2.5\" stroke-opacity=\"0.85\" stroke-linecap=\"round\"/>";
+    }
+    var label = CAMPUS[s.sno] && labels ? "<span class=\"lbl\">" + SHORT[s.sno][lang === "zh" ? 0 : 1] + "</span>" : "";
+    return "<div class=\"glyph" + (sel ? " sel" : "") + "\"><svg width=\"" + S + "\" height=\"" + S + "\" viewBox=\"0 0 " + S + " " + S + "\">" +
+      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + ring + "\" stroke-width=\"" + (CAMPUS[s.sno] ? 2.5 : 2) + "\"" + (observed ? "" : " stroke-dasharray=\"3 3\"") + "/>" + arc +
+      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + inner + "\" fill-opacity=\"" + (observed ? 1 : 0.6) + "\"/></svg>" + label + "</div>";
+  }
+  function drawStations(v) {
+    glyphLayer.clearLayers(); markers = {};
+    var key = horizon === 30 ? "p30" : "p60";
+    if (!fitted) { fitted = true; var near = v.stations.filter(function (s) { return Math.hypot((s.lat - 22.6273) * 111, (s.lng - 120.2658) * 102.5) <= 2.6; });
+      map.fitBounds(L.latLngBounds(near.map(function (s) { return [s.lat, s.lng]; })), { padding: [24, 24] }); }
+    v.stations.forEach(function (s, i) {
+      var observed = v.bikes[i] != null, cap = s.cap;
+      var R = glyphR(cap), S = 2 * R + 6;
+      var m = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: glyphHtml(s, v.bikes[i], v[key][i], observed, cap, selected === i), iconSize: [S, S], iconAnchor: [S / 2, S / 2] }),
+        zIndexOffset: CAMPUS[s.sno] ? 500 : (selected === i ? 800 : 0), keyboard: false });
+      m.on("click", function (e) { L.DomEvent.stopPropagation(e); select(i); });
+      m.addTo(glyphLayer); markers[i] = m;
+    });
+  }
+  function drawRoute(v) {
+    routeLayer.clearLayers();
+    (v.plans || []).forEach(function (pl) {
+      var pts = pl.stops.map(function (st) { var s = v.stations[st.i]; return [s.lat, s.lng]; });
+      if (pts.length > 1) { L.polyline(pts, { color: tok("--panel"), weight: 7, opacity: 0.9 }).addTo(routeLayer); L.polyline(pts, { color: tok("--route"), weight: 3.5, opacity: 1, className: "route-line" }).addTo(routeLayer); }
+      pl.stops.forEach(function (st, i) {
+        var s = v.stations[st.i];
+        L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: "<div class=\"stopicon\">" + (i + 1) + "</div>", iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000, keyboard: false })
+          .on("click", function (e) { L.DomEvent.stopPropagation(e); select(st.i); }).addTo(routeLayer);
+      });
+    });
+  }
+
+  // ---------- panel ----------
+  function renderBell(v) {
+    var m = v.t_min, nb = v.next_bell, big = document.getElementById("bellBig"), lbl = document.getElementById("bellLbl");
+    if (mode === "live") { var n = taipeiNow(); m = n.getHours() * 60 + n.getMinutes(); var dow = n.getDay(); if (dow === 0 || dow === 6 || v.offday) nb = null;
+      else { nb = null; v.meta.bells.forEach(function (b) { var bm = parseInt(b.slice(0, 2), 10) * 60 + parseInt(b.slice(3), 10); if (!nb && bm > m) nb = { time: b, minutes: bm - m }; }); } }
+    if (v.offday) { big.textContent = "—"; lbl.textContent = t("noBellToday") + " · " + t("offday"); }
+    else if (!nb) { big.textContent = "—"; lbl.textContent = t("dayOver"); }
+    else { big.innerHTML = nb.minutes + "<small>" + t("min") + "</small>"; lbl.textContent = t("toBell", { b: nb.time }) + " · " + t("bellTime", { t: hm(m) }); }
+    var strip = document.getElementById("strip"), lo = 6 * 60, hi = 23 * 60, h = "";
+    var x = function (mm) { return (100 * (mm - lo) / (hi - lo)).toFixed(2) + "%"; };
+    h += "<div class=\"axis\"></div>";
+    [6, 9, 12, 15, 18, 21].forEach(function (hh) { if (nb) { var nbm = parseInt(nb.time.slice(0, 2), 10) * 60 + parseInt(nb.time.slice(3), 10); if (Math.abs(nbm - hh * 60) < 70) return; } h += "<span class=\"hlabel\" style=\"left:" + x(hh * 60) + "\">" + pad(hh) + "</span>"; });
+    v.meta.bells.forEach(function (b) { var bm = parseInt(b.slice(0, 2), 10) * 60 + parseInt(b.slice(3), 10); if (bm < lo || bm > hi) return;
+      var major = v.meta.major_bells.indexOf(b) >= 0, isNext = nb && nb.time === b;
+      h += "<span class=\"tick" + (major ? " major" : "") + (isNext ? " next" : "") + "\" style=\"left:" + x(bm) + "\"></span>";
+      if (isNext) h += "<span class=\"tlabel next\" style=\"left:" + x(bm) + "\">" + b + "</span>"; });
+    if (m >= lo && m <= hi) h += "<span class=\"now\" style=\"left:" + x(m) + "\"></span>";
+    strip.innerHTML = h;
+  }
+  function renderKpis(v) {
+    var tt = v.totals;
+    document.getElementById("hKpi").textContent = t("kpi");
+    document.getElementById("tEmpty").textContent = fmt(tt.empty_now); document.getElementById("kEmpty").textContent = t("empty", { n: tt.observed });
+    document.getElementById("tRisk").textContent = fmt(tt.p30_over_half); document.getElementById("kRisk").textContent = t("risk");
+    document.getElementById("tUnmet").textContent = v.in_window ? fmt(tt.expected_unmet) : "–"; document.getElementById("kUnmet").textContent = t("unmet", { h: v.meta.horizon_min });
+    var saved = document.getElementById("tSaved");
+    saved.innerHTML = v.in_window && tt.expected_unmet ? fmt(tt.plan_value) + "<small> · " + Math.round(100 * tt.plan_value / tt.expected_unmet) + "%</small>" : "–";
+    document.getElementById("kSaved").textContent = t("saved");
+  }
+  function renderPlans(v) {
+    document.getElementById("hPlan").textContent = t("plan");
+    var el = document.getElementById("plans"); el.innerHTML = "";
+    if (!v.in_window) { el.innerHTML = "<div class=\"empty-note\">" + t("window") + "</div>"; return; }
+    if (!v.plans || !v.plans.length) { el.innerHTML = "<div class=\"empty-note\">" + t("noPlan", { h: v.meta.horizon_min }) + "</div>"; return; }
+    v.plans.forEach(function (pl) {
+      var box = document.createElement("div");
+      box.innerHTML = "<div class=\"truck-sum\"><b>" + t("truck", { k: pl.truck }) + "</b><span>" + t("stops", { n: pl.stops.length }) + "</span><span>" + t("about", { t: fmt(pl.minutes), k: fmt(pl.km, 1) }) + "</span><span>" + t("avoid", { v: fmt(pl.value) }) + "</span></div>";
+      var ol = document.createElement("ol"); ol.className = "stops";
+      pl.stops.forEach(function (st, i) {
+        var s = v.stations[st.i], li = document.createElement("li"); li.className = "stop"; li.tabIndex = 0;
+        li.innerHTML = "<span class=\"n\">" + (i + 1) + "</span><span><div><span class=\"act " + (st.d > 0 ? "drop" : "pick") + "\">" + (st.d > 0 ? t("drop", { n: st.d }) : t("pick", { n: -st.d })) + "</span> <span class=\"nm\">" + nameOf(s) + "</span></div>" +
+          "<div class=\"meta\">" + t("now", { b: v.bikes[st.i], c: s.cap }) + " · " + t("onTruck", { n: st.load }) + "</div><div class=\"loadbar\"><i style=\"width:" + Math.round(100 * st.load / v.meta.settings.Q) + "%\"></i></div></span>" +
+          "<span class=\"eta\">" + t("eta", { t: fmt(st.eta) }) + "</span>";
+        var go = function () { select(st.i); map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15)); };
+        li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+        ol.appendChild(li);
+      });
+      box.appendChild(ol); el.appendChild(box);
+    });
+  }
+  function renderRisk(v) {
+    document.getElementById("hRisk").textContent = t("riskH");
+    var key = horizon === 30 ? "p30" : "p60", idx = [];
+    v.stations.forEach(function (s, i) { if (v[key][i] != null) idx.push(i); });
+    idx.sort(function (a, b) { return v[key][b] - v[key][a]; });
+    var ol = document.getElementById("risk"); ol.innerHTML = "";
+    idx.slice(0, 10).forEach(function (i) {
+      var s = v.stations[i], li = document.createElement("li"); li.tabIndex = 0; if (selected === i) li.className = "sel";
+      li.innerHTML = "<span class=\"nm\">" + nameOf(s) + (CAMPUS[s.sno] ? "<span class=\"tag\">" + t("campus") + "</span>" : "") + "</span><span class=\"bk\">" + v.bikes[i] + " / " + s.cap + "</span><span class=\"bar\"><i style=\"width:" + Math.round(v[key][i] * 100) + "%\"></i></span><span class=\"pv\">" + v[key][i].toFixed(2) + "</span>";
+      var go = function () { select(i); map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15)); };
+      li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+      ol.appendChild(li);
+    });
+  }
+  function sparkline(v, i) {
+    var s = v.stations[i], hist = v.history.at(i), from = v.history.from, step = v.history.step;
+    var W = 380, H = 86, padL = 26, padR = 8, padT = 8, padB = 18, n = hist.length;
+    var fromMin = parseInt(from.slice(0, 2), 10) * 60 + parseInt(from.slice(3), 10), lo = 6 * 60, hi = 23 * 60;
+    var X = function (mm) { return padL + (W - padL - padR) * (mm - lo) / (hi - lo); }, Y = function (b) { return padT + (H - padT - padB) * (1 - b / Math.max(s.cap, 1)); };
+    var d = "", area = "", last = null, lastT = null;
+    for (var k = 0; k < n; k++) { var b = hist[k]; if (b == null) continue; var mm = fromMin + k * step; var cmd = (last == null ? "M" : "L"); d += cmd + X(mm).toFixed(1) + " " + Y(b).toFixed(1) + " "; last = b; lastT = mm; }
+    if (d) { var first = d.indexOf("M"); area = d + "L" + X(lastT).toFixed(1) + " " + Y(0).toFixed(1) + " L" + d.slice(first + 1).split(" ")[0] + " " + Y(0).toFixed(1) + " Z"; }
+    var bells = ""; v.meta.bells.forEach(function (bb) { var bm = parseInt(bb.slice(0, 2), 10) * 60 + parseInt(bb.slice(3), 10); if (bm < lo || bm > hi) return;
+      var major = v.meta.major_bells.indexOf(bb) >= 0; bells += "<line x1=\"" + X(bm).toFixed(1) + "\" x2=\"" + X(bm).toFixed(1) + "\" y1=\"" + padT + "\" y2=\"" + (H - padB) + "\" stroke=\"" + tok(major ? "--fg2" : "--line2") + "\" stroke-width=\"1\" stroke-dasharray=\"2 3\"/>"; });
+    var axis = ""; [6, 12, 18, 23].forEach(function (hh) { axis += "<text x=\"" + X(hh * 60).toFixed(1) + "\" y=\"" + (H - 4) + "\" font-size=\"9\" fill=\"" + tok("--muted") + "\" text-anchor=\"middle\" font-family=\"IBM Plex Mono, monospace\">" + pad(hh) + "</text>"; });
+    axis += "<text x=\"" + (padL - 4) + "\" y=\"" + (padT + 4) + "\" font-size=\"9\" fill=\"" + tok("--muted") + "\" text-anchor=\"end\" font-family=\"IBM Plex Mono, monospace\">" + s.cap + "</text>";
+    axis += "<text x=\"" + (padL - 4) + "\" y=\"" + (H - padB + 3) + "\" font-size=\"9\" fill=\"" + tok("--muted") + "\" text-anchor=\"end\" font-family=\"IBM Plex Mono, monospace\">0</text>";
+    var dot = last != null ? "<circle cx=\"" + X(lastT).toFixed(1) + "\" cy=\"" + Y(last).toFixed(1) + "\" r=\"3.5\" fill=\"" + tok("--accent") + "\" stroke=\"" + tok("--panel") + "\" stroke-width=\"1.5\"/>" : "";
+    return "<svg viewBox=\"0 0 " + W + " " + H + "\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><line x1=\"" + padL + "\" x2=\"" + (W - padR) + "\" y1=\"" + (H - padB) + "\" y2=\"" + (H - padB) + "\" stroke=\"" + tok("--line2") + "\"/>" +
+      "<line x1=\"" + padL + "\" x2=\"" + (W - padR) + "\" y1=\"" + padT + "\" y2=\"" + padT + "\" stroke=\"" + tok("--line") + "\" stroke-dasharray=\"1 3\"/>" + bells +
+      (area ? "<path d=\"" + area + "\" fill=\"" + tok("--accent") + "\" fill-opacity=\"0.12\"/>" : "") + (d ? "<path d=\"" + d + "\" fill=\"none\" stroke=\"" + tok("--accent") + "\" stroke-width=\"2\" stroke-linejoin=\"round\"/>" : "") + dot + axis + "</svg>";
+  }
+  function renderCard(v) {
+    var wrap = document.getElementById("cardWrap");
+    if (selected == null) { wrap.hidden = true; return; }
+    var i = selected, s = v.stations[i], observed = v.bikes[i] != null;
+    var foot = [];
+    if (!observed) foot.push(v.status && v.status[i] === 2 ? t("oos") : t("legGrey"));
+    if (v.age && v.age[i] != null && v.age[i] > 20) foot.push(t("stale2", { m: v.age[i] }));
+    if (s.excluded) foot.push(t("excluded"));
+    document.getElementById("card").innerHTML = "<div class=\"hd\"><div><div class=\"nm\">" + nameOf(s) + (CAMPUS[s.sno] ? " <span style=\"color:var(--accent);font-size:12px\">" + t("campus") + "</span>" : "") + "</div><div class=\"en\">" + (lang === "zh" ? (s.name_en || "") : s.name) + "</div></div><button class=\"x\" id=\"cardX\" aria-label=\"close\">×</button></div>" +
+      "<div class=\"facts\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + " <span style=\"font-size:12px;color:var(--fg2)\">/ " + s.cap + "</span>" : "–") + "</div><div class=\"k\">" + t("bikes") + "</div></div>" +
+      "<div class=\"fact\"><div class=\"v\">" + fmt(v.p30[i], 2) + "</div><div class=\"k\">" + t("p30") + "</div></div><div class=\"fact\"><div class=\"v\">" + fmt(v.p60[i], 2) + "</div><div class=\"k\">" + t("p60") + "</div></div>" +
+      (v.docks && v.docks[i] != null ? "<div class=\"fact\"><div class=\"v\">" + v.docks[i] + "</div><div class=\"k\">" + t("docks") + "</div></div>" : "<div class=\"fact\"></div>") + "<div class=\"fact\" style=\"grid-column:span 2\"><div class=\"v\">" + fmt(v.unmet ? v.unmet[i] : null, 1) + "</div><div class=\"k\">" + t("unmetS") + "</div></div></div>" +
+      "<div class=\"spark\"><div class=\"foot\" style=\"margin:0 0 4px\">" + t("todayStock") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(" · ") + "</div>" : "");
+    document.getElementById("cardX").addEventListener("click", function () { select(null); });
+    wrap.hidden = false;
+  }
+  function renderLegend(v) {
+    document.getElementById("legend").innerHTML = "<div>" + t("legend", { h: horizon }) + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\"><span>0</span><span>0.5</span><span>1</span></div>" +
+      "<div class=\"row\">" + t("legRing") + "</div><div class=\"row\">" + t("legCampus") + "</div><div class=\"row\"><span class=\"ln\"></span>" + t("legRoute") + "</div><div class=\"row\">" + t("legGrey") + "</div>";
+  }
+  function renderStatus(v) {
+    var st = document.getElementById("status"), tx = document.getElementById("statusText");
+    st.className = "status";
+    if (mode === "replay") { st.classList.add("replay"); tx.textContent = t("replayAt", { d: replay.date, t: v.snapshot_at.slice(11) }); return; }
+    var n = taipeiNow(), snap = v.snapshot_at, agoMin = Math.max(0, Math.round((n - new Date(snap.replace(" ", "T") + ":00")) / 60000));
+    if (agoMin > 25) st.classList.add("stale");
+    tx.textContent = t("liveAt", { t: snap.slice(11) }) + t("ago", { m: agoMin });
+  }
+  function renderChrome() {
+    document.getElementById("title").textContent = t("title"); document.title = lang === "zh" ? "Beat the Bell 中山即時調度" : "Beat the Bell NSYSU Live";
+    document.getElementById("mLive").textContent = t("live"); document.getElementById("mReplay").textContent = t("replay");
+    document.getElementById("aboutSum").textContent = t("aboutSum");
+    document.getElementById("h30").textContent = "30 " + t("min"); document.getElementById("h60").textContent = "60 " + t("min");
+    var v = view(); var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
+    document.getElementById("aboutBody").innerHTML = t("aboutBody", { h: v ? v.meta.horizon_min : 90, q: s.Q, s: s.speed_kmh, st: s.stop_min });
+  }
+  function render() {
+    var v = view(); renderChrome(); if (!v) return;
+    renderStatus(v); renderBell(v); renderKpis(v); renderPlans(v); renderRisk(v); renderCard(v); renderLegend(v); drawStations(v); drawRoute(v);
+    if (mode === "replay") { var sl = document.getElementById("slider"); sl.max = replay.slots.length - 1; sl.value = slot; document.getElementById("sliderT").textContent = replay.slots[slot].snapshot_at.slice(11); }
+  }
+  function select(i) { selected = i; var v = view(); if (!v) return; renderCard(v); renderRisk(v); drawStations(v); if (i != null && markers[i]) markers[i].setZIndexOffset(800); }
+
+  // ---------- data ----------
+  function loadLive() {
+    return fetch("state.json", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (s) { live = s; document.getElementById("err").hidden = true; if (mode === "live") render(); })
+      .catch(function (e) { var el = document.getElementById("err"); el.hidden = false; el.textContent = (live ? t("stale", { t: live.snapshot_at.slice(11) }) : e.message); if (live && mode === "live") { render(); document.getElementById("status").classList.add("stale"); } });
+  }
+  function loadReplay() {
+    if (replay) return Promise.resolve(replay);
+    return fetch("replay_2026-10-28.json", { cache: "force-cache" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(function (s) { replay = s; return s; });
+  }
+  function setMode(m) {
+    mode = m; document.getElementById("mLive").setAttribute("aria-pressed", m === "live"); document.getElementById("mReplay").setAttribute("aria-pressed", m === "replay");
+    document.getElementById("replaybar").hidden = m !== "replay"; stopPlay();
+    if (m === "replay") loadReplay().then(function () { slot = Math.min(slot || 0, replay.slots.length - 1); if (!slot) { var i = replay.slots.findIndex(function (x) { return x.t_min >= 15 * 60 + 30; }); slot = i < 0 ? 0 : i; } render(); })
+      .catch(function (e) { var el = document.getElementById("err"); el.hidden = false; el.textContent = "replay: " + e.message; });
+    else render();
+  }
+  function stopPlay() { playing = false; document.getElementById("play").textContent = "▶"; if (playTimer) { clearInterval(playTimer); playTimer = null; } }
+  function togglePlay() {
+    if (playing) { stopPlay(); return; }
+    playing = true; document.getElementById("play").textContent = "❚❚";
+    playTimer = setInterval(function () { if (!replay) return; slot = (slot + 1) % replay.slots.length; render(); }, 700);
+  }
+  document.getElementById("mLive").addEventListener("click", function () { setMode("live"); });
+  document.getElementById("mReplay").addEventListener("click", function () { setMode("replay"); });
+  document.getElementById("lZh").addEventListener("click", function () { setLang("zh"); });
+  document.getElementById("lEn").addEventListener("click", function () { setLang("en"); });
+  function setLang(l) { lang = l; document.getElementById("lZh").setAttribute("aria-pressed", l === "zh"); document.getElementById("lEn").setAttribute("aria-pressed", l === "en"); document.documentElement.lang = l === "zh" ? "zh-Hant" : "en"; try { localStorage.setItem("btb-lang", l); } catch (e) {} render(); }
+  document.getElementById("h30").addEventListener("click", function () { setH(30); });
+  document.getElementById("h60").addEventListener("click", function () { setH(60); });
+  function setH(h) { horizon = h; document.getElementById("h30").setAttribute("aria-pressed", h === 30); document.getElementById("h60").setAttribute("aria-pressed", h === 60); render(); }
+  document.getElementById("play").addEventListener("click", togglePlay);
+  document.getElementById("slider").addEventListener("input", function (e) { stopPlay(); slot = parseInt(e.target.value, 10); render(); });
+  try { var saved = localStorage.getItem("btb-lang"); if (saved === "en") { lang = "en"; document.getElementById("lZh").setAttribute("aria-pressed", "false"); document.getElementById("lEn").setAttribute("aria-pressed", "true"); } } catch (e) {}
+
+  initMap(); renderChrome(); loadLive();
+  setInterval(function () { if (mode === "live") { loadLive(); } }, 60000);
+  setInterval(function () { var v = view(); if (v && mode === "live") { renderBell(v); renderStatus(v); } }, 15000);
+})();
+</script>
+
+</body>
+</html>
