@@ -64,7 +64,9 @@ jobs:
             python3 logger/fetch_youbike.py || true
             # demo state for docs/index.html: stockout probabilities and the pre-bell truck plan (about 5 s)
             python3 analysis/code/demo_state.py data analysis/results docs/state.json --trucks 1 || true
-            git add -A data docs/state.json
+            # replays of the last 7 complete days for the page's replay menu (builds at most one missing day per iteration)
+            python3 analysis/code/demo_replays.py data analysis/results docs --days 7 --max-new 1 || true
+            git add -A data docs
             if ! git diff --cached --quiet; then
               git commit -q -m "log $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
               for attempt in 1 2 3; do

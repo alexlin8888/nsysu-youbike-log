@@ -36,6 +36,7 @@
 | `tune_route.sh`、`run_route_test.sh` | 在驗證日調整地平線 H、時間成本 β、每次執行幾站；用選定設定跑 28 個測試日（1/3/6 台車） |
 | `merge_sim.py`、`sim_numbers.py` | 合併新舊模擬結果；報告用的減少比例與成對日拔靴區間 |
 | `nsysu_rates.py` | 中山各站的借還速率：高雄沒有騎乘紀錄，改把紀錄器每 10 分鐘的庫存變化用規劃器的生滅鏈做最大概似估計（空站、滿站的截斷由鏈本身處理，不是下界）；每格（站×上課日／假日×小時）用 3 小時曝險的先驗往全站同時段平均收縮；鏈給的機率低於 1e-5 的轉移視為卡車調度排除；`--holdout 7` 以最後 7 天檢驗 |
+| `demo_replays.py` | 維持最近 7 個完整日的重播檔 `docs/replay_*.json` 與清單 `docs/replays.json`，每次最多補一天 |
 | `demo_state.py` | 即時 demo 的狀態：最新快照 → 特徵 → 臺大模型（zero-shot）算 30／60 分缺車機率 → 生滅鏈算各站未來 90 分預期借不到車 → 路線搜尋排卡車路線，寫成 `docs/state.json`；紀錄器的 workflow 每 10 分鐘跑一次 |
 | `figs_v2.py`, `figs_v3.py`, `figs_v4.py`, `hw3_figs.py`, `report_figs.py` | 報告圖（`figcheck.py` 自動檢查文字是否被裁切或重疊）；`figs_v4.py` 畫方法示意圖（單站一日的對帳、截斷與生滅鏈）、鐘響散佈圖、中山遷移與課表特徵的信賴區間圖、模擬器信賴區間圖 |
 | `figstyle.py` | 圖表共用樣式 |
@@ -67,7 +68,7 @@ python code/bootstrap_ci.py work/model/sweep work/model/transfer work/sim_v2 wor
 # 中山的借還速率與即時 demo
 python code/nsysu_rates.py ../data results/nsysu/rates --holdout 7
 python code/demo_state.py ../data results ../docs/state.json --trucks 1            # --at "2026-10-28 15:30" 可重播過去的時刻
-python code/demo_state.py ../data results ../docs/replay_2026-10-28.json --replay 2026-10-28   # 一天的每個時段，給頁面的重播模式
+python code/demo_replays.py ../data results ../docs --days 7                                   # 最近 7 天的重播檔，給頁面的重播模式
 # 中山
 python code/nsysu_analysis.py ../data results/nsysu
 # 課表：courses_115-1.tsv 由公開課程查詢系統逐日（星期一～日）查詢匯出（需人工通過驗證碼）

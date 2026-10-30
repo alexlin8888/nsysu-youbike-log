@@ -623,6 +623,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px s
 .seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 7px; overflow: hidden; background: var(--panel2); }
 .seg button { background: transparent; border: 0; padding: 5px 11px; font-size: 12.5px; cursor: pointer; color: var(--fg2); }
 .seg button[aria-pressed="true"] { background: var(--fg); color: var(--panel); }
+.daysel { border: 1px solid var(--line2); border-radius: 7px; background: var(--panel2); color: var(--fg); font: inherit; font-size: 12.5px; padding: 4px 8px; }
 .status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--fg2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
 .status.stale .dot { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 25%, transparent); }
@@ -767,7 +768,8 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
   <header class="top">
     <div class="brand"><span class="eyebrow">Beat the Bell · Group 54</span><h1 id="title">中山大學 YouBike 即時缺車預測與調度</h1></div>
     <span class="spacer"></span>
-    <span class="seg" role="group" aria-label="mode"><button id="mLive" aria-pressed="true">即時</button><button id="mReplay" aria-pressed="false">重播 10/28</button></span>
+    <span class="seg" role="group" aria-label="mode"><button id="mLive" aria-pressed="true">即時</button><button id="mReplay" aria-pressed="false">重播</button></span>
+    <select id="replayDay" class="daysel" aria-label="replay day" hidden></select>
     <span class="seg" role="group" aria-label="language"><button id="lZh" aria-pressed="true">中</button><button id="lEn" aria-pressed="false">EN</button></span>
     <span class="status" id="status"><span class="dot"></span><span id="statusText">讀取中…</span></span>
   </header>
@@ -823,7 +825,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
   var SHORT = { "501209052": ["圖資", "Library"], "501209070": ["西灣藝廊", "Xiziwan Hall"], "501209051": ["工學院", "Engineering"], "501209054": ["材料", "Materials"],
                 "501209039": ["社科院", "Social Sci."], "501209069": ["體育館", "Gym"], "501209040": ["海工館", "Marine Eng."], "501209071": ["海資館", "Marine Res."] };
   var T = {
-    zh: { title: "中山大學 YouBike 即時缺車預測與調度", live: "即時", replay: "重播 10/28", loading: "讀取中…", liveAt: "即時 · 快照 {t}", ago: "（{m} 分鐘前）", replayAt: "重播 {d} · {t}",
+    zh: { title: "中山大學 YouBike 即時缺車預測與調度", live: "即時", replay: "重播", loading: "讀取中…", liveAt: "即時 · 快照 {t}", ago: "（{m} 分鐘前）", replayAt: "重播 {d} · {t}",
           stale: "暫時讀不到新資料，顯示 {t} 的快照", kpi: "目前狀態", empty: "目前空站（共 {n} 站有資料）", risk: "30 分內缺車機率 ≥ 50% 的站", unmet: "未來 {h} 分預期借不到車（人次）",
           saved: "依建議路線可避免（人次）", plan: "下一次鐘響前的卡車路線", riskH: "缺車風險最高的站", min: "分", toBell: "距下一次鐘響 {b}", noBellToday: "今天沒有鐘響",
           offday: "假日：校園站不會因下課被借空", dayOver: "今天的課結束了", bellTime: "現在 {t}", pick: "載走 {n} 台", drop: "送 {n} 台", now: "目前 {b} / {c}", eta: "+{t} 分",
@@ -832,7 +834,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
           legGrey: "灰色 = 暫停服務或無資料", bikes: "車", docks: "空位", p30: "30 分缺車", p60: "60 分缺車", unmetS: "90 分預期借不到", stale2: "資料 {m} 分鐘前更新", oos: "暫停服務",
           excluded: "旗津區，不納入卡車路線", todayStock: "今天的車數（06:00 起，虛線 = 鐘響）", aboutSum: "方法與數據",
           aboutBody: "<div><b>資料</b> 紀錄器每 10 分鐘抓官方 API，中山周邊 5 km 內 309 站，自 10/1 起。</div><div><b>缺車機率</b> 在臺大 10 個月資料上訓練的 LightGBM 模型，只用庫存與時間特徵，直接用於中山（zero-shot）；臺大測試 AUC 0.93，中山 0.93。</div><div><b>借還速率</b> 高雄沒有騎乘紀錄，改用規劃器的生滅鏈對紀錄器的 10 分鐘變化做最大概似估計；最後 7 天檢驗，比只數毛變化量的下界準。</div><div><b>卡車路線</b> 用生滅鏈算每站未來 {h} 分預期借不到車的人次，路線搜尋（貪婪插入、模擬退火、2-opt）選最值得的停靠與載量，每台車 {q} 台、時速 {s} km/h、每站停 {st} 分。臺大真實騎乘重播：1／3／6 台車分別少 13%／30%／45% 借不到車的人次。</div><div><b>限制</b> 車程用直線距離 × 1.3 估，旗津的站排除；模型未用中山資料微調。</div><div>程式與資料：<a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" },
-    en: { title: "NSYSU YouBike: live stockout prediction and rebalancing", live: "Live", replay: "Replay Oct 28", loading: "Loading…", liveAt: "Live · snapshot {t}", ago: " ({m} min ago)", replayAt: "Replay {d} · {t}",
+    en: { title: "NSYSU YouBike: live stockout prediction and rebalancing", live: "Live", replay: "Replay", loading: "Loading…", liveAt: "Live · snapshot {t}", ago: " ({m} min ago)", replayAt: "Replay {d} · {t}",
           stale: "No new data for now; showing the {t} snapshot", kpi: "Right now", empty: "Empty stations (of {n} reporting)", risk: "Stations with P(empty in 30 min) ≥ 0.5", unmet: "Expected unmet rentals, next {h} min",
           saved: "Avoided by the suggested route", plan: "Truck route before the next bell", riskH: "Highest stockout risk", min: "min", toBell: "until the {b} bell", noBellToday: "No bells today",
           offday: "Off-day: campus stations are not drained by class ends", dayOver: "Classes are over for today", bellTime: "now {t}", pick: "Pick up {n}", drop: "Drop off {n}", now: "now {b} / {c}", eta: "+{t} min",
@@ -842,7 +844,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
           excluded: "Qijin district, not served by the truck", todayStock: "Bikes today since 06:00 (dashed = bells)", aboutSum: "Method and numbers",
           aboutBody: "<div><b>Data</b> A logger reads the official API every 10 minutes for the 309 stations within 5 km of NSYSU, since 1 Oct.</div><div><b>Stockout probability</b> A LightGBM model trained on 10 months of NTU data from inventory and time features only, applied to NSYSU without fine-tuning (zero-shot): AUC 0.93 on the NTU test months, 0.93 at NSYSU.</div><div><b>Rental and return rates</b> Kaohsiung publishes no trip data, so the planner's birth–death chain is fitted by maximum likelihood to the logger's 10-minute changes; on the last 7 days it beats the gross-change lower bound.</div><div><b>Truck route</b> The chain prices every station by the unmet rentals expected in the next {h} min; a route search (greedy insertion, simulated annealing, 2-opt) picks the stops and loads: {q} bikes per truck, {s} km/h, {st} min per stop. In a replay of real NTU trips, 1 / 3 / 6 trucks avoid 13% / 30% / 45% of unmet rentals.</div><div><b>Limits</b> Travel times are straight-line × 1.3; Qijin stations are excluded; the model is not fine-tuned on NSYSU data.</div><div>Code and data: <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" }
   };
-  var lang = "zh", mode = "live", horizon = 30, GATEWAY = { "501209024": 1, "501209062": 1, "501209042": 1, "501209036": 1, "501209026": 1, "501209023": 1, "501209022": 1, "501209032": 1, "501209025": 1, "501209104": 1, "501209028": 1 }, live = null, replay = null, slot = 0, playing = false, playTimer = null, selected = null, fitted = false;
+  var lang = "zh", mode = "live", horizon = 30, GATEWAY = { "501209024": 1, "501209062": 1, "501209042": 1, "501209036": 1, "501209026": 1, "501209023": 1, "501209022": 1, "501209032": 1, "501209025": 1, "501209104": 1, "501209028": 1 }, live = null, replay = null, replays = {}, replayDays = ["2026-10-28"], replayDay = "2026-10-28", slot = 0, playing = false, playTimer = null, selected = null, fitted = false;
   var map, tiles, glyphLayer, routeLayer, markers = {};
   var css = getComputedStyle(document.documentElement);
   function tok(n) { return css.getPropertyValue(n).trim(); }
@@ -1057,7 +1059,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
   }
   function renderChrome() {
     document.getElementById("title").textContent = t("title"); document.title = lang === "zh" ? "Beat the Bell 中山即時調度" : "Beat the Bell NSYSU Live";
-    document.getElementById("mLive").textContent = t("live"); document.getElementById("mReplay").textContent = t("replay");
+    document.getElementById("mLive").textContent = t("live"); document.getElementById("mReplay").textContent = t("replay"); fillDays();
     document.getElementById("aboutSum").textContent = t("aboutSum");
     document.getElementById("h30").textContent = "30 " + t("min"); document.getElementById("h60").textContent = "60 " + t("min"); document.getElementById("hU").textContent = t("modeU");
     var v = view(); var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
@@ -1080,14 +1082,21 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
       .then(function (s) { live = s; document.getElementById("err").hidden = true; if (mode === "live") render(); })
       .catch(function (e) { var el = document.getElementById("err"); el.hidden = false; el.textContent = (live ? t("stale", { t: live.snapshot_at.slice(11) }) : e.message); if (live && mode === "live") { render(); document.getElementById("status").classList.add("stale"); } });
   }
-  function loadReplay() {
-    if (replay) return Promise.resolve(replay);
-    return fetch("replay_2026-10-28.json", { cache: "force-cache" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(function (s) { replay = s; return s; });
+  function loadReplay(day) {
+    if (replays[day]) { replay = replays[day]; return Promise.resolve(replay); }
+    return fetch("replay_" + day + ".json").then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(function (s) { replays[day] = s; replay = s; return s; });
+  }
+  function dayLabel(d) { var dt = new Date(d + "T12:00:00+08:00"), wd = lang === "zh" ? ["日", "一", "二", "三", "四", "五", "六"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return lang === "zh" ? (dt.getMonth() + 1) + "/" + dt.getDate() + "（" + wd[dt.getDay()] + "）" : wd[dt.getDay()] + " " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][dt.getMonth()] + " " + dt.getDate(); }
+  function fillDays() { var sel = document.getElementById("replayDay"); sel.innerHTML = replayDays.map(function (d) { return "<option value=\"" + d + "\"" + (d === replayDay ? " selected" : "") + ">" + dayLabel(d) + "</option>"; }).join(""); }
+  function loadDays() {
+    return fetch("replays.json", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (j) { if (j.days && j.days.length) { replayDays = j.days; if (replayDays.indexOf(replayDay) < 0) replayDay = replayDays[0]; } }).catch(function () {}).then(fillDays);
   }
   function setMode(m) {
     mode = m; document.getElementById("mLive").setAttribute("aria-pressed", m === "live"); document.getElementById("mReplay").setAttribute("aria-pressed", m === "replay");
-    document.getElementById("replaybar").hidden = m !== "replay"; stopPlay();
-    if (m === "replay") loadReplay().then(function () { slot = Math.min(slot || 0, replay.slots.length - 1); if (!slot) { var i = replay.slots.findIndex(function (x) { return x.t_min >= 15 * 60 + 30; }); slot = i < 0 ? 0 : i; } render(); })
+    document.getElementById("replaybar").hidden = m !== "replay"; document.getElementById("replayDay").hidden = m !== "replay"; stopPlay();
+    if (m === "replay") loadReplay(replayDay).then(function () { slot = Math.min(slot || 0, replay.slots.length - 1); if (!slot) { var i = replay.slots.findIndex(function (x) { return x.t_min >= 15 * 60 + 30; }); slot = i < 0 ? 0 : i; } render(); })
       .catch(function (e) { var el = document.getElementById("err"); el.hidden = false; el.textContent = "replay: " + e.message; });
     else render();
   }
@@ -1099,6 +1108,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
   }
   document.getElementById("mLive").addEventListener("click", function () { setMode("live"); });
   document.getElementById("mReplay").addEventListener("click", function () { setMode("replay"); });
+  document.getElementById("replayDay").addEventListener("change", function (e) { replayDay = e.target.value; stopPlay(); loadReplay(replayDay).then(function () { slot = Math.min(slot, replay.slots.length - 1); render(); }); });
   document.getElementById("lZh").addEventListener("click", function () { setLang("zh"); });
   document.getElementById("lEn").addEventListener("click", function () { setLang("en"); });
   function setLang(l) { lang = l; document.getElementById("lZh").setAttribute("aria-pressed", l === "zh"); document.getElementById("lEn").setAttribute("aria-pressed", l === "en"); document.documentElement.lang = l === "zh" ? "zh-Hant" : "en"; try { localStorage.setItem("btb-lang", l); } catch (e) {} render(); }
@@ -1110,7 +1120,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
   document.getElementById("slider").addEventListener("input", function (e) { stopPlay(); slot = parseInt(e.target.value, 10); render(); });
   try { var saved = localStorage.getItem("btb-lang"); if (saved === "en") { lang = "en"; document.getElementById("lZh").setAttribute("aria-pressed", "false"); document.getElementById("lEn").setAttribute("aria-pressed", "true"); } } catch (e) {}
 
-  initMap(); renderChrome(); loadLive();
+  initMap(); renderChrome(); loadLive(); loadDays();
   setInterval(function () { if (mode === "live") { loadLive(); } }, 60000);
   setInterval(function () { var v = view(); if (v && mode === "live") { renderBell(v); renderStatus(v); } }, 15000);
 })();

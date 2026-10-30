@@ -58,7 +58,7 @@
 
 ## 即時 demo
 
-`docs/index.html` 是即時頁面：每站 30／60 分內的缺車機率、未來 90 分預期借不到車的人次，以及下一次鐘響前的卡車路線。資料來自 `docs/state.json`，由紀錄器的 workflow 在每次快照後用 `analysis/code/demo_state.py` 重算（約 5 秒）；`docs/replay_2026-10-28.json` 是 10/28 全天每 10 分鐘的狀態，頁面的「重播」模式用它。
+`docs/index.html` 是即時頁面：每站 30／60 分內的缺車機率、未來 90 分預期借不到車的人次，以及下一次鐘響前的卡車路線。資料來自 `docs/state.json`，由紀錄器的 workflow 在每次快照後用 `analysis/code/demo_state.py` 重算（約 5 秒）；`docs/replay_YYYY-MM-DD.json` 是最近 7 個完整日每 10 分鐘的狀態（`demo_replays.py` 每天自動補），頁面的「重播」模式用它。
 
 公開網址要在 repo 的 **Settings → Pages** 設定一次：Source 選 *Deploy from a branch*，Branch 選 `main`、資料夾選 `/docs`，Save。之後網址是 `https://alexlin8888.github.io/nsysu-youbike-log/`，每次 commit 後約一分鐘更新。
 
