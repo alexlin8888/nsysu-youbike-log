@@ -28,7 +28,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 from features import INV_FEATS, NSYSU_BELLS, NSYSU_SEMESTERS, TW_HOLIDAYS, _bell_minutes, _to_since, neighbors  # noqa: E402
 from nsysu_data import CAMPUS, GATEWAY, HOLIDAYS, load_logger, load_stations  # noqa: E402
-from route_planner import ChainValues, RoutePlanner  # noqa: E402
+from route_planner import STEP, ChainValues, RoutePlanner  # noqa: E402
 
 DATA, RESULTS, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 ARG = lambda name, default, cast: cast(sys.argv[sys.argv.index(name) + 1]) if name in sys.argv else default
@@ -45,6 +45,8 @@ BELLS, MAJ = _bell_minutes(NSYSU_BELLS, MAJORS)
 BELL_MIN = sorted(int(b[:2]) * 60 + int(b[3:]) for b in NSYSU_BELLS)
 WINDOW = (6 * 60, 23 * 60)        # the predictor and the planner cover 06:00-23:00
 DAY_START = 6 * 60                # history shown on the page starts here
+BELL_AFTER = 20                   # the rider's question: bikes left 20 min after the bell, when the class has reached the station
+BELL_MAX_AHEAD = 240              # answer it for any bell up to 4 h ahead (the chain has kernels for every hour of the day)
 
 t0 = time.time()
 st = load_stations(DATA)
@@ -123,8 +125,17 @@ def compute(df, ts, trucks=K, with_history=True):
 
     in_window = WINDOW[0] <= t_min < WINDOW[1]
     plans, unmet = [], np.zeros(N)
+    nxt = [b for b in BELL_MIN if b > t_min]
+    bell = None
     if in_window:
         values = chain_values(offday)
+        if not offday and nxt and nxt[0] + BELL_AFTER - t_min <= BELL_MAX_AHEAD:   # stock expected BELL_AFTER min after the next bell, no truck
+            at = nxt[0] + BELL_AFTER
+            eb, pe, pf = values.forecast(t_min, bikes, (at - t_min) // STEP)
+            bell = {"bell": f"{nxt[0] // 60:02d}:{nxt[0] % 60:02d}", "at": f"{at // 60:02d}:{at % 60:02d}", "after_min": BELL_AFTER,
+                    "bikes": [round(float(x), 1) if o else None for x, o in zip(eb, observed)],
+                    "p_empty": [round(float(x), 3) if o else None for x, o in zip(pe, observed)],
+                    "p_full": [round(float(x), 3) if o else None for x, o in zip(pf, observed)]}
         planner = RoutePlanner(TRAVEL_MIN, Q, STOP_MIN, 1.0, HORIZON, beta=BETA, max_stops=STOPS, iters=ITERS)
         B = values.benefit(t_min, bikes)
         unmet = values.last_unmet.astype(float)
@@ -148,7 +159,6 @@ def compute(df, ts, trucks=K, with_history=True):
             v = planner.evaluate([s for s, _, _ in stops])
             planner.beta = BETA
             plans.append({"truck": k + 1, "stops": out, "value": round(float(v), 1), "minutes": round(t, 1), "km": round(km, 1)})
-    nxt = [b for b in BELL_MIN if b > t_min]
     next_bell = None if offday or not nxt else {"time": f"{nxt[0] // 60:02d}:{nxt[0] % 60:02d}", "minutes": int(nxt[0] - t_min)}
     totals = {"observed": int(observed.sum()), "bikes": int(bikes[observed].sum()), "empty_now": int((bikes[observed] == 0).sum()),
               "p30_over_half": int((p30[observed] >= 0.5).sum()),
@@ -159,7 +169,7 @@ def compute(df, ts, trucks=K, with_history=True):
            "bikes": [int(b) if o else None for b, o in zip(bikes, observed)], "docks": [int(x) if o else None for x, o in zip(docks, observed)],
            "status": [None if np.isnan(x) else int(x) for x in status], "age": [None if np.isnan(x) else int(x) for x in age],
            "p30": [round(float(x), 3) if o else None for x, o in zip(p30, observed)], "p60": [round(float(x), 3) if o else None for x, o in zip(p60, observed)],
-           "unmet": [round(float(x), 2) if (o and in_window) else None for x, o in zip(unmet, observed)]}
+           "unmet": [round(float(x), 2) if (o and in_window) else None for x, o in zip(unmet, observed)], "bell": bell}
     if with_history:
         grid = pd.date_range(date + pd.Timedelta(minutes=DAY_START), ts_last, freq="10min")
         h = wb.reindex(grid)
@@ -191,7 +201,7 @@ if __name__ == "__main__":
             s = compute(df, ts, with_history=False)
             if s["snapshot_at"] != ts.strftime("%Y-%m-%d %H:%M"):
                 continue                                  # no snapshot for this slot
-            slots.append({k: s[k] for k in ("snapshot_at", "t_min", "next_bell", "totals", "plans", "bikes", "p30", "p60", "unmet")})
+            slots.append({k: s[k] for k in ("snapshot_at", "t_min", "next_bell", "totals", "plans", "bikes", "p30", "p60", "unmet", "bell")})
             print(f"{s['snapshot_at']} unmet {s['totals']['expected_unmet']} plan {s['totals']['plan_value']}", flush=True)
         dstr = day.strftime("%Y-%m-%d")
         replay = dict(META, generated_at=datetime.now(TZ).isoformat(timespec="seconds"), date=REPLAY, trucks=K,

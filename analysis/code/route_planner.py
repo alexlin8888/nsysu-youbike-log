@@ -98,6 +98,18 @@ class ChainValues:
         return B
 
 
+    def forecast(self, t_min, bikes, steps):
+        """Stock distribution after `steps` chain steps without any truck: expected bikes, P(empty), P(full), (N,) each."""
+        N, C = self.N, self.C
+        P = np.zeros((N, C + 1), np.float32)
+        P[np.arange(N), np.clip(bikes, 0, self.cap)] = 1.0
+        for a in range(min(steps, 36)):                 # kernels exist for every hour of the day; cap at 6 h
+            hod = int((t_min + STEP * a) // 60) % 24
+            P = np.einsum("ni,nij->nj", P, self.K[hod])
+        s = np.arange(C + 1)[None, :]
+        return (P * s).sum(1), P[:, 0], P[np.arange(N), self.cap]
+
+
 class RoutePlanner:
     def __init__(self, travel_min, Q, stop_min, handle_min, horizon_min, beta=0.0, max_stops=6, iters=400,
                  n_drop=12, n_pick=12, depot_min=5.0, anneal=True):

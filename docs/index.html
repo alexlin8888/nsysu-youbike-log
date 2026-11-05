@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="中山大學周邊 309 個 YouBike 站的即時缺車機率與下一次鐘響前的卡車調度路線（人工智慧導論期末專案，第 54 組）">
+<meta name="description" content="下課後哪裡還有車：中山大學周邊 309 個 YouBike 站的即時車數、缺車機率與下課後的預估，以及下一次鐘響前的卡車調度路線（人工智慧導論期末專案，第 54 組）">
 <meta property="og:title" content="Beat the Bell · 中山大學 YouBike 即時缺車預測與調度">
-<meta property="og:description" content="每 10 分鐘更新：每站 30／60 分內的缺車機率、未來 90 分預期借不到車的人次、建議的卡車路線。">
+<meta property="og:description" content="每 10 分鐘更新：附近的站、每站 30／60 分內的缺車機率、下課後 20 分預計剩幾台、建議的卡車路線。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%231f6fd0' stroke-width='3'/%3E%3Cpath d='M16 3 A13 13 0 1 1 4.7 22.5' fill='none' stroke='%238e8c86' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23d6502a'/%3E%3C/svg%3E">
 <title>Beat the Bell 中山即時調度</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap">
@@ -584,11 +584,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		print-color-adjust: exact;
 		}
 	}
-/* layout: a top bar, a 420px side panel (countdown, KPIs, truck plan, risk list, station card) beside a full-height map;
-   on phones the map sits on top and the panel scrolls below it */
+/* layout: a top bar, a 420px side panel with two tabs (riders: find a bike; operator: the truck plan) beside a
+   full-height map; on phones the map sits on top and the panel scrolls below it */
 :root {
   --bg: #f3f2ed; --panel: #ffffff; --panel2: #f8f7f3; --fg: #1a1a17; --fg2: #5b5955; --muted: #8e8c86; --line: #e2e0da; --line2: #cfccc4;
-  --accent: #1f6fd0; --accent-soft: #dce9fa; --route: #e2602a; --route-soft: #fbe6da; --good: #1f9a5e; --warn: #c9871a;
+  --accent: #1f6fd0; --accent-soft: #dce9fa; --route: #e2602a; --route-soft: #fbe6da; --good: #1f9a5e; --good-soft: #dff3e7; --warn: #c9871a; --warn-soft: #fbeccf;
   --map-bg: #e8ebee; --tile-filter: saturate(0.25) brightness(1.04) contrast(0.92);
   --r0: #eceae2; --r1: #f6d8bf; --r2: #ec9a6b; --r3: #d6502a; --r4: #8c1a0a;
   --shadow: 0 2px 12px rgba(20, 20, 10, 0.12);
@@ -597,13 +597,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #121418; --panel: #1a1d23; --panel2: #20242b; --fg: #ebe9e2; --fg2: #b3b1aa; --muted: #7d7b75; --line: #2d3139; --line2: #3c414b;
-  --accent: #76aef2; --accent-soft: #1f2d42; --route: #ff8a5c; --route-soft: #3b2920; --good: #4fc083; --warn: #e0a84a;
+  --accent: #76aef2; --accent-soft: #1f2d42; --route: #ff8a5c; --route-soft: #3b2920; --good: #4fc083; --good-soft: #1d3327; --warn: #e0a84a; --warn-soft: #3a2f1a;
   --map-bg: #1b1e24; --tile-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.78) contrast(0.9);
   --r0: #2a2e36; --r1: #5a3f33; --r2: #a0563a; --r3: #e0603a; --r4: #ff9a6a;
   --shadow: 0 2px 14px rgba(0, 0, 0, 0.5); color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #121418; --panel: #1a1d23; --panel2: #20242b; --fg: #ebe9e2; --fg2: #b3b1aa; --muted: #7d7b75; --line: #2d3139; --line2: #3c414b;
-  --accent: #76aef2; --accent-soft: #1f2d42; --route: #ff8a5c; --route-soft: #3b2920; --good: #4fc083; --warn: #e0a84a;
+  --accent: #76aef2; --accent-soft: #1f2d42; --route: #ff8a5c; --route-soft: #3b2920; --good: #4fc083; --good-soft: #1d3327; --warn: #e0a84a; --warn-soft: #3a2f1a;
   --map-bg: #1b1e24; --tile-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.78) contrast(0.9);
   --r0: #2a2e36; --r1: #5a3f33; --r2: #a0563a; --r3: #e0603a; --r4: #ff9a6a;
   --shadow: 0 2px 14px rgba(0, 0, 0, 0.5); color-scheme: dark; }
@@ -612,13 +612,14 @@ body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--fo
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; }
-button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .shell { display: grid; grid-template-rows: auto 1fr; height: 100%; }
-.top { display: flex; align-items: center; gap: 14px; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+.top { display: flex; align-items: center; gap: 12px; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: var(--panel); border-bottom: 1px solid var(--line); min-width: 0; flex-wrap: wrap; }
 .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .brand .eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2); font-weight: 600; white-space: nowrap; }
 .brand h1 { font-size: 15px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand h1 .short { display: none; }
 .top .spacer { flex: 1; }
 .seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 7px; overflow: hidden; background: var(--panel2); }
 .seg button { background: transparent; border: 0; padding: 5px 11px; font-size: 12.5px; cursor: pointer; color: var(--fg2); }
@@ -630,12 +631,22 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px s
 .status.replay .dot { background: var(--route); box-shadow: 0 0 0 3px color-mix(in srgb, var(--route) 25%, transparent); }
 .app { display: grid; grid-template-columns: 420px 1fr; min-height: 0; }
 .panel { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; min-width: 0;
-  padding-block: 16px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: grid; gap: 18px; align-content: start; }
+  padding-block: 14px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: grid; gap: 16px; align-content: start; }
 .mapwrap { position: relative; min-width: 0; background: var(--map-bg); }
 #map { position: absolute; inset: 0; background: var(--map-bg); }
+#map.picking { cursor: crosshair; }
 .leaflet-tile-pane { filter: var(--tile-filter); }
 h2 { font-size: 11.5px; font-weight: 600; color: var(--fg2); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); font-size: 11.5px; }
+.pane { display: grid; gap: 16px; }
+
+/* tabs */
+.tabs { display: flex; border: 1px solid var(--line2); border-radius: 9px; background: var(--panel2); }
+.tabs button { flex: 1 1 0; min-width: 0; border: 0; background: transparent; padding: 8px 10px; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--fg2); line-height: 1.3; }
+.tabs button:first-child { border-radius: 8px 0 0 8px; }
+.tabs button:last-child { border-radius: 0 8px 8px 0; }
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.tabs button small { display: block; font-weight: 400; font-size: 11px; color: var(--muted); }
 
 /* countdown + bell strip */
 .bell { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel2); }
@@ -654,6 +665,47 @@ h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(
 .strip .now::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; background: var(--accent); }
 .strip .now::after { content: ""; position: absolute; left: 1px; top: -1px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .strip .hlabel { position: absolute; top: 24px; font-family: var(--font-num); font-size: 9.5px; color: var(--muted); transform: translateX(-50%); }
+
+/* rider tab */
+.tip { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--fg); line-height: 1.5; }
+.tip .x { margin-left: auto; border: 0; background: transparent; cursor: pointer; color: var(--fg2); font-size: 16px; line-height: 1; padding: 0 2px; }
+.search { position: relative; }
+.search input { width: 100%; border: 1px solid var(--line2); border-radius: 9px; background: var(--panel2); color: var(--fg); font: inherit; font-size: 14px; padding: 9px 12px 9px 34px; -webkit-appearance: none; appearance: none; }
+.search input::placeholder { color: var(--muted); }
+.search .ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; font-size: 15px; }
+.search .results { position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: var(--panel); border: 1px solid var(--line2); border-radius: 9px; box-shadow: var(--shadow); z-index: 20; max-height: 260px; overflow-y: auto; }
+.search .results button { display: grid; grid-template-columns: 1fr auto; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 12px; cursor: pointer; font-size: 13px; }
+.search .results button:hover, .search .results button:focus-visible { background: var(--panel2); outline: none; }
+.search .results .en { color: var(--muted); font-size: 11.5px; }
+.search .results .none { padding: 8px 12px; color: var(--muted); font-size: 12.5px; }
+.origin { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--fg2); }
+.origin .lbl { margin-right: 4px; }
+.btn { border: 1px solid var(--line2); background: var(--panel2); border-radius: 7px; padding: 5px 10px; font-size: 12.5px; cursor: pointer; color: var(--fg); display: inline-flex; align-items: center; gap: 6px; text-decoration: none; line-height: 1.3; }
+.btn:hover { border-color: var(--fg2); }
+.btn[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.small { padding: 3px 8px; font-size: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; white-space: nowrap; line-height: 1.5; }
+.chip.g { background: var(--good-soft); color: var(--good); }
+.chip.y { background: var(--warn-soft); color: var(--warn); }
+.chip.o { background: var(--route-soft); color: var(--route); }
+.chip.r { background: var(--r4); color: #fff; }
+.chip.n { background: var(--panel2); color: var(--fg2); border: 1px solid var(--line); font-weight: 500; }
+.best { border: 1px solid var(--good); background: var(--good-soft); border-radius: 10px; padding: 10px 12px; font-size: 13px; cursor: pointer; display: grid; gap: 3px; }
+.best.none { border-color: var(--line2); background: var(--panel2); cursor: default; }
+.best .k { font-size: 11px; color: var(--fg2); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.best .nm { font-weight: 600; font-size: 14px; }
+.best .d { color: var(--fg2); font-size: 12.5px; }
+.best .d b { font-family: var(--font-num); color: var(--fg); font-weight: 500; }
+.slist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.srow { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; cursor: pointer; background: var(--panel); }
+.srow:hover, .srow:focus-visible { border-color: var(--accent); outline: none; }
+.srow.sel { border-color: var(--accent); background: var(--accent-soft); }
+.srow .nm { font-weight: 600; font-size: 13.5px; min-width: 0; line-height: 1.3; }
+.srow .nm .en { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+.srow .walk { font-family: var(--font-num); font-size: 12px; color: var(--fg2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.srow .st { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; grid-column: 1 / -1; font-size: 12.5px; color: var(--fg2); }
+.srow .st b { font-family: var(--font-num); color: var(--fg); font-weight: 500; }
+.empty-note { font-size: 12.5px; color: var(--fg2); border: 1px dashed var(--line2); border-radius: 8px; padding: 10px 12px; }
 
 /* KPI tiles */
 .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -680,10 +732,8 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
 .stop .nm { font-size: 13.5px; }
 .stop .meta { color: var(--fg2); font-size: 12px; margin-top: 1px; }
 .stop .eta { font-family: var(--font-num); color: var(--fg2); font-size: 12px; white-space: nowrap; padding-top: 4px; font-variant-numeric: tabular-nums; text-align: right; }
-.stop .eta small { display: block; font-family: var(--font-ui); color: var(--muted); font-size: 10.5px; }
 .loadbar { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 5px; width: 120px; }
 .loadbar i { display: block; height: 100%; background: var(--accent); }
-.empty-note { font-size: 12.5px; color: var(--fg2); border: 1px dashed var(--line2); border-radius: 8px; padding: 10px 12px; }
 
 /* risk list */
 .risk { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
@@ -704,12 +754,16 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
 .card .nm { font-weight: 600; font-size: 15px; }
 .card .en { color: var(--fg2); font-size: 12px; }
 .card .x { border: 0; background: transparent; color: var(--fg2); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; }
+.card .verdict { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 13px; }
 .card .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 .card .fact .v { font-family: var(--font-num); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .card .fact .k { font-size: 11px; color: var(--fg2); }
+.card .bellbox { margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--panel2); font-size: 12.5px; display: grid; gap: 4px; line-height: 1.5; }
+.card .bellbox b { font-family: var(--font-num); font-weight: 500; }
 .card .spark { margin-top: 10px; }
 .card .spark svg { width: 100%; height: 86px; display: block; }
 .card .foot { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.card .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
 
 /* legend, replay bar, about */
 .legend { position: absolute; left: 10px; bottom: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 11px; z-index: 500; color: var(--fg2); box-shadow: var(--shadow); }
@@ -727,6 +781,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
 .replaybar .sticks i { position: absolute; top: 0; width: 1.5px; height: 6px; background: var(--muted); transform: translateX(-50%); }
 .replaybar .sticks i.major { background: var(--fg2); height: 8px; top: -1px; }
 .replaybar .t { font-family: var(--font-num); font-size: 13px; min-width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+.pickhint { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); background: var(--fg); color: var(--panel); border-radius: 999px; padding: 6px 14px; font-size: 12.5px; z-index: 600; box-shadow: var(--shadow); white-space: nowrap; }
 .about summary { cursor: pointer; font-size: 12px; color: var(--fg2); }
 .about .body { font-size: 12px; color: var(--fg2); line-height: 1.55; margin-top: 8px; display: grid; gap: 6px; }
 .about b { color: var(--fg); font-weight: 600; }
@@ -738,7 +793,9 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
 .glyph svg { display: block; overflow: visible; }
 .glyph .lbl { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--fg); padding: 1px 4px; background: color-mix(in srgb, var(--panel) 82%, transparent); border-radius: 3px; pointer-events: none; }
 .glyph.sel svg { filter: drop-shadow(0 0 4px var(--accent)); }
+.glyph .star { position: absolute; right: -5px; top: -6px; font-size: 12px; color: var(--warn); pointer-events: none; text-shadow: 0 0 2px var(--panel); }
 .stopicon { background: var(--route); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; font: 500 11.5px var(--font-num); border: 2px solid var(--panel); box-shadow: var(--shadow); }
+.originicon { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 3px solid var(--panel); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent); }
 .route-line { stroke-dasharray: 10 8; animation: march 1.2s linear infinite; }
 @keyframes march { to { stroke-dashoffset: -18; } }
 .leaflet-container { font-family: var(--font-ui); }
@@ -752,12 +809,19 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
 .leaflet-control-scale-line { background: color-mix(in srgb, var(--panel) 85%, transparent); color: var(--fg2); border-color: var(--muted); }
 
 @media (max-width: 860px) {
-  .app { grid-template-columns: 1fr; grid-template-rows: 46vh 1fr; }
+  .app { grid-template-columns: 1fr; grid-template-rows: 42vh 1fr; }
   .panel { border-right: 0; border-top: 1px solid var(--line); order: 2; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .mapwrap { order: 1; }
   .replaybar { width: calc(100% - 20px); bottom: 10px; }
   .legend { display: none; }
+  .brand { flex: 1 1 0; }
+  .brand .eyebrow { display: none; }
   .brand h1 { font-size: 14px; }
+  .brand h1 .long { display: none; }
+  .brand h1 .short { display: inline; }
+  .top { gap: 8px; }
+  .top .seg button { padding: 5px 8px; font-size: 12px; }
+  .top .status { order: 9; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .route-line { animation: none; } * { transition: none !important; } }
 </style>
@@ -766,12 +830,12 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
 <body>
 <div class="shell">
   <header class="top">
-    <div class="brand"><span class="eyebrow">Beat the Bell · Group 54</span><h1 id="title">中山大學 YouBike 即時缺車預測與調度</h1></div>
+    <div class="brand"><span class="eyebrow">Beat the Bell · Group 54</span><h1><span class="long" id="title">中山大學 YouBike 即時缺車預測與調度</span><span class="short" id="titleShort">中山 YouBike 找車</span></h1></div>
     <span class="spacer"></span>
     <span class="seg" role="group" aria-label="mode"><button id="mLive" aria-pressed="true">即時</button><button id="mReplay" aria-pressed="false">重播</button></span>
     <select id="replayDay" class="daysel" aria-label="replay day" hidden></select>
     <span class="seg" role="group" aria-label="language"><button id="lZh" aria-pressed="true">中</button><button id="lEn" aria-pressed="false">EN</button></span>
-    <span class="status" id="status"><span class="dot"></span><span id="statusText">讀取中…</span></span>
+    <span class="status" id="status" aria-live="polite"><span class="dot"></span><span id="statusText">讀取中…</span></span>
   </header>
   <div class="app">
     <aside class="panel">
@@ -780,34 +844,64 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
         <div class="strip" id="strip"></div>
       </section>
 
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tabRider" aria-selected="true" aria-controls="paneRider"><span id="tabRiderT">找車</span><small id="tabRiderSub">下課後哪裡還有車</small></button>
+        <button role="tab" id="tabOps" aria-selected="false" aria-controls="paneOps"><span id="tabOpsT">調度</span><small id="tabOpsSub">鐘響前的卡車路線</small></button>
+      </div>
+
       <section id="cardWrap" hidden><div class="card" id="card"></div></section>
 
-      <section>
-        <h2 id="hKpi">目前狀態</h2>
-        <div class="kpis">
-          <div class="tile"><div class="v" id="tEmpty">–</div><div class="k" id="kEmpty">目前空站（共 – 站有資料）</div></div>
-          <div class="tile"><div class="v" id="tRisk">–</div><div class="k" id="kRisk">30 分內缺車機率 ≥ 50% 的站</div></div>
-          <div class="tile"><div class="v" id="tUnmet">–</div><div class="k" id="kUnmet">未來 90 分預期借不到車（人次）</div></div>
-          <div class="tile plan"><div class="v" id="tSaved">–</div><div class="k" id="kSaved">依建議路線可避免（人次）</div></div>
+      <div id="paneRider" class="pane" role="tabpanel">
+        <div class="tip" id="tip" hidden><span id="tipText"></span><button class="x" id="tipX" aria-label="close">×</button></div>
+        <div class="search">
+          <span class="ico" aria-hidden="true">⌕</span>
+          <input id="q" type="search" autocomplete="off" placeholder="搜尋站名，例如 圖資、西子灣" aria-label="search">
+          <div class="results" id="qres" hidden></div>
         </div>
-      </section>
+        <div class="origin">
+          <span class="lbl" id="originLbl"></span>
+          <button class="btn small" id="btnGeo" type="button">◎ <span id="btnGeoT">用我的位置</span></button>
+          <button class="btn small" id="btnPick" type="button" aria-pressed="false"><span id="btnPickT">點地圖選起點</span></button>
+          <button class="btn small" id="btnCampus" type="button" hidden><span id="btnCampusT">回到校園</span></button>
+        </div>
+        <div class="best" id="best" hidden></div>
+        <section>
+          <h2><span id="hFav">我的站</span><span class="sub" id="hFavSub"></span></h2>
+          <ol class="slist" id="favs"></ol>
+        </section>
+        <section>
+          <h2><span id="hNear">附近的站</span><span class="sub" id="hNearSub"></span></h2>
+          <ol class="slist" id="near"></ol>
+        </section>
+      </div>
 
-      <section>
-        <h2><span id="hPlan">下一次鐘響前的卡車路線</span><button class="copy" id="copyAll" type="button" hidden>複製路線</button></h2>
-        <div id="plans"></div>
-      </section>
+      <div id="paneOps" class="pane" role="tabpanel" hidden>
+        <section>
+          <h2 id="hKpi">目前狀態</h2>
+          <div class="kpis">
+            <div class="tile"><div class="v" id="tEmpty">–</div><div class="k" id="kEmpty"></div></div>
+            <div class="tile"><div class="v" id="tRisk">–</div><div class="k" id="kRisk"></div></div>
+            <div class="tile"><div class="v" id="tUnmet">–</div><div class="k" id="kUnmet"></div></div>
+            <div class="tile plan"><div class="v" id="tSaved">–</div><div class="k" id="kSaved"></div></div>
+          </div>
+        </section>
+        <section>
+          <h2><span id="hPlan"></span><button class="copy" id="copyAll" type="button" hidden></button></h2>
+          <div id="plans"></div>
+        </section>
+        <section>
+          <h2><span id="hRisk"></span>
+            <span class="seg" role="group" aria-label="horizon"><button id="h30" aria-pressed="true">30 分</button><button id="h60" aria-pressed="false">60 分</button><button id="hU" aria-pressed="false">90 分缺口</button></span></h2>
+          <ol class="risk" id="risk"></ol>
+        </section>
+      </div>
 
-      <section>
-        <h2><span id="hRisk">缺車風險最高的站</span>
-          <span class="seg" role="group" aria-label="horizon"><button id="h30" aria-pressed="true">30 分</button><button id="h60" aria-pressed="false">60 分</button><button id="hU" aria-pressed="false">90 分缺口</button></span></h2>
-        <ol class="risk" id="risk"></ol>
-      </section>
-
-      <details class="about"><summary id="aboutSum">方法與數據</summary><div class="body" id="aboutBody"></div></details>
+      <details class="about"><summary id="aboutSum"></summary><div class="body" id="aboutBody"></div></details>
       <div class="err" id="err" hidden></div>
     </aside>
     <section class="mapwrap">
       <div id="map" role="img" aria-label="map"></div>
+      <div class="pickhint" id="pickhint" hidden></div>
       <div class="legend" id="legend"></div>
       <div class="replaybar" id="replaybar" hidden>
         <button id="play" aria-label="play">▶</button>
@@ -822,30 +916,53 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
 <script>
 (function () {
   var CAMPUS = { "501209052": 1, "501209070": 1, "501209051": 1, "501209054": 1, "501209039": 1, "501209069": 1, "501209040": 1, "501209071": 1 };
+  var GATEWAY = { "501209024": 1, "501209062": 1, "501209042": 1, "501209036": 1, "501209026": 1, "501209023": 1, "501209022": 1, "501209032": 1, "501209025": 1, "501209104": 1, "501209028": 1 };
   var SHORT = { "501209052": ["圖資", "Library"], "501209070": ["西灣藝廊", "Xiziwan Hall"], "501209051": ["工學院", "Engineering"], "501209054": ["材料", "Materials"],
                 "501209039": ["社科院", "Social Sci."], "501209069": ["體育館", "Gym"], "501209040": ["海工館", "Marine Eng."], "501209071": ["海資館", "Marine Res."] };
+  var CAMPUS_CENTER = [22.6273, 120.2658];
   var T = {
-    zh: { title: "中山大學 YouBike 即時缺車預測與調度", live: "即時", replay: "重播", loading: "讀取中…", liveAt: "即時 · 快照 {t}", ago: "（{m} 分鐘前）", replayAt: "重播 {d} · {t}",
-          stale: "暫時讀不到新資料，顯示 {t} 的快照", kpi: "目前狀態", empty: "目前空站（共 {n} 站有資料）", risk: "30 分內缺車機率 ≥ 50% 的站", unmet: "未來 {h} 分預期借不到車（人次）",
-          saved: "依建議路線可避免（人次）", plan: "下一次鐘響前的卡車路線", riskH: "缺車風險最高的站", min: "分", toBell: "距下一次鐘響 {b}", noBellToday: "今天沒有鐘響",
-          offday: "假日：校園站不會因下課被借空", dayOver: "今天的課結束了", bellTime: "現在 {t}", pick: "載走 {n} 台", drop: "送 {n} 台", now: "目前 {b} / {c}", eta: "+{t} 分",
-          onTruck: "車上 {n} 台", truck: "卡車 {k}", stops: "{n} 站", about: "約 {t} 分、{k} km", avoid: "預計避免 {v} 人次借不到車", noPlan: "目前沒有值得出車的調度：未來 {h} 分內各站預期的缺車都很少，出車的時間成本高於能避免的人次。",
-          window: "規劃器只在 06:00–23:00 運作。", campus: "校內", gateway: "門戶", unmetH: "未來 90 分缺口最大的站", modeU: "90 分缺口", legendU: "未來 {h} 分預期借不到車（人次）", copy: "複製路線", copied: "已複製", stalebig: "紀錄器已 {m} 分鐘沒有新資料，顯示的是最後一筆快照。", legend: "缺車機率（{h} 分內）", legCampus: "校內站（藍圈）", legRing: "外圈 = 車柱裡有車的比例", legRoute: "建議卡車路線",
-          legGrey: "灰色 = 暫停服務或無資料", bikes: "車", docks: "空位", p30: "30 分缺車", p60: "60 分缺車", unmetS: "90 分預期借不到", stale2: "資料 {m} 分鐘前更新", oos: "暫停服務",
-          excluded: "旗津區，不納入卡車路線", todayStock: "今天的車數（06:00 起，虛線 = 鐘響）", aboutSum: "方法與數據",
-          aboutBody: "<div><b>資料</b> 紀錄器每 10 分鐘抓官方 API，中山周邊 5 km 內 309 站，自 10/1 起。</div><div><b>缺車機率</b> 在臺大 10 個月資料上訓練的 LightGBM 模型，只用庫存與時間特徵，直接用於中山（zero-shot）；臺大測試 AUC 0.93，中山 0.93。</div><div><b>借還速率</b> 高雄沒有騎乘紀錄，改用規劃器的生滅鏈對紀錄器的 10 分鐘變化做最大概似估計；最後 7 天檢驗，比只數毛變化量的下界準。</div><div><b>卡車路線</b> 用生滅鏈算每站未來 {h} 分預期借不到車的人次，路線搜尋（貪婪插入、模擬退火、2-opt）選最值得的停靠與載量，每台車 {q} 台、時速 {s} km/h、每站停 {st} 分。臺大真實騎乘重播：1／3／6 台車分別少 13%／30%／45% 借不到車的人次。</div><div><b>限制</b> 車程用直線距離 × 1.3 估，旗津的站排除；模型未用中山資料微調。</div><div>程式與資料：<a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" },
-    en: { title: "NSYSU YouBike: live stockout prediction and rebalancing", live: "Live", replay: "Replay", loading: "Loading…", liveAt: "Live · snapshot {t}", ago: " ({m} min ago)", replayAt: "Replay {d} · {t}",
-          stale: "No new data for now; showing the {t} snapshot", kpi: "Right now", empty: "Empty stations (of {n} reporting)", risk: "Stations with P(empty in 30 min) ≥ 0.5", unmet: "Expected unmet rentals, next {h} min",
-          saved: "Avoided by the suggested route", plan: "Truck route before the next bell", riskH: "Highest stockout risk", min: "min", toBell: "until the {b} bell", noBellToday: "No bells today",
-          offday: "Off-day: campus stations are not drained by class ends", dayOver: "Classes are over for today", bellTime: "now {t}", pick: "Pick up {n}", drop: "Drop off {n}", now: "now {b} / {c}", eta: "+{t} min",
-          onTruck: "{n} on truck", truck: "Truck {k}", stops: "{n} stops", about: "about {t} min, {k} km", avoid: "avoids about {v} unmet rentals", noPlan: "Nothing worth dispatching now: the expected stockouts over the next {h} min are too small to pay for the truck time.",
-          window: "The planner runs 06:00–23:00 only.", campus: "campus", gateway: "gateway", unmetH: "Largest expected shortfall, next 90 min", modeU: "shortfall", legendU: "Expected unmet rentals, next {h} min", copy: "Copy route", copied: "Copied", stalebig: "The logger has not reported for {m} min; this is the last snapshot.", legend: "P(empty within {h} min)", legCampus: "campus station (blue ring)", legRing: "outer ring = share of docks with a bike", legRoute: "suggested truck route",
-          legGrey: "grey = out of service or no data", bikes: "bikes", docks: "docks", p30: "P(empty) 30 min", p60: "P(empty) 60 min", unmetS: "unmet, next 90 min", stale2: "reported {m} min ago", oos: "out of service",
-          excluded: "Qijin district, not served by the truck", todayStock: "Bikes today since 06:00 (dashed = bells)", aboutSum: "Method and numbers",
-          aboutBody: "<div><b>Data</b> A logger reads the official API every 10 minutes for the 309 stations within 5 km of NSYSU, since 1 Oct.</div><div><b>Stockout probability</b> A LightGBM model trained on 10 months of NTU data from inventory and time features only, applied to NSYSU without fine-tuning (zero-shot): AUC 0.93 on the NTU test months, 0.93 at NSYSU.</div><div><b>Rental and return rates</b> Kaohsiung publishes no trip data, so the planner's birth–death chain is fitted by maximum likelihood to the logger's 10-minute changes; on the last 7 days it beats the gross-change lower bound.</div><div><b>Truck route</b> The chain prices every station by the unmet rentals expected in the next {h} min; a route search (greedy insertion, simulated annealing, 2-opt) picks the stops and loads: {q} bikes per truck, {s} km/h, {st} min per stop. In a replay of real NTU trips, 1 / 3 / 6 trucks avoid 13% / 30% / 45% of unmet rentals.</div><div><b>Limits</b> Travel times are straight-line × 1.3; Qijin stations are excluded; the model is not fine-tuned on NSYSU data.</div><div>Code and data: <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" }
+    zh: { title: "中山大學 YouBike 即時缺車預測與調度", titleShort: "中山 YouBike 找車", live: "即時", replay: "重播", loading: "讀取中…", liveAt: "即時 · 快照 {t}", ago: "（{m} 分鐘前）", replayAt: "重播 {d} · {t}",
+          stale: "暫時讀不到新資料，顯示 {t} 的快照", stalebig: "紀錄器已 {m} 分鐘沒有新資料，顯示的是最後一筆快照。", min: "分", toBell: "距下一次鐘響 {b}", noBellToday: "今天沒有鐘響",
+          offday: "假日：校園站不會因下課被借空", dayOver: "今天的課結束了", bellTime: "現在 {t}",
+          tabRider: "找車", tabRiderSub: "下課後哪裡還有車", tabOps: "調度", tabOpsSub: "鐘響前的卡車路線",
+          tip: "點地圖上的站，看它在下課後會不會沒車；打開站點卡片按 ☆，常用的站下次打開就排在最前面。", search: "搜尋站名，例如 圖資、西子灣", noMatch: "沒有符合的站",
+          originCampus: "起點：中山大學", originMe: "起點：我的位置", originPick: "起點：地圖上選的點", geo: "用我的位置", geoFail: "拿不到位置，請改用地圖選起點", pick: "點地圖選起點", picking: "點一下地圖，把那裡設為起點", campus: "回到校園",
+          pickK: "建議去", pickNearest: "最近的站就有車", pickFar: "更近的站可能沒車", pickNone: "附近 2 km 內的站都可能沒車，請看地圖上較遠的綠色站", pickD: "步行 {m} 分 · 現在 {b} 台",
+          fav: "我的站", favEmpty: "還沒有加入的站。打開站點卡片按 ☆ 加入。", near: "附近的站", nearSub: "依步行時間", walk: "步行 {m} 分", walkFar: "{k} km",
+          vGood: "有車", vLow: "可能變少", vEmpty: "可能沒車", vVery: "很可能沒車", vEmptyNow: "現在沒車", vFull: "沒位子還車", vNone: "無資料", vOos: "暫停服務",
+          within30: "30 分內", docksNow: "{d} 空位", afterBell: "{at} 約 {b} 台",
+          bellBox: "{at}（{t} 下課後 {a} 分）預計剩 {b} 台，沒車機率 {p}%", bellBoxFull: "要還車：{p}% 機率沒位子", bellNone: "今天沒有下一次鐘響了，沒有下課後的預估",
+          kpi: "目前狀態", empty: "目前空站（共 {n} 站有資料）", risk: "30 分內缺車機率 ≥ 50% 的站", unmet: "未來 {h} 分預期借不到車（人次）", saved: "依建議路線可避免（人次）",
+          plan: "下一次鐘響前的卡車路線", riskH: "缺車風險最高的站", unmetH: "未來 90 分缺口最大的站", modeU: "90 分缺口", copy: "複製路線", copied: "已複製",
+          pickN: "載走 {n} 台", drop: "送 {n} 台", now: "目前 {b} / {c}", eta: "+{t} 分", onTruck: "車上 {n} 台", truck: "卡車 {k}", stops: "{n} 站", about: "約 {t} 分、{k} km", avoid: "預計避免 {v} 人次借不到車",
+          noPlan: "目前沒有值得出車的調度：未來 {h} 分內各站預期的缺車都很少，出車的時間成本高於能避免的人次。", window: "規劃器只在 06:00–23:00 運作。",
+          campusTag: "校內", gateway: "門戶", legend: "缺車機率（{h} 分內）", legendU: "未來 {h} 分預期借不到車（人次）", legCampus: "校內站（藍圈）", legRing: "外圈 = 車柱裡有車的比例", legRoute: "建議卡車路線", legGrey: "灰色 = 暫停服務或無資料", legStar: "★ 我的站",
+          bikes: "車", docks: "空位", p30: "30 分沒車機率", p60: "60 分沒車機率", unmetS: "90 分預期借不到", stale2: "資料 {m} 分鐘前更新", oos: "暫停服務", excluded: "旗津區，不納入卡車路線", todayStock: "今天的車數（06:00 起，虛線 = 鐘響）",
+          addFav: "☆ 加入我的站", rmFav: "★ 移出我的站", nav: "導航", aboutSum: "方法與數據",
+          aboutBody: "<div><b>資料</b> 紀錄器每 10 分鐘抓官方 API，中山周邊 5 km 內 309 站，自 10/1 起。</div><div><b>缺車機率</b> 在臺大 10 個月資料上訓練的 LightGBM 模型，只用庫存與時間特徵，直接用於中山（zero-shot）；臺大測試 AUC 0.93，中山 0.93。</div><div><b>下課後的預估</b> 用規劃器的生滅鏈，從現在的車數往前推到下課後 20 分，算預計剩幾台、沒車與沒位子的機率；借還速率由紀錄器資料以最大概似估計。</div><div><b>卡車路線</b> 生滅鏈算每站未來 {h} 分預期借不到車的人次，路線搜尋（貪婪插入、模擬退火、2-opt）選停靠與載量，每台車 {q} 台、時速 {s} km/h、每站停 {st} 分。臺大真實騎乘重播：1／3／6 台車分別少 13%／30%／45% 借不到車的人次。</div><div><b>限制</b> 車程用直線距離 × 1.3 估，旗津的站排除；模型未用中山資料微調；「我的站」只存在這台裝置的瀏覽器裡。</div><div>程式與資料：<a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" },
+    en: { title: "NSYSU YouBike: live stockout prediction and rebalancing", titleShort: "NSYSU YouBike live", live: "Live", replay: "Replay", loading: "Loading…", liveAt: "Live · snapshot {t}", ago: " ({m} min ago)", replayAt: "Replay {d} · {t}",
+          stale: "No new data for now; showing the {t} snapshot", stalebig: "The logger has not reported for {m} min; this is the last snapshot.", min: "min", toBell: "until the {b} bell", noBellToday: "No bells today",
+          offday: "Off-day: campus stations are not drained by class ends", dayOver: "Classes are over for today", bellTime: "now {t}",
+          tabRider: "Find a bike", tabRiderSub: "where bikes remain after class", tabOps: "Dispatch", tabOpsSub: "truck route before the bell",
+          tip: "Tap a station on the map to see whether it will be empty after the bell; open a station and press ☆ to keep the ones you use at the top.", search: "Search stations, e.g. Library, Sizihwan", noMatch: "No matching station",
+          originCampus: "From: NSYSU campus", originMe: "From: my location", originPick: "From: point on the map", geo: "Use my location", geoFail: "Location unavailable; pick a point on the map", pick: "Pick on map", picking: "Tap the map to set the starting point", campus: "Back to campus",
+          pickK: "Suggested", pickNearest: "the nearest station has bikes", pickFar: "closer stations may be empty", pickNone: "Every station within 2 km may be empty; look for a green station further out on the map", pickD: "{m} min walk · {b} bikes now",
+          fav: "My stations", favEmpty: "No stations saved yet. Open a station and press ☆.", near: "Nearby stations", nearSub: "by walking time", walk: "{m} min walk", walkFar: "{k} km",
+          vGood: "Bikes available", vLow: "May run low", vEmpty: "Likely empty", vVery: "Very likely empty", vEmptyNow: "Empty now", vFull: "No dock to return", vNone: "No data", vOos: "Out of service",
+          within30: "next 30 min", docksNow: "{d} docks", afterBell: "≈{b} at {at}",
+          bellBox: "At {at} ({a} min after the {t} bell): {b} bikes expected, {p}% chance of none", bellBoxFull: "Returning: {p}% chance of no free dock", bellNone: "No further bell today, so no after-bell estimate",
+          kpi: "Right now", empty: "Empty stations (of {n} reporting)", risk: "Stations with P(empty in 30 min) ≥ 0.5", unmet: "Expected unmet rentals, next {h} min", saved: "Avoided by the suggested route",
+          plan: "Truck route before the next bell", riskH: "Highest stockout risk", unmetH: "Largest expected shortfall, next 90 min", modeU: "shortfall", copy: "Copy route", copied: "Copied",
+          pickN: "Pick up {n}", drop: "Drop off {n}", now: "now {b} / {c}", eta: "+{t} min", onTruck: "{n} on truck", truck: "Truck {k}", stops: "{n} stops", about: "about {t} min, {k} km", avoid: "avoids about {v} unmet rentals",
+          noPlan: "Nothing worth dispatching now: the expected stockouts over the next {h} min are too small to pay for the truck time.", window: "The planner runs 06:00–23:00 only.",
+          campusTag: "campus", gateway: "gateway", legend: "P(empty within {h} min)", legendU: "Expected unmet rentals, next {h} min", legCampus: "campus station (blue ring)", legRing: "outer ring = share of docks with a bike", legRoute: "suggested truck route", legGrey: "grey = out of service or no data", legStar: "★ my station",
+          bikes: "bikes", docks: "docks", p30: "P(empty) 30 min", p60: "P(empty) 60 min", unmetS: "unmet, next 90 min", stale2: "reported {m} min ago", oos: "out of service", excluded: "Qijin district, not served by the truck", todayStock: "Bikes today since 06:00 (dashed = bells)",
+          addFav: "☆ Save station", rmFav: "★ Remove", nav: "Directions", aboutSum: "Method and numbers",
+          aboutBody: "<div><b>Data</b> A logger reads the official API every 10 minutes for the 309 stations within 5 km of NSYSU, since 1 Oct.</div><div><b>Stockout probability</b> A LightGBM model trained on 10 months of NTU data from inventory and time features only, applied to NSYSU without fine-tuning (zero-shot): AUC 0.93 on the NTU test months, 0.93 at NSYSU.</div><div><b>After-bell estimate</b> The planner's birth–death chain rolls the current stock forward to 20 min after the bell, giving the expected bikes left and the chance of no bike or no dock; its rates are fitted to the logger by maximum likelihood.</div><div><b>Truck route</b> The chain prices every station by the unmet rentals expected in the next {h} min; a route search (greedy insertion, simulated annealing, 2-opt) picks the stops and loads: {q} bikes per truck, {s} km/h, {st} min per stop. In a replay of real NTU trips, 1 / 3 / 6 trucks avoid 13% / 30% / 45% of unmet rentals.</div><div><b>Limits</b> Travel times are straight-line × 1.3; Qijin stations are excluded; the model is not fine-tuned on NSYSU data; saved stations live only in this browser.</div><div>Code and data: <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" }
   };
-  var lang = "zh", mode = "live", horizon = 30, GATEWAY = { "501209024": 1, "501209062": 1, "501209042": 1, "501209036": 1, "501209026": 1, "501209023": 1, "501209022": 1, "501209032": 1, "501209025": 1, "501209104": 1, "501209028": 1 }, live = null, replay = null, replays = {}, replayDays = ["2026-10-28"], replayDay = "2026-10-28", slot = 0, playing = false, playTimer = null, selected = null, fitted = false;
-  var map, tiles, glyphLayer, routeLayer, markers = {};
+  var lang = "zh", mode = "live", tab = "rider", horizon = 30, live = null, replay = null, replays = {}, replayDays = ["2026-10-28"], replayDay = "2026-10-28", slot = 0, playing = false, playTimer = null, selected = null, fitted = false;
+  var origin = { kind: "campus", lat: CAMPUS_CENTER[0], lng: CAMPUS_CENTER[1] }, picking = false, favs = [];
+  var map, tiles, glyphLayer, routeLayer, originLayer, markers = {};
   var css = getComputedStyle(document.documentElement);
   function tok(n) { return css.getPropertyValue(n).trim(); }
   function t(k, v) { var s = T[lang][k] || k; if (v) Object.keys(v).forEach(function (x) { s = s.split("{" + x + "}").join(v[x]); }); return s; }
@@ -856,47 +973,60 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
   function fmt(x, d) { return x == null ? "–" : Number(x).toFixed(d == null ? 0 : d); }
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function hm(m) { return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
   function nameOf(s) { if (lang === "zh") return s.name; return CAMPUS[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || s.name); }
+  function altName(s) { return lang === "zh" ? (CAMPUS[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || "")) : s.name; }
   function taipeiNow() { var n = new Date(); return new Date(n.getTime() + (n.getTimezoneOffset() + 480) * 60000); }
-  function isDark() { var th = document.documentElement.getAttribute("data-theme"); return th ? th === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; }
+  function distKm(a, b, c, d) { return Math.hypot((a - c) * 111, (b - d) * 102.5); }
+  function walkMin(km) { return Math.max(1, Math.round(km * 1.25 * 1000 / 80)); }   // straight line × 1.25 at 80 m/min
+  function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  favs = load("btb-favs", []); if (!Array.isArray(favs)) favs = [];
+  function verdict(p, observed, status, bikes) {
+    if (!observed) return { cls: "n", text: status === 2 ? t("vOos") : t("vNone") };
+    if (bikes === 0) return { cls: "r", text: t("vEmptyNow") };
+    if (p == null) return { cls: "n", text: t("vNone") };
+    return p < 0.25 ? { cls: "g", text: t("vGood") } : p < 0.5 ? { cls: "y", text: t("vLow") } : p < 0.75 ? { cls: "o", text: t("vEmpty") } : { cls: "r", text: t("vVery") };
+  }
+  function chip(vd, extra) { return "<span class=\"chip " + vd.cls + "\">" + vd.text + (extra ? " · " + extra : "") + "</span>"; }
+  function bellBikes(v, i) { return v.bell && v.bell.bikes && v.bell.bikes[i] != null ? v.bell.bikes[i] : null; }
 
   // ---------- current view: live state or one replay slot, in one shape ----------
   function view() {
     if (mode === "replay" && replay) {
       var sl = replay.slots[slot];
-      return { meta: replay, stations: replay.stations, snapshot_at: sl.snapshot_at, t_min: sl.t_min, offday: replay.offday, in_window: true, next_bell: sl.next_bell,
+      return { meta: replay, stations: replay.stations, snapshot_at: sl.snapshot_at, t_min: sl.t_min, offday: replay.offday, in_window: true, next_bell: sl.next_bell, bell: sl.bell,
                totals: sl.totals, plans: sl.plans, bikes: sl.bikes, docks: null, status: null, age: null, p30: sl.p30, p60: sl.p60, unmet: sl.unmet,
                history: { from: replay.slots[0].snapshot_at.slice(11), step: 10, at: function (i) { return replay.slots.slice(0, slot + 1).map(function (x) { return x.bikes[i]; }); } } };
     }
     if (!live) return null;
-    return { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell,
+    return { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell, bell: live.bell,
              totals: live.totals, plans: live.plans, bikes: live.bikes, docks: live.docks, status: live.status, age: live.age, p30: live.p30, p60: live.p60, unmet: live.unmet,
              history: { from: live.history.from, step: live.history.step, at: function (i) { return live.history.bikes[i]; } } };
   }
 
   // ---------- map ----------
-  function tileUrl() { return "https://tile.openstreetmap.org/{z}/{x}/{y}.png"; }
   function initMap() {
     map = L.map("map", { zoomControl: true, attributionControl: true }).setView([22.633, 120.29], 13);
-    tiles = L.tileLayer(tileUrl(), { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>" }).addTo(map);
-    map.on("zoomend", function () { var v = view(); if (v) drawStations(v); });
+    tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>" }).addTo(map);
     L.control.scale({ imperial: false }).addTo(map);
     glyphLayer = L.layerGroup().addTo(map);
     routeLayer = L.layerGroup().addTo(map);
-    map.on("click", function () { select(null); });
+    originLayer = L.layerGroup().addTo(map);
+    map.on("zoomend", function () { var v = view(); if (v) drawStations(v); });
+    map.on("click", function (e) { if (picking) { setOrigin("pick", e.latlng.lat, e.latlng.lng); setPicking(false); } else { select(null); } });
     var mq = window.matchMedia("(prefers-color-scheme: dark)");
     if (mq.addEventListener) mq.addEventListener("change", retheme);
     new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   }
   function retheme() { css = getComputedStyle(document.documentElement); render(); }
-
   function zscale() { var z = map.getZoom(), ph = window.innerWidth < 860 ? 0.85 : 1; return ph * (z <= 12 ? 0.5 : z <= 13 ? 0.65 : z <= 14 ? 0.82 : 1); }
   function glyphR(cap) { return (5 + Math.sqrt(cap) * 1.0) * zscale(); }
-  function glyphHtml(s, bikes, p, observed, cap, sel) {
+  function glyphHtml(s, bikes, color, observed, cap, sel) {
     var R = glyphR(cap), S = 2 * R + 6, c = S / 2, rr = Math.max(2, R - 3.5), labels = map.getZoom() >= 15;
     var frac = observed && cap > 0 ? Math.max(0, Math.min(1, bikes / cap)) : 0;
     var ring = CAMPUS[s.sno] ? tok("--accent") : tok("--line");
-    var inner = observed ? p : tok("--r0");
+    var inner = observed ? color : tok("--r0");
     var arc = "";
     if (frac > 0) {
       var a = frac * 2 * Math.PI - Math.PI / 2, x = c + R * Math.cos(a), y = c + R * Math.sin(a), big = frac > 0.5 ? 1 : 0;
@@ -904,25 +1034,25 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
         : "<path d=\"M " + c + " " + (c - R) + " A " + R + " " + R + " 0 " + big + " 1 " + x.toFixed(2) + " " + y.toFixed(2) + "\" fill=\"none\" stroke=\"" + tok("--muted") + "\" stroke-width=\"2.5\" stroke-opacity=\"0.85\" stroke-linecap=\"round\"/>";
     }
     var label = CAMPUS[s.sno] && labels ? "<span class=\"lbl\">" + SHORT[s.sno][lang === "zh" ? 0 : 1] + "</span>" : "";
+    var star = favs.indexOf(s.sno) >= 0 && map.getZoom() >= 14 ? "<span class=\"star\">★</span>" : "";
     return "<div class=\"glyph" + (sel ? " sel" : "") + "\"><svg width=\"" + S + "\" height=\"" + S + "\" viewBox=\"0 0 " + S + " " + S + "\">" +
       "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + ring + "\" stroke-width=\"" + (CAMPUS[s.sno] ? 2.5 : 2) + "\"" + (observed ? "" : " stroke-dasharray=\"3 3\"") + "/>" + arc +
-      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + inner + "\" fill-opacity=\"" + (observed ? 1 : 0.6) + "\"/></svg>" + label + "</div>";
+      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + inner + "\" fill-opacity=\"" + (observed ? 1 : 0.6) + "\"/></svg>" + star + label + "</div>";
   }
   function drawStations(v) {
     glyphLayer.clearLayers(); markers = {};
-    if (!fitted) { fitted = true; var near = v.stations.filter(function (s) { return Math.hypot((s.lat - 22.6273) * 111, (s.lng - 120.2658) * 102.5) <= 2.6; });
-      map.fitBounds(L.latLngBounds(near.map(function (s) { return [s.lat, s.lng]; })), { padding: [24, 24] }); }
+    if (!fitted) { fitted = true; if (tab === "rider") map.setView(CAMPUS_CENTER, 15); else fitArea(v); }
     v.stations.forEach(function (s, i) {
-      var observed = v.bikes[i] != null, cap = s.cap;
-      var R = glyphR(cap), S = 2 * R + 6;
+      var observed = v.bikes[i] != null, cap = s.cap, R = glyphR(cap), S = 2 * R + 6;
       var m = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: glyphHtml(s, v.bikes[i], colorOf(v, i), observed, cap, selected === i), iconSize: [S, S], iconAnchor: [S / 2, S / 2] }),
         zIndexOffset: CAMPUS[s.sno] ? 500 : (selected === i ? 800 : 0), keyboard: false });
-      m.on("click", function (e) { L.DomEvent.stopPropagation(e); select(i); });
+      m.on("click", function (e) { L.DomEvent.stopPropagation(e); if (picking) { setOrigin("pick", s.lat, s.lng); setPicking(false); } select(i); });
       m.addTo(glyphLayer); markers[i] = m;
     });
   }
   function drawRoute(v) {
     routeLayer.clearLayers();
+    if (tab !== "ops") return;
     (v.plans || []).forEach(function (pl) {
       var pts = pl.stops.map(function (st) { var s = v.stations[st.i]; return [s.lat, s.lng]; });
       if (pts.length > 1) { L.polyline(pts, { color: tok("--panel"), weight: 7, opacity: 0.9 }).addTo(routeLayer); L.polyline(pts, { color: tok("--route"), weight: 3.5, opacity: 1, className: "route-line" }).addTo(routeLayer); }
@@ -933,8 +1063,83 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
       });
     });
   }
+  function drawOrigin() {
+    originLayer.clearLayers();
+    if (tab !== "rider" || origin.kind === "campus") return;
+    L.marker([origin.lat, origin.lng], { icon: L.divIcon({ className: "", html: "<div class=\"originicon\"></div>", iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 900, keyboard: false, interactive: false }).addTo(originLayer);
+  }
+  function focus(s) { map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15)); }
+  function fitArea(v) { var near = v.stations.filter(function (s) { return distKm(s.lat, s.lng, CAMPUS_CENTER[0], CAMPUS_CENTER[1]) <= 2.6; });
+    map.fitBounds(L.latLngBounds(near.map(function (s) { return [s.lat, s.lng]; })), { padding: [24, 24] }); }
 
-  // ---------- panel ----------
+  // ---------- rider tab ----------
+  function setOrigin(kind, lat, lng) { origin = { kind: kind, lat: lat, lng: lng }; var v = view(); if (v) { renderRider(v); drawOrigin(); } }
+  function setPicking(on) { picking = on; document.getElementById("btnPick").setAttribute("aria-pressed", on ? "true" : "false"); document.getElementById("pickhint").hidden = !on; document.getElementById("map").classList.toggle("picking", on); }
+  function stationRow(v, i) {
+    var s = v.stations[i], observed = v.bikes[i] != null, vd = verdict(v.p30[i], observed, v.status && v.status[i], v.bikes[i]);
+    var li = document.createElement("li"); li.className = "srow" + (selected === i ? " sel" : ""); li.tabIndex = 0;
+    var km = distKm(s.lat, s.lng, origin.lat, origin.lng);
+    var right = km > 3 ? t("walkFar", { k: km.toFixed(1) }) : t("walk", { m: walkMin(km) });
+    var eb = bellBikes(v, i);
+    var after = eb != null ? "<span>" + t("afterBell", { at: v.bell.at, b: "<b>" + Math.round(eb) + "</b>" }) + "</span>" : "";
+    li.innerHTML = "<span class=\"nm\">" + esc(nameOf(s)) + "<span class=\"en\">" + esc(altName(s)) + "</span></span><span class=\"walk\">" + right + "</span>" +
+      "<span class=\"st\">" + chip(vd, observed && v.bikes[i] !== 0 ? t("within30") : null) + (observed && v.docks && v.docks[i] === 0 ? chip({ cls: "o", text: t("vFull") }) : "") + (observed ? "<span><b>" + v.bikes[i] + "</b> / " + s.cap + (v.docks && v.docks[i] != null ? " · " + t("docksNow", { d: v.docks[i] }) : "") + "</span>" : "") + after + "</span>";
+    var go = function () { select(i); focus(s); };
+    li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+    return li;
+  }
+  function bestPick(v, order) {
+    for (var k = 0; k < order.length; k++) {
+      var i = order[k][1], km = order[k][0];
+      if (km > 2) break;
+      if (v.bikes[i] == null || v.bikes[i] < 2) continue;
+      if (v.p30[i] != null && v.p30[i] >= 0.5) continue;
+      var eb = bellBikes(v, i); if (eb != null && eb < 1.5) continue;
+      return { i: i, km: km, nearest: k === 0 };
+    }
+    return null;
+  }
+  function renderRider(v) {
+    document.getElementById("tabRiderT").textContent = t("tabRider"); document.getElementById("tabRiderSub").textContent = t("tabRiderSub");
+    document.getElementById("tabOpsT").textContent = t("tabOps"); document.getElementById("tabOpsSub").textContent = t("tabOpsSub");
+    document.getElementById("q").placeholder = t("search");
+    document.getElementById("originLbl").textContent = origin.kind === "campus" ? t("originCampus") : origin.kind === "me" ? t("originMe") : t("originPick");
+    document.getElementById("btnGeoT").textContent = t("geo"); document.getElementById("btnPickT").textContent = t("pick"); document.getElementById("btnCampusT").textContent = t("campus");
+    document.getElementById("btnCampus").hidden = origin.kind === "campus";
+    document.getElementById("pickhint").textContent = t("picking");
+    document.getElementById("hFav").textContent = t("fav"); document.getElementById("hNear").textContent = t("near"); document.getElementById("hNearSub").textContent = t("nearSub");
+    var tip = document.getElementById("tip"); tip.hidden = !!load("btb-tip-seen", false); document.getElementById("tipText").textContent = t("tip");
+    var idx = {}; v.stations.forEach(function (s, i) { idx[s.sno] = i; });
+    var fl = document.getElementById("favs"); fl.innerHTML = "";
+    var fi = favs.map(function (sno) { return idx[sno]; }).filter(function (i) { return i != null; });
+    if (!fi.length) fl.innerHTML = "<li class=\"empty-note\">" + t("favEmpty") + "</li>";
+    fi.forEach(function (i) { fl.appendChild(stationRow(v, i)); });
+    document.getElementById("hFavSub").textContent = fi.length ? String(fi.length) : "";
+    var order = v.stations.map(function (s, i) { return [distKm(s.lat, s.lng, origin.lat, origin.lng), i]; }).sort(function (a, b) { return a[0] - b[0]; });
+    var nl = document.getElementById("near"); nl.innerHTML = "";
+    order.slice(0, 8).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
+    var pk = document.getElementById("best"), best = bestPick(v, order);
+    pk.hidden = false; pk.onclick = null;
+    if (!best) { pk.className = "best none"; pk.innerHTML = "<div class=\"k\">" + t("pickK") + "</div><div class=\"d\">" + t("pickNone") + "</div>"; }
+    else {
+      var s = v.stations[best.i], eb = bellBikes(v, best.i);
+      pk.className = "best"; pk.tabIndex = 0;
+      pk.innerHTML = "<div class=\"k\">" + t("pickK") + " · " + (best.nearest ? t("pickNearest") : t("pickFar")) + "</div><div class=\"nm\">" + esc(nameOf(s)) + "</div>" +
+        "<div class=\"d\">" + t("pickD", { m: walkMin(best.km), b: "<b>" + v.bikes[best.i] + "</b>" }) + (eb != null ? " · " + t("afterBell", { at: v.bell.at, b: "<b>" + Math.round(eb) + "</b>" }) : "") + "</div>";
+      var go = function () { select(best.i); focus(s); };
+      pk.onclick = go; pk.onkeydown = function (e) { if (e.key === "Enter") go(); };
+    }
+  }
+  function searchStations(q) {
+    var v = view(), box = document.getElementById("qres"); if (!v || !q.trim()) { box.hidden = true; return; }
+    var ql = q.trim().toLowerCase(), hits = [];
+    v.stations.forEach(function (s, i) { if (hits.length >= 8) return; var hay = (s.name + " " + (s.name_en || "") + " " + (SHORT[s.sno] ? SHORT[s.sno].join(" ") : "")).toLowerCase(); if (hay.indexOf(ql) >= 0) hits.push(i); });
+    box.innerHTML = hits.length ? hits.map(function (i) { var s = v.stations[i]; return "<button type=\"button\" data-i=\"" + i + "\"><span>" + esc(nameOf(s)) + "<span class=\"en\"> " + esc(altName(s)) + "</span></span><span class=\"en\">" + (v.bikes[i] != null ? v.bikes[i] + " / " + s.cap : "–") + "</span></button>"; }).join("") : "<div class=\"none\">" + t("noMatch") + "</div>";
+    box.hidden = false;
+    Array.prototype.forEach.call(box.querySelectorAll("button"), function (b) { b.addEventListener("click", function () { var i = parseInt(b.getAttribute("data-i"), 10); box.hidden = true; document.getElementById("q").value = ""; select(i); focus(v.stations[i]); }); });
+  }
+
+  // ---------- shared panel pieces ----------
   function renderBell(v) {
     var m = v.t_min, nb = v.next_bell, big = document.getElementById("bellBig"), lbl = document.getElementById("bellLbl");
     if (mode === "live") { var n = taipeiNow(); m = n.getHours() * 60 + n.getMinutes(); var dow = n.getDay(); if (dow === 0 || dow === 6 || v.offday) nb = null;
@@ -968,7 +1173,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
     var el = document.getElementById("plans"); el.innerHTML = "";
     var cb = document.getElementById("copyAll"); cb.hidden = !(v.in_window && v.plans && v.plans.length); cb.textContent = t("copy");
     cb.onclick = function () {
-      var text = v.snapshot_at + "\n" + v.plans.map(function (pl) { return t("truck", { k: pl.truck }) + "\n" + pl.stops.map(function (st, i) { var ss = v.stations[st.i]; return (i + 1) + ". " + (st.d > 0 ? t("drop", { n: st.d }) : t("pick", { n: -st.d })) + " " + nameOf(ss) + " (" + t("now", { b: v.bikes[st.i], c: ss.cap }) + ", " + t("eta", { t: fmt(st.eta) }) + ")"; }).join("\n"); }).join("\n");
+      var text = v.snapshot_at + "\n" + v.plans.map(function (pl) { return t("truck", { k: pl.truck }) + "\n" + pl.stops.map(function (st, i) { var ss = v.stations[st.i]; return (i + 1) + ". " + (st.d > 0 ? t("drop", { n: st.d }) : t("pickN", { n: -st.d })) + " " + nameOf(ss) + " (" + t("now", { b: v.bikes[st.i], c: ss.cap }) + ", " + t("eta", { t: fmt(st.eta) }) + ")"; }).join("\n"); }).join("\n");
       var done = function () { cb.textContent = t("copied"); setTimeout(function () { cb.textContent = t("copy"); }, 1500); };
       var fallback = function (tx) { var ta = document.createElement("textarea"); ta.value = tx; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { fallback(text); done(); }); else { fallback(text); done(); }
@@ -981,10 +1186,10 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
       var ol = document.createElement("ol"); ol.className = "stops";
       pl.stops.forEach(function (st, i) {
         var s = v.stations[st.i], li = document.createElement("li"); li.className = "stop"; li.tabIndex = 0;
-        li.innerHTML = "<span class=\"n\">" + (i + 1) + "</span><span><div><span class=\"act " + (st.d > 0 ? "drop" : "pick") + "\">" + (st.d > 0 ? t("drop", { n: st.d }) : t("pick", { n: -st.d })) + "</span> <span class=\"nm\">" + nameOf(s) + "</span></div>" +
+        li.innerHTML = "<span class=\"n\">" + (i + 1) + "</span><span><div><span class=\"act " + (st.d > 0 ? "drop" : "pick") + "\">" + (st.d > 0 ? t("drop", { n: st.d }) : t("pickN", { n: -st.d })) + "</span> <span class=\"nm\">" + esc(nameOf(s)) + "</span></div>" +
           "<div class=\"meta\">" + t("now", { b: v.bikes[st.i], c: s.cap }) + " · " + t("onTruck", { n: st.load }) + "</div><div class=\"loadbar\"><i style=\"width:" + Math.round(100 * st.load / v.meta.settings.Q) + "%\"></i></div></span>" +
           "<span class=\"eta\">" + t("eta", { t: fmt(st.eta) }) + "</span>";
-        var go = function () { select(st.i); map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15)); };
+        var go = function () { select(st.i); focus(s); };
         li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
         ol.appendChild(li);
       });
@@ -992,7 +1197,6 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
     });
   }
   function renderRisk(v) {
-    document.getElementById("hRisk").textContent = t("riskH");
     var key = keyOf(), arr = key === "unmet" ? (v.unmet || []) : v[key], idx = [];
     v.stations.forEach(function (s, i) { if (arr[i] != null) idx.push(i); });
     idx.sort(function (a, b) { return arr[b] - arr[a]; });
@@ -1001,9 +1205,9 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
     var top = key === "unmet" ? Math.max(1, arr[idx[0]] || 1) : 1;
     idx.slice(0, 10).forEach(function (i) {
       var s = v.stations[i], li = document.createElement("li"); li.tabIndex = 0; if (selected === i) li.className = "sel";
-      var tag = CAMPUS[s.sno] ? "<span class=\"tag\">" + t("campus") + "</span>" : (GATEWAY[s.sno] ? "<span class=\"tag gw\">" + t("gateway") + "</span>" : "");
-      li.innerHTML = "<span class=\"nm\">" + nameOf(s) + tag + "</span><span class=\"bk\">" + v.bikes[i] + " / " + s.cap + "</span><span class=\"bar\"><i style=\"width:" + Math.round(100 * arr[i] / top) + "%\"></i></span><span class=\"pv\">" + (key === "unmet" ? arr[i].toFixed(1) : arr[i].toFixed(2)) + "</span>";
-      var go = function () { select(i); map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15)); };
+      var tag = CAMPUS[s.sno] ? "<span class=\"tag\">" + t("campusTag") + "</span>" : (GATEWAY[s.sno] ? "<span class=\"tag gw\">" + t("gateway") + "</span>" : "");
+      li.innerHTML = "<span class=\"nm\">" + esc(nameOf(s)) + tag + "</span><span class=\"bk\">" + v.bikes[i] + " / " + s.cap + "</span><span class=\"bar\"><i style=\"width:" + Math.round(100 * arr[i] / top) + "%\"></i></span><span class=\"pv\">" + (key === "unmet" ? arr[i].toFixed(1) : arr[i].toFixed(2)) + "</span>";
+      var go = function () { select(i); focus(s); };
       li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
       ol.appendChild(li);
     });
@@ -1029,23 +1233,33 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
   function renderCard(v) {
     var wrap = document.getElementById("cardWrap");
     if (selected == null) { wrap.hidden = true; return; }
-    var i = selected, s = v.stations[i], observed = v.bikes[i] != null;
+    var i = selected, s = v.stations[i], observed = v.bikes[i] != null, vd = verdict(v.p30[i], observed, v.status && v.status[i], v.bikes[i]);
     var foot = [];
     if (!observed) foot.push(v.status && v.status[i] === 2 ? t("oos") : t("legGrey"));
     if (v.age && v.age[i] != null && v.age[i] > 20) foot.push(t("stale2", { m: v.age[i] }));
     if (s.excluded) foot.push(t("excluded"));
-    document.getElementById("card").innerHTML = "<div class=\"hd\"><div><div class=\"nm\">" + nameOf(s) + (CAMPUS[s.sno] ? " <span style=\"color:var(--accent);font-size:12px\">" + t("campus") + "</span>" : "") + "</div><div class=\"en\">" + (lang === "zh" ? (s.name_en || "") : s.name) + "</div></div><button class=\"x\" id=\"cardX\" aria-label=\"close\">×</button></div>" +
+    var bellbox = "", eb = bellBikes(v, i);
+    if (observed && eb != null) {
+      bellbox = "<div class=\"bellbox\"><span>" + t("bellBox", { at: v.bell.at, t: v.bell.bell, a: v.bell.after_min, b: "<b>" + Math.round(eb) + "</b>", p: "<b>" + Math.round(100 * v.bell.p_empty[i]) + "</b>" }) + "</span>" +
+        (v.bell.p_full[i] >= 0.2 ? "<span>" + t("bellBoxFull", { p: "<b>" + Math.round(100 * v.bell.p_full[i]) + "</b>" }) + "</span>" : "") + "</div>";
+    } else if (observed && !v.offday && !v.next_bell) { bellbox = "<div class=\"bellbox\"><span>" + t("bellNone") + "</span></div>"; }
+    var isFav = favs.indexOf(s.sno) >= 0;
+    document.getElementById("card").innerHTML = "<div class=\"hd\"><div><div class=\"nm\">" + esc(nameOf(s)) + (CAMPUS[s.sno] ? " <span style=\"color:var(--accent);font-size:12px\">" + t("campusTag") + "</span>" : "") + "</div><div class=\"en\">" + esc(altName(s)) + "</div></div><button class=\"x\" id=\"cardX\" aria-label=\"close\">×</button></div>" +
+      "<div class=\"verdict\">" + chip(vd, observed && v.bikes[i] !== 0 ? t("within30") : null) + (observed && v.docks && v.docks[i] === 0 ? chip({ cls: "o", text: t("vFull") }) : "") + (isFav ? "<span class=\"chip n\">★ " + t("fav") + "</span>" : "") + "</div>" +
       "<div class=\"facts\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + " <span style=\"font-size:12px;color:var(--fg2)\">/ " + s.cap + "</span>" : "–") + "</div><div class=\"k\">" + t("bikes") + "</div></div>" +
-      "<div class=\"fact\"><div class=\"v\">" + fmt(v.p30[i], 2) + "</div><div class=\"k\">" + t("p30") + "</div></div><div class=\"fact\"><div class=\"v\">" + fmt(v.p60[i], 2) + "</div><div class=\"k\">" + t("p60") + "</div></div>" +
-      (v.docks && v.docks[i] != null ? "<div class=\"fact\"><div class=\"v\">" + v.docks[i] + "</div><div class=\"k\">" + t("docks") + "</div></div>" : "<div class=\"fact\"></div>") + "<div class=\"fact\" style=\"grid-column:span 2\"><div class=\"v\">" + fmt(v.unmet ? v.unmet[i] : null, 1) + "</div><div class=\"k\">" + t("unmetS") + "</div></div></div>" +
-      "<div class=\"spark\"><div class=\"foot\" style=\"margin:0 0 4px\">" + t("todayStock") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(" · ") + "</div>" : "");
+      (v.docks && v.docks[i] != null ? "<div class=\"fact\"><div class=\"v\">" + v.docks[i] + "</div><div class=\"k\">" + t("docks") + "</div></div>" : "<div class=\"fact\"><div class=\"v\">" + (v.p60[i] == null ? "–" : Math.round(100 * v.p60[i]) + "<span style=\"font-size:12px;color:var(--fg2)\">%</span>") + "</div><div class=\"k\">" + t("p60") + "</div></div>") +
+      "<div class=\"fact\"><div class=\"v\">" + (v.p30[i] == null ? "–" : Math.round(100 * v.p30[i]) + "<span style=\"font-size:12px;color:var(--fg2)\">%</span>") + "</div><div class=\"k\">" + t("p30") + "</div></div></div>" + bellbox +
+      "<div class=\"spark\"><div class=\"foot\" style=\"margin:0 0 4px\">" + t("todayStock") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(" · ") + "</div>" : "") +
+      "<div class=\"actions\"><button class=\"btn small\" id=\"favBtn\" type=\"button\">" + (isFav ? t("rmFav") : t("addFav")) + "</button><a class=\"btn small\" href=\"https://www.google.com/maps/dir/?api=1&destination=" + s.lat + "," + s.lng + "&travelmode=walking\" target=\"_blank\" rel=\"noopener\">" + t("nav") + " ↗</a>" +
+      (v.unmet && v.unmet[i] != null && tab === "ops" ? "<span class=\"chip n\">" + t("unmetS") + " " + fmt(v.unmet[i], 1) + "</span>" : "") + "</div>";
     document.getElementById("cardX").addEventListener("click", function () { select(null); });
+    document.getElementById("favBtn").addEventListener("click", function () { var k = favs.indexOf(s.sno); if (k >= 0) favs.splice(k, 1); else favs.unshift(s.sno); store("btb-favs", favs); render(); });
     wrap.hidden = false;
   }
   function renderLegend(v) {
     var ends = horizon === 90 ? "<span>0</span><span>5</span><span>10+</span>" : "<span>0</span><span>0.5</span><span>1</span>";
     document.getElementById("legend").innerHTML = "<div>" + (horizon === 90 ? t("legendU", { h: v.meta.horizon_min }) : t("legend", { h: horizon })) + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\">" + ends + "</div>" +
-      "<div class=\"row\">" + t("legRing") + "</div><div class=\"row\">" + t("legCampus") + "</div><div class=\"row\"><span class=\"ln\"></span>" + t("legRoute") + "</div><div class=\"row\">" + t("legGrey") + "</div>";
+      "<div class=\"row\">" + t("legRing") + "</div><div class=\"row\">" + t("legCampus") + "</div>" + (tab === "ops" ? "<div class=\"row\"><span class=\"ln\"></span>" + t("legRoute") + "</div>" : "<div class=\"row\">" + t("legStar") + "</div>") + "<div class=\"row\">" + t("legGrey") + "</div>";
   }
   function renderStatus(v) {
     var st = document.getElementById("status"), tx = document.getElementById("statusText");
@@ -1058,22 +1272,40 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
     if (agoMin > 60) { el.hidden = false; el.textContent = t("stalebig", { m: agoMin }); } else if (el.textContent.indexOf("HTTP") < 0) { el.hidden = true; }
   }
   function renderChrome() {
-    document.getElementById("title").textContent = t("title"); document.title = lang === "zh" ? "Beat the Bell 中山即時調度" : "Beat the Bell NSYSU Live";
+    document.getElementById("title").textContent = t("title"); document.getElementById("titleShort").textContent = t("titleShort"); document.title = lang === "zh" ? "Beat the Bell 中山即時調度" : "Beat the Bell NSYSU Live";
     document.getElementById("mLive").textContent = t("live"); document.getElementById("mReplay").textContent = t("replay"); fillDays();
     document.getElementById("aboutSum").textContent = t("aboutSum");
     document.getElementById("h30").textContent = "30 " + t("min"); document.getElementById("h60").textContent = "60 " + t("min"); document.getElementById("hU").textContent = t("modeU");
+    document.getElementById("tabRiderT").textContent = t("tabRider"); document.getElementById("tabRiderSub").textContent = t("tabRiderSub");
+    document.getElementById("tabOpsT").textContent = t("tabOps"); document.getElementById("tabOpsSub").textContent = t("tabOpsSub");
     var v = view(); var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
     document.getElementById("aboutBody").innerHTML = t("aboutBody", { h: v ? v.meta.horizon_min : 90, q: s.Q, s: s.speed_kmh, st: s.stop_min });
   }
+  function applyTab() {
+    document.getElementById("tabRider").setAttribute("aria-selected", tab === "rider" ? "true" : "false"); document.getElementById("tabOps").setAttribute("aria-selected", tab === "ops" ? "true" : "false");
+    document.getElementById("paneRider").hidden = tab !== "rider"; document.getElementById("paneOps").hidden = tab !== "ops";
+  }
+  function setTab(x) {
+    tab = x; store("btb-tab", x); applyTab();
+    if (x !== "rider") { setPicking(false); var v = view(); if (v && map.getZoom() >= 15) fitArea(v); } else setH(30, true);
+    render();
+  }
   function render() {
     var v = view(); renderChrome(); if (!v) return;
-    renderStatus(v); renderBell(v); renderKpis(v); renderPlans(v); renderRisk(v); renderCard(v); renderLegend(v); drawStations(v); drawRoute(v);
+    renderStatus(v); renderBell(v); renderCard(v); renderLegend(v);
+    if (tab === "rider") renderRider(v); else { renderKpis(v); renderPlans(v); renderRisk(v); }
+    drawStations(v); drawRoute(v); drawOrigin();
     if (mode === "replay") { var sl = document.getElementById("slider"); sl.max = replay.slots.length - 1; sl.value = slot; document.getElementById("sliderT").textContent = replay.slots[slot].snapshot_at.slice(11);
       var n = replay.slots.length, t0 = replay.slots[0].t_min, t1 = replay.slots[n - 1].t_min, hh = "";
       replay.bells.forEach(function (b) { var bm = parseInt(b.slice(0, 2), 10) * 60 + parseInt(b.slice(3), 10); if (bm < t0 || bm > t1) return; hh += "<i class=\"" + (replay.major_bells.indexOf(b) >= 0 ? "major" : "") + "\" style=\"left:" + (100 * (bm - t0) / (t1 - t0)).toFixed(2) + "%\"></i>"; });
       document.getElementById("sticks").innerHTML = hh; }
   }
-  function select(i) { selected = i; var v = view(); if (!v) return; renderCard(v); renderRisk(v); drawStations(v); if (i != null && markers[i]) markers[i].setZIndexOffset(800); }
+  function select(i) {
+    selected = i; var v = view(); if (!v) return;
+    renderCard(v); if (tab === "rider") renderRider(v); else renderRisk(v); drawStations(v);
+    if (i != null && markers[i]) markers[i].setZIndexOffset(800);
+    if (i != null) { try { document.getElementById("cardWrap").scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {} }
+  }
 
   // ---------- data ----------
   function loadLive() {
@@ -1094,7 +1326,7 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
       .then(function (j) { if (j.days && j.days.length) { replayDays = j.days; if (replayDays.indexOf(replayDay) < 0) replayDay = replayDays[0]; } }).catch(function () {}).then(fillDays);
   }
   function setMode(m) {
-    mode = m; document.getElementById("mLive").setAttribute("aria-pressed", m === "live"); document.getElementById("mReplay").setAttribute("aria-pressed", m === "replay");
+    mode = m; document.getElementById("mLive").setAttribute("aria-pressed", m === "live" ? "true" : "false"); document.getElementById("mReplay").setAttribute("aria-pressed", m === "replay" ? "true" : "false");
     document.getElementById("replaybar").hidden = m !== "replay"; document.getElementById("replayDay").hidden = m !== "replay"; stopPlay();
     if (m === "replay") loadReplay(replayDay).then(function () { slot = Math.min(slot || 0, replay.slots.length - 1); if (!slot) { var i = replay.slots.findIndex(function (x) { return x.t_min >= 15 * 60 + 30; }); slot = i < 0 ? 0 : i; } render(); })
       .catch(function (e) { var el = document.getElementById("err"); el.hidden = false; el.textContent = "replay: " + e.message; });
@@ -1106,19 +1338,37 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
     playing = true; document.getElementById("play").textContent = "❚❚";
     playTimer = setInterval(function () { if (!replay) return; slot = (slot + 1) % replay.slots.length; render(); }, 700);
   }
+
+  // ---------- events ----------
   document.getElementById("mLive").addEventListener("click", function () { setMode("live"); });
   document.getElementById("mReplay").addEventListener("click", function () { setMode("replay"); });
   document.getElementById("replayDay").addEventListener("change", function (e) { replayDay = e.target.value; stopPlay(); loadReplay(replayDay).then(function () { slot = Math.min(slot, replay.slots.length - 1); render(); }); });
   document.getElementById("lZh").addEventListener("click", function () { setLang("zh"); });
   document.getElementById("lEn").addEventListener("click", function () { setLang("en"); });
-  function setLang(l) { lang = l; document.getElementById("lZh").setAttribute("aria-pressed", l === "zh"); document.getElementById("lEn").setAttribute("aria-pressed", l === "en"); document.documentElement.lang = l === "zh" ? "zh-Hant" : "en"; try { localStorage.setItem("btb-lang", l); } catch (e) {} render(); }
+  function setLang(l) { lang = l; document.getElementById("lZh").setAttribute("aria-pressed", l === "zh" ? "true" : "false"); document.getElementById("lEn").setAttribute("aria-pressed", l === "en" ? "true" : "false"); document.documentElement.lang = l === "zh" ? "zh-Hant" : "en"; store("btb-lang", l); render(); }
+  document.getElementById("tabRider").addEventListener("click", function () { setTab("rider"); });
+  document.getElementById("tabOps").addEventListener("click", function () { setTab("ops"); });
   document.getElementById("h30").addEventListener("click", function () { setH(30); });
   document.getElementById("h60").addEventListener("click", function () { setH(60); });
   document.getElementById("hU").addEventListener("click", function () { setH(90); });
-  function setH(h) { horizon = h; document.getElementById("h30").setAttribute("aria-pressed", h === 30); document.getElementById("h60").setAttribute("aria-pressed", h === 60); document.getElementById("hU").setAttribute("aria-pressed", h === 90); render(); }
+  function setH(h, quiet) { horizon = h; document.getElementById("h30").setAttribute("aria-pressed", h === 30 ? "true" : "false"); document.getElementById("h60").setAttribute("aria-pressed", h === 60 ? "true" : "false"); document.getElementById("hU").setAttribute("aria-pressed", h === 90 ? "true" : "false"); if (!quiet) render(); }
   document.getElementById("play").addEventListener("click", togglePlay);
   document.getElementById("slider").addEventListener("input", function (e) { stopPlay(); slot = parseInt(e.target.value, 10); render(); });
-  try { var saved = localStorage.getItem("btb-lang"); if (saved === "en") { lang = "en"; document.getElementById("lZh").setAttribute("aria-pressed", "false"); document.getElementById("lEn").setAttribute("aria-pressed", "true"); } } catch (e) {}
+  document.getElementById("q").addEventListener("input", function (e) { searchStations(e.target.value); });
+  document.getElementById("q").addEventListener("focus", function (e) { if (e.target.value) searchStations(e.target.value); });
+  document.getElementById("q").addEventListener("keydown", function (e) { if (e.key === "Escape") { document.getElementById("qres").hidden = true; } if (e.key === "Enter") { var b = document.querySelector("#qres button"); if (b) b.click(); } });
+  document.addEventListener("click", function (e) { if (!e.target.closest(".search")) document.getElementById("qres").hidden = true; });
+  document.getElementById("btnGeo").addEventListener("click", function () {
+    var fail = function () { document.getElementById("btnGeoT").textContent = t("geoFail"); setTimeout(function () { document.getElementById("btnGeoT").textContent = t("geo"); }, 3000); };
+    if (!navigator.geolocation) { fail(); return; }
+    navigator.geolocation.getCurrentPosition(function (pos) { setOrigin("me", pos.coords.latitude, pos.coords.longitude); map.setView([pos.coords.latitude, pos.coords.longitude], Math.max(map.getZoom(), 15)); }, fail, { timeout: 8000, maximumAge: 60000 });
+  });
+  document.getElementById("btnPick").addEventListener("click", function () { setPicking(!picking); });
+  document.getElementById("btnCampus").addEventListener("click", function () { setOrigin("campus", CAMPUS_CENTER[0], CAMPUS_CENTER[1]); map.setView(CAMPUS_CENTER, 15); });
+  document.getElementById("tipX").addEventListener("click", function () { store("btb-tip-seen", true); document.getElementById("tip").hidden = true; });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (picking) setPicking(false); else if (selected != null) select(null); } });
+  var savedLang = load("btb-lang", null); if (savedLang === "en") { lang = "en"; document.getElementById("lZh").setAttribute("aria-pressed", "false"); document.getElementById("lEn").setAttribute("aria-pressed", "true"); document.documentElement.lang = "en"; }
+  tab = load("btb-tab", "rider") === "ops" ? "ops" : "rider"; applyTab();
 
   initMap(); renderChrome(); loadLive(); loadDays();
   setInterval(function () { if (mode === "live") { loadLive(); } }, 60000);
