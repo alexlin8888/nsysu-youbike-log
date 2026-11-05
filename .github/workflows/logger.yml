@@ -59,21 +59,28 @@ jobs:
         run: |
           git config user.name  "youbike-logger"
           git config user.email "youbike-logger@users.noreply.github.com"
-          end=$(( SECONDS + LOOP_MINUTES * 60 ))
-          while [ "$SECONDS" -lt "$end" ]; do
+          snapshot() {
             python3 logger/fetch_youbike.py || true
             # demo state for docs/index.html: stockout probabilities and the pre-bell truck plan (about 5 s)
             python3 analysis/code/demo_state.py data analysis/results docs/state.json --trucks 1 || true
             # replays of the last 7 complete days for the page's replay menu (builds at most one missing day per iteration)
             python3 analysis/code/demo_replays.py data analysis/results docs --days 7 --max-new 1 || true
             git add -A data docs
-            if ! git diff --cached --quiet; then
-              git commit -q -m "log $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
+            if git diff --cached --quiet; then return 1; fi      # nothing new (the API did not answer)
+            git commit -q -m "log $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
+          }
+          end=$(( SECONDS + LOOP_MINUTES * 60 ))
+          while [ "$SECONDS" -lt "$end" ]; do
+            if snapshot; then
               for attempt in 1 2 3; do
                 git push -q && break
-                echo "push failed (attempt $attempt), rebasing on remote"
-                git pull -q --rebase --autostash || true
+                # Someone pushed meanwhile (usually a change to docs/ or the demo code, which this loop also
+                # writes, so a rebase would conflict): drop our commit, move to the remote tip and take the
+                # snapshot again on top of it.
+                echo "push failed (attempt $attempt): resetting to the remote and taking the snapshot again"
+                git fetch -q origin "${GITHUB_REF_NAME}" && git reset -q --hard FETCH_HEAD
                 sleep 5
+                snapshot || true
               done
             fi
             now=$(date +%s)
