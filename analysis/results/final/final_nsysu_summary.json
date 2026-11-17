@@ -1,0 +1,43 @@
+{
+ "first": "2026-10-02",
+ "last": "2026-11-16",
+ "logged_days": 46,
+ "teaching_weekdays": 29,
+ "teaching_weekdays_full": 23,
+ "offdays_in_range": [
+  "2026-10-09",
+  "2026-10-10",
+  "2026-10-26"
+ ],
+ "closed_days": [
+  "2026-10-23"
+ ],
+ "campus_bikes_10": 189.8,
+ "campus_bikes_12": 139.7,
+ "campus_bikes_17": 50.0,
+ "campus_bikes_18": 10.3,
+ "campus_bikes_18_median": 6.0,
+ "campus_bikes_18_max": 40.0,
+ "campus_empty_share_18": 0.56,
+ "bell_12_drop_20min": -84.3,
+ "bell_12_pct_20min": -0.526,
+ "bell_12_drop_20min_min": -45.0,
+ "bell_12_drop_20min_max": -119.0,
+ "bell_12_days": 25,
+ "bell_12_days_with_drop_over_30": 25,
+ "bell_16_drop_40min": -60.8,
+ "bell_17_drop_40min": -50.0,
+ "krt_bikes_10": 5.6,
+ "krt_bikes_18": 45.1,
+ "episodes_n": 752,
+ "episodes_per_station_day": 4.09,
+ "episode_median_min": 20.0,
+ "episode_p90_min": 60.0,
+ "campus_station_minutes_empty_per_weekday": 993.0,
+ "snapshots_expected": 6624,
+ "snapshots_logged": 6335,
+ "snapshot_coverage": 0.9564,
+ "snapshots_lost_to_refused_fetches": 246,
+ "station_slots": 1957515,
+ "days_with_all_144": 35
+}

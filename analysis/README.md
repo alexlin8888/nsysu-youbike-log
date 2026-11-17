@@ -40,6 +40,12 @@
 | `demo_state.py` | 即時 demo 的狀態：最新快照 → 特徵 → 臺大模型（zero-shot）算 30／60 分缺車機率 → 生滅鏈算各站未來 90 分預期借不到車 → 路線搜尋排卡車路線，寫成 `docs/state.json`；紀錄器的 workflow 每 10 分鐘跑一次 |
 | `figs_v2.py`, `figs_v3.py`, `figs_v4.py`, `hw3_figs.py`, `report_figs.py` | 報告圖（`figcheck.py` 自動檢查文字是否被裁切或重疊）；`figs_v4.py` 畫方法示意圖（單站一日的對帳、截斷與生滅鏈）、鐘響散佈圖、中山遷移與課表特徵的信賴區間圖、模擬器信賴區間圖 |
 | `figstyle.py` | 圖表共用樣式 |
+| `final_nsysu.py` | 期末報告：整段紀錄期間（10/2–11/16，29 個上課日）的下課缺車數字與紀錄器的完整度 |
+| `final_forecast.py` | 期末報告：下課後 20 分車數預估的檢驗。速率只用到 10/29，之後 12 個上課日當測試；生滅鏈（每 10 分鐘速率、每小時速率）對照持續法與季節平均，含日拔靴區間與可靠度 |
+| `final_transfer.py` | 期末報告：臺大模型在中山需要幾週本地資料（1–4 週 fine-tune、僅本地、zero-shot），以及 zero-shot 逐週的 AUC |
+| `final_lost_demand.py` | 期末報告：臺大重播日上，空站時段流失的需求有多少（截斷校正速率 × 空站時間） |
+| `final_planner.py` | 期末報告：規劃器在中山每個時段預期的缺口與建議路線（由 `demo_state.py --replay` 的輸出彙整），並對照只用每小時速率的版本 |
+| `final_figs.py` | 期末報告新增的圖（六週趨勢、遷移、預估檢驗、規劃器、速率、架構圖） |
 
 重跑台大管線（騎乘紀錄的 zip 約 75 MB/月，不放進 repo）：
 
@@ -66,11 +72,19 @@ python code/merge_sim.py work/sim work/sim_route work/sim_v2
 python code/sim_numbers.py work/sim_v2 work/sim_v2/sim_numbers.json
 python code/bootstrap_ci.py work/model/sweep work/model/transfer work/sim_v2 work/model/ci
 # 中山的借還速率與即時 demo
-python code/nsysu_rates.py ../data results/nsysu/rates --holdout 7
+python code/nsysu_rates.py ../data results/nsysu/rates --holdout 7 --slots --tune-slots    # --slots：走廊 19 站上課日每 10 分鐘一組速率
 python code/demo_state.py ../data results ../docs/state.json --trucks 1            # --at "2026-10-28 15:30" 可重播過去的時刻
 python code/demo_replays.py ../data results ../docs --days 7                                   # 最近 7 天的重播檔，給頁面的重播模式
 # 中山
 python code/nsysu_analysis.py ../data results/nsysu
+# 期末報告新增的實驗（速率先只估到 10/29，放在 work/rates_1029）
+python code/final_nsysu.py ../data results/final
+python code/nsysu_rates.py ../data work/rates_1029 --until 2026-10-29 --slots --tune-slots
+python code/final_forecast.py ../data work/rates_1029 results/final/forecast
+python code/final_transfer.py ../data results/model results/final/transfer --boot 200
+python code/final_lost_demand.py work/ntu work/sim_v2 results/final/lost_demand.json
+python code/final_planner.py work/replays results/final/planner work/replays_hourly   # work/replays：每個上課日跑 demo_state.py --replay
+python code/final_figs.py results/final ../report/figs
 # 課表：courses_115-1.tsv 由公開課程查詢系統逐日（星期一～日）查詢匯出（需人工通過驗證碼）
 python code/timetable.py results/nsysu/timetable/courses_115-1.tsv results/nsysu/timetable
 python code/timetable_bells.py ../data results/nsysu/timetable/sessions.csv results/nsysu/timetable
@@ -88,6 +102,8 @@ TT_SPLIT=week python code/timetable_nsysu.py ../data work/model results/nsysu/ti
 - `model/`：預測模型的指標、可靠度曲線、特徵重要性、測試集預測；`model/sweep/` 時距掃描與 Poisson 推演
   （`sweep_metrics.csv`、`rates_train.csv`、`sweep_setup.json` 含 MC 對照）；`model/transfer/` 遷移；`model/ci/` 信賴區間；`model/timetable/` 課表特徵實驗（逐日留一；`week/` 為第一週訓練、第二週測試）。
 - `nsysu/rates/`：中山各站速率 `rates.csv`（`lam_r`、`lam_q` 每小時；`lam_*_gross` 為毛變化量下界）、全站同時段平均 `rates_prior.csv`、最後 7 天的檢驗 `rates_holdout.csv`（每筆轉移的對數概似：鏈估計 −1.51、毛變化量 −1.59、同時段平均 −1.72）。
+- `final/`：期末報告新增實驗的結果。`final_nsysu_*.csv/json` 六週的下課缺車數字與紀錄器完整度；`forecast/` 下課後預估的檢驗；`transfer/` 幾週本地資料的遷移；`planner/` 規劃器在中山的時段彙整；`lost_demand.json` 臺大流失需求；`rates_fit_to_1029/` 檢驗用的速率（只估到 10/29）。
+- `nsysu/rates/rates_slots.csv`：走廊 19 站上課日每 10 分鐘的速率（`slot` 0–143）；`rates_slots_tuning.csv` 是先驗權重的驗證。
 - `sim/k1,k3,k6/`：重播模擬每日結果與摘要（含 `route`、`route1`）；`sim/route/` 路徑搜尋的原始輸出與設定；`sim/tuning/sim_tune_summary.csv` 驗證日調參結果；`sim/sim_numbers.json` 報告引用的數字與區間。
 
 執行環境：Python 3.11、pandas 3.0、numpy 2.4、LightGBM 4.7、scikit-learn 1.8、2 vCPU / 7 GB RAM。

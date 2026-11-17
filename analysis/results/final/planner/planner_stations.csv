@@ -1,0 +1,187 @@
+sno,name,group,drop_stops,bikes_dropped,pick_stops,bikes_picked
+501209026,KRT Sizihwan Sta. (Exit )1,gateway,434,6183,49,947
+501209069,NSYSU Gymnasium,campus,366,5259,369,7318
+501209054,"Material Building , National Sun Yat-sen University",campus,243,3380,3,50
+501203114,Ziyou Chaha'er 1st St.Intersection,other,206,3206,13,252
+501209023,KRT Sizihwan Sta. (Exit 2),gateway,350,3031,104,2060
+501209052,"Office of Library , National Sun Yat-sen University",campus,199,1984,2,30
+501208013,KRT Shihjia Sta. (Exit 4),other,115,1916,38,725
+501208051,KRT Software Technology Park Light Rail Sta.,other,98,1675,1,20
+501203050,KRT Houyi Sta. (Exit 2),other,128,1670,164,3255
+501209024,Binhai  Linhai Rd. Intersection (Southwest),gateway,193,1613,0,0
+501209042,Gushan Elementary School (Linhai 2nd Rd.),gateway,203,1453,2,19
+501208014,KRT Shihjia Sta. (Exit 3),other,89,1187,5,86
+501209036,Pier No. 1 Scenic Bridge,gateway,104,917,4,67
+501205025,KRT Central Park Sta. (Exit 1),other,75,799,2,40
+501209005,Bo'ai Dashun Intersection,other,68,647,15,226
+501203003,Kaohsiung Station(Southwest),other,76,614,2,40
+501203142,Kaohsiung Station(Southeast),other,47,583,34,602
+501203151,Jiuru 2nd Qingdao St.,other,51,574,1,9
+501208091,Kaohsiung Software Technology Park,other,57,534,55,1070
+501203065,Sanmin pool,other,51,510,0,0
+501209039,NSYSU College of Social Sciences,campus,57,492,61,1123
+501202081,KRT Sanduo Shopping District Sta.(Exit 6),other,29,451,0,0
+501209070,NSYSU Xiziwan Hall,campus,57,423,0,0
+501203053,Kaohsiung Senior High School (East),other,33,418,2,40
+501202040,Siwei Administration Center (Siwei 3rd Rd.),other,26,397,29,555
+501205011,Kaohsiung Girls' Senior High School,other,30,381,0,0
+501209030,Aozihdi Forest Park (Shennong Rd.),other,32,366,10,176
+501201007,Sinsing Senior High School,other,29,356,10,138
+501203001,Jianguo Tong'ai St. Intersection (Northwest),other,50,326,0,0
+501209046,TRA Kaohsiung Museum of Fine Arts Sta.,other,24,283,3,40
+501201015,KRT Central Park Sta. (Exit 2),other,35,260,0,0
+501209076,Kaohsiung Public Library(Gushan Branch),other,13,240,2,33
+501205020,Kaohsiung Girls' Senior High School,other,12,223,14,267
+501205009,Zhongshan Wufu Rd. Intersection (Northwest),other,27,221,24,480
+501201006,Zhongshan Bade Rd. Intersection (Southwest),other,25,199,0,0
+501209105,Meishu South 2 Meishu South 3rd Road,other,23,188,3,53
+501208030,KRT Shihjia Sta. (Exit 2),other,20,181,22,414
+501208079,Chenggong Special Education School,other,22,162,1,15
+501209040,NSYSU Marine Environment and Engineering,campus,16,161,20,375
+501208087,KRT Sanduo Shopping District Sta. (Exit 3),other,19,159,0,0
+501205028,KRT City Council Sta. (Exit 1),other,19,153,0,0
+501209090,Funong Longde Rd.,other,17,130,0,0
+501209071,NSYSU Haizi Pavilion,campus,13,125,0,0
+501203051,Bo'ai Tong Meng Rd Intersection,other,18,122,46,668
+501201024,Kaohsiung Commercial High School (Fuxing Rd.),other,10,116,7,135
+501202035,KRT Sanduo Shopping District Sta. (Exit 7),other,11,115,1,17
+501204003,KRT Yanchengpu Sta. (Exit 1),other,14,111,41,764
+501209020,Gushan Senior High School,other,7,109,32,593
+501203028,KRT Houyi Sta. (Exit 1) (South),other,16,107,7,105
+501209087,Cisian junior high school,other,8,101,22,424
+501203045,Rehe Ziyou Rd. Intersection,other,15,90,0,0
+501203109,Bo'aiguomin Elementary School,other,14,86,3,47
+501201017,KRT Formosa Boulevard Sta. (Exit 9),other,7,70,3,56
+501203022,Samin Park (South),other,11,65,0,0
+501203020,KRT Houyi Sta. (Exit 1) (North),other,11,64,1,13
+501208015,Xijia Gazebo,other,9,61,0,0
+501204002,Yanchen Junior High School,other,5,54,51,968
+501209017,Meishu E. 4th Meishu E. 7th St. Intersection (Northeast),other,8,53,0,0
+501203140,Bo'ai Jiuru 2nd Rd.(Northwest),other,6,51,17,326
+501208111,Xiuwen Yixin 2nd Rd.,other,9,49,0,0
+501205004,Henan Ziqiang Rd. Intersection,other,5,47,0,0
+501202034,KRT Sanduo Shopping District Sta. (Exit 2),other,6,46,0,0
+501203002,Kaohsiung Municipal Senior High School,other,5,46,0,0
+501202036,KRT Sanduo Shopping District. (Exit 5),other,4,44,94,1788
+501208089,Xishan Children's Playground,other,6,41,2,30
+501209051,"College of Engineering, National Sun Yat-sen University",campus,6,40,120,2239
+501205010,Wufu Ziqiang Rd. Intersection (Southeast),other,5,39,0,0
+501205037,Wufu Wenwu 2nd St.,other,5,38,0,0
+501208018,Kaohsiung Guangze Post Office,other,6,37,0,0
+501203023,KRT Houyi Sta. (Exit 3),other,8,36,0,0
+501209007,Minkang Children's park,other,5,33,0,0
+501208059,Koahsiung Main Public Library,other,3,32,34,619
+501202080,Zhongshan Lingya 2nd Rd.Intersection,other,4,31,0,0
+501201016,KRT Central Park Sta. (Exit 3),other,5,29,0,0
+501201004,Qixian Luoyang St. Intersection,other,4,28,0,0
+501204020,Penglai Pier-2 Station,other,5,28,4,70
+501205034,Wufu Chenggong 1st Rd.Intersection,other,2,26,29,539
+501208053,Xinguang Zhongshan  Rd.  Intersection,other,5,26,2,20
+501209021,Qinghai Jiuru 4th Rd. Intersection,other,5,24,5,61
+501203100,Jianguo Zhongxiao 1st Rd. Intersection,other,3,20,1,14
+501202065,Zhonghu Lingya 2nd Rd.,other,3,20,0,0
+501209066,Meishu East 2nd Rd. Meishu North 3rd Rd.,other,3,19,0,0
+501203040,Bo'ai Jiuru 2nd Rd.(Northeast),other,3,18,0,0
+501209058,Yucheng Funong Intersection,other,3,17,0,0
+501209047,Funong Longsheng Rd.,other,3,17,1,13
+501209002,Longhua Primary School,other,2,16,2,32
+501203118,TiehDao Fuxing 1st Rd.Intersection,other,3,15,3,42
+501208064,Beiyi Rd. & Xishiyi St. Intersection,other,1,14,1,16
+501208077,Shihjia community,other,2,13,0,0
+501209043,Longsheng Dashun Rd. Intersection,other,2,13,0,0
+501203111,Sanmin District Office,other,2,12,0,0
+501204012,Wufu 4th Rd. & Jianguo 4th Rd. Intersection (Southeast),other,2,11,0,0
+501209027,Chung-Hwa School of Arts (Meishu E. 1st Rd.),other,1,11,1,14
+501202024,Sihwei Administration Center,other,1,11,0,0
+501203015,Shandong Chengde St. Intersection,other,1,10,0,0
+501204023,Qixian Dagong Rd.,other,2,10,0,0
+501209104,Shinhamacho Ocean Kitchen,gateway,2,9,8,126
+501205007,Zhongzheng Ruiyuan Rd. Intersection (Southwest),other,1,8,0,0
+501201030,Zhongzheng Zhongxiao 1st Rd.,other,1,6,0,0
+501203078,Hebei Lide St Intersection,other,1,6,0,0
+501205021,Kaohsiung Municipal Da-Tung Hospital,other,1,6,0,0
+501205023,Wufu Rende St. Intersection,other,1,6,0,0
+501209049,Neiwei Arts Center,other,1,6,2,25
+501204008,The Pier2 Art Center (Bixin St.),other,1,5,0,0
+501201028,Qixian Minzu 2nd Rd.,other,1,5,0,0
+501204013,Cisian Fubei Rd Intersection (West),other,1,3,0,0
+501201014,Zhongxiao Park,other,0,0,2,30
+501201013,Fuxing Minquan St. Intersection,other,0,0,4,58
+501201018,KRT Xinyi Elementary School Sta. (Exit 1),other,0,0,5,94
+501201008,Xinxing Park (Southwest),other,0,0,1,12
+501201002,KRT Formosa Boulevard Sta. (Exit 2),other,0,0,5,97
+501201003,KRT Formosa Boulevard Sta. (Exit 5),other,0,0,1,19
+501201012,Kaohsiung Financial Services Building,other,0,0,6,114
+501203010,Liaoning Ha'erbin St. Intersection,other,0,0,131,2472
+501202088,Haibian Lingzhong Rd.,other,0,0,1,11
+501202084,Sanduowen Heng 2 Intersection,other,0,0,8,120
+501202083,National Market (Renai Third Street),other,0,0,1,10
+501201019,Liuhe Park(Qixian Rd.),other,0,0,12,221
+501201021,KRT Formosa Boulevard Sta. (Exit 7),other,0,0,1,12
+501202003,Lingya Junior High School,other,0,0,33,615
+501202043,Siwei Park,other,0,0,2,37
+501202047,Birthday Park,other,0,0,42,759
+501203110,Kaohsiung Station(west),other,0,0,34,604
+501203104,Bo'ai Rehe 2nd St. Intersection,other,0,0,1,14
+501203092,Zili Lane 161 Zili 1st Rd. Intersection,other,0,0,1,20
+501202078,Ling Jhou Elementary School,other,0,0,2,25
+501202050,KRT Glory Pier Light Rail Sta.,other,0,0,1,9
+501202089,Cruise Terminal Station,other,0,0,8,131
+501203011,Wenxing Park,other,0,0,69,1331
+501208029,Shihjia Community (Singren Junior High School Baseball field),other,0,0,2,22
+501205008,Qixian Ziqiang Rd. Intersection,other,0,0,3,51
+501205014,Guangfu 3rd Shizhong Intersection,other,0,0,5,90
+501205019,Kaohsiung City Police Department,other,0,0,37,652
+501205012,Zhongshan Qingnian. Intersection (Northwest),other,0,0,2,22
+501205013,Cianjin Junior High School,other,0,0,8,126
+501205038,Henan Shizhong 1st Rd.,other,0,0,1,12
+501203122,Zhonghua Side Lixing Rd.Intersection,other,0,0,2,30
+501203121,TiehDao 3th Zhongyong St.Intersection,other,0,0,8,130
+501204005,Beidou Pumping Station,other,0,0,25,411
+501204001,International Convention Center Kaohsiung,other,0,0,15,251
+501203162,Anning & Station West Road,other,0,0,1,15
+501203163,Zili 1st Rd. & Hanzhong St. Intersection,other,0,0,5,68
+501203157,Tongxingmeng 2nd intersection,other,0,0,1,12
+501203113,Shiquan Kangping St.Intersection,other,0,0,1,15
+501203125,Tongmeng Dalian Street,other,0,0,25,444
+501204007,KRT Love Pier Light Rail Sta.,other,0,0,1,13
+501204018,Gongyuan 2nd Qixian 3rd Rd. Intersection,other,0,0,22,372
+501204017,Gongyuan 2nd Dayong Rd. Intersection,other,0,0,1,15
+501204016,Gongyuan 2nd Dayi St. Intersection,other,0,0,2,35
+501204015,Daan Park,other,0,0,2,21
+501204025,Jianguosihe West Road Intersection,other,0,0,5,72
+501204021,Dayi Interception Station,other,0,0,1,16
+501205003,Dong-Jin Park,other,0,0,2,24
+501205006,Jian-Guo Elementary School,other,0,0,2,35
+501208054,Zhonghua Zhongqin Rd. Intersection,other,0,0,9,152
+501208040,Central 4th Central 1st Rd.,other,0,0,1,19
+501208041,SINOSTEEL Recreation Center,other,0,0,1,11
+501208045,Metropolitan Living Development (Chenggong 2nd Rd.),other,0,0,5,66
+501208032,Xinguang Chenggong Rd. Intersection,other,0,0,12,163
+501208011,Xinguang Ziqiang Rd. Intersection,other,0,0,45,868
+501205042,Successfully restored the 2nd Street,other,0,0,11,139
+501209033,Nanping Dashun Rd. Intersection,other,0,0,2,21
+501208130,Guangxi Rd. & Wenheng 3rd Rd.,other,0,0,2,27
+501208113,Huanqu 1st S. 2nd Rd.,other,0,0,1,13
+501209034,Qinghai Gushan Rd. Intersection,other,0,0,4,49
+501209035,Hamasen Railway Cultural Park (Linhaisin Rd.),other,0,0,97,1802
+501209031,Aozihdi Forest Park (Zhisheng Rd.),other,0,0,1,13
+501209028,Xinbin Police Sta of Gushan Branch,gateway,0,0,63,1172
+501209032,Sizihwan Scenic Area,gateway,0,0,55,849
+501209019,Pikenike Park,other,0,0,2,32
+501209037,Yuanjing Bridge,other,0,0,10,192
+501209067,Luchuan Hechuan St. Intersection,other,0,0,4,48
+501209060,Xizang Cuihua Intersection,other,0,0,7,84
+501209045,"Gushan & Ln. 119, Gushan 1st Rd. Intersection",other,0,0,2,28
+501209074,LRT Makatao Station,other,0,0,2,30
+501209080,Neiwei Station (Makadao Rd.),other,0,0,1,12
+501209079,Neiwei Station (Cuihua Rd.),other,0,0,1,16
+501209075,Neiwei Elementary School(Gushan 3rd Rd.),other,0,0,1,16
+501209089,KW2,other,0,0,7,111
+501209085,Gushan Station,other,0,0,11,204
+501209081,Cuihua Baozhen Rd.Intersection,other,0,0,5,59
+501209091,Meishu E. 4th Meishu E. 1st Rd.,other,0,0,1,11
+501209099,Kaohsiung Port Depot,other,0,0,1,16
+501209098,Shou Shan Zoo Parking,other,0,0,4,50
+501209100,"Gushan  Ln. 101, Gushan 3rd Rd.",other,0,0,1,11
+501209106,Dominican Int'l School (Zhonghua 1st Rd.),other,0,0,6,90

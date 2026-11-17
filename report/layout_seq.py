@@ -1,7 +1,11 @@
 """Sequential greedy layout: place figures one at a time in reading order. For figure k every candidate anchor
 (and size) is built with the later figures at their current anchors, and scored by the blank space at the
 ends of all columns up to the column after the one where figure k lands (pages beyond do not count yet), plus
-a small penalty for moving away from the source position. Writes layout.json."""
+a small penalty for moving away from the source position. Writes layout.json.
+
+The report is chosen by environment variables: BUILD_JS (default build_hw3.js), DOC (default HW3_54), LAYOUT_OUT
+(default layout.json) and LAYOUT_SPACE (module with the candidate anchors, default layout_v14_space). For the
+final report: BUILD_JS=build_final.js DOC=Final_54 LAYOUT_OUT=layout_final.json LAYOUT_SPACE=layout_final_space."""
 import json, os, subprocess, sys, time
 import pdfplumber
 from layout_lib import ROOT, TOP, BOTTOM, COLS, SOFFICE
@@ -9,17 +13,18 @@ import importlib
 SP = importlib.import_module(os.environ.get("LAYOUT_SPACE", "layout_v14_space"))
 
 SPACE = SP.SPACE
+BUILD_JS, DOC, LAYOUT_OUT = os.environ.get("BUILD_JS", "build_hw3.js"), os.environ.get("DOC", "HW3_54"), os.environ.get("LAYOUT_OUT", "layout.json")
 ORDER = [f for f in SPACE if f.endswith(".png")]
 
 
 def run(layout):
-    env = dict(os.environ, FIG_DIR="figs/", LAYOUT=json.dumps(layout))
-    out = subprocess.run(["node", "build_hw3.js"], cwd=ROOT, env=env, capture_output=True, text=True).stdout
+    env = dict(os.environ, FIG_DIR="figs/", LAYOUT=json.dumps(layout), OUT_DOCX=DOC + ".docx")
+    out = subprocess.run(["node", BUILD_JS], cwd=ROOT, env=env, capture_output=True, text=True).stdout
     if "ORDER_VIOLATION" in out:
         return None
-    subprocess.run(["python3", SOFFICE, "--headless", "--convert-to", "pdf", "HW3_54.docx"], cwd=ROOT, capture_output=True)
+    subprocess.run(["python3", SOFFICE, "--headless", "--convert-to", "pdf", DOC + ".docx"], cwd=ROOT, capture_output=True)
     cols, imgs = [], []
-    with pdfplumber.open(os.path.join(ROOT, "HW3_54.pdf")) as pdf:
+    with pdfplumber.open(os.path.join(ROOT, DOC + ".pdf")) as pdf:
         n = len(pdf.pages)
         for pi, page in enumerate(pdf.pages):
             for ci, (x0, x1) in enumerate(COLS):
@@ -81,7 +86,7 @@ if __name__ == "__main__":
         r = best[2]
         print(f"{f}: {layout.get(f, 'default')} score {best[0]:.0f} pages {r['pages']} img col {r['imgs'][k]} "
               f"gaps {[round(g) for g in r['cols'][: r['imgs'][k] + 2]]} ({time.time() - t0:.0f}s)", flush=True)
-        json.dump(layout, open(os.path.join(ROOT, "layout.json"), "w"), indent=1)
+        json.dump(layout, open(os.path.join(ROOT, LAYOUT_OUT), "w"), indent=1)
     res = run(layout)
     print("final", json.dumps(layout))
     print("pages", res["pages"], "gaps", [round(g) for g in res["cols"]])

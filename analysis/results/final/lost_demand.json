@@ -1,0 +1,16 @@
+{
+ "days": 28,
+ "rentals_per_day_recorded": 32141.0,
+ "lost_per_day_estimated": 4585.0,
+ "lost_share_of_recorded": 0.1427,
+ "campus_rentals_per_day": 13040.0,
+ "campus_lost_per_day": 2185.0,
+ "campus_lost_share_of_recorded": 0.1676,
+ "campus_share_of_lost": 0.477,
+ "lost_17_22_share": 0.421,
+ "lost_peak_hod": 18,
+ "lost_peak_per_day": 621.0,
+ "replay_rentals_per_day": 32141.0,
+ "replay_unmet_no_truck_per_day": 3389.0,
+ "empty_station_hours_share": 0.1275
+}

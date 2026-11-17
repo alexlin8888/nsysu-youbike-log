@@ -1,0 +1,166 @@
+{
+ "days": 23,
+ "first": "2026-10-02",
+ "last": "2026-11-13",
+ "slots": 2341,
+ "all_day": {
+  "slots": 2341,
+  "unmet_mean": 252.2,
+  "value_mean": 14.7,
+  "plan_share": 0.881,
+  "value_over_unmet": 0.0582,
+  "bikes_dropped_mean": 19.8,
+  "campus_share_of_drops": 0.256,
+  "campus_pickups_mean": 4.8,
+  "minutes_mean": 28.1
+ },
+ "before_noon_bell_1100_1200": {
+  "slots": 138,
+  "unmet_mean": 126.0,
+  "value_mean": 7.9,
+  "plan_share": 0.754,
+  "value_over_unmet": 0.0624,
+  "bikes_dropped_mean": 13.0,
+  "campus_share_of_drops": 0.626,
+  "campus_pickups_mean": 0.4,
+  "minutes_mean": 26.6
+ },
+ "afternoon_1500_1730": {
+  "slots": 343,
+  "unmet_mean": 517.9,
+  "value_mean": 21.3,
+  "plan_share": 1.0,
+  "value_over_unmet": 0.041,
+  "bikes_dropped_mean": 24.9,
+  "campus_share_of_drops": 0.495,
+  "campus_pickups_mean": 1.0,
+  "minutes_mean": 30.6
+ },
+ "evening_1730_2000": {
+  "slots": 345,
+  "unmet_mean": 371.6,
+  "value_mean": 17.6,
+  "plan_share": 1.0,
+  "value_over_unmet": 0.0475,
+  "bikes_dropped_mean": 23.1,
+  "campus_share_of_drops": 0.264,
+  "campus_pickups_mean": 0.0,
+  "minutes_mean": 28.0
+ },
+ "morning_0700_0900": {
+  "slots": 276,
+  "unmet_mean": 309.6,
+  "value_mean": 21.2,
+  "plan_share": 1.0,
+  "value_over_unmet": 0.0686,
+  "bikes_dropped_mean": 25.4,
+  "campus_share_of_drops": 0.0,
+  "campus_pickups_mean": 5.9,
+  "minutes_mean": 30.1
+ },
+ "unmet_peak_time": "16:30",
+ "unmet_peak": 717.8,
+ "value_peak_time": "09:20",
+ "value_peak": 28.0,
+ "top_dropoffs": [
+  {
+   "name": "KRT Sizihwan Sta. (Exit )1",
+   "group": "gateway",
+   "drop_stops": 434,
+   "bikes_dropped": 6183
+  },
+  {
+   "name": "NSYSU Gymnasium",
+   "group": "campus",
+   "drop_stops": 366,
+   "bikes_dropped": 5259
+  },
+  {
+   "name": "Material Building , National Sun Yat-sen University",
+   "group": "campus",
+   "drop_stops": 243,
+   "bikes_dropped": 3380
+  },
+  {
+   "name": "Ziyou Chaha'er 1st St.Intersection",
+   "group": "other",
+   "drop_stops": 206,
+   "bikes_dropped": 3206
+  },
+  {
+   "name": "KRT Sizihwan Sta. (Exit 2)",
+   "group": "gateway",
+   "drop_stops": 350,
+   "bikes_dropped": 3031
+  }
+ ],
+ "top_pickups": [
+  {
+   "name": "NSYSU Gymnasium",
+   "group": "campus",
+   "pick_stops": 369,
+   "bikes_picked": 7318
+  },
+  {
+   "name": "KRT Houyi Sta. (Exit 2)",
+   "group": "other",
+   "pick_stops": 164,
+   "bikes_picked": 3255
+  },
+  {
+   "name": "Liaoning Ha'erbin St. Intersection",
+   "group": "other",
+   "pick_stops": 131,
+   "bikes_picked": 2472
+  },
+  {
+   "name": "College of Engineering, National Sun Yat-sen University",
+   "group": "campus",
+   "pick_stops": 120,
+   "bikes_picked": 2239
+  },
+  {
+   "name": "KRT Sizihwan Sta. (Exit 2)",
+   "group": "gateway",
+   "pick_stops": 104,
+   "bikes_picked": 2060
+  }
+ ],
+ "campus_share_of_all_drops": 0.256,
+ "hourly_rates": {
+  "days": 23,
+  "all_day": {
+   "slots": 2341,
+   "unmet_mean": 194.0,
+   "value_mean": 11.9,
+   "plan_share": 0.813,
+   "value_over_unmet": 0.0613,
+   "bikes_dropped_mean": 17.8,
+   "campus_share_of_drops": 0.196,
+   "campus_pickups_mean": 4.6,
+   "minutes_mean": 27.1
+  },
+  "before_noon_bell_1100_1200": {
+   "slots": 138,
+   "unmet_mean": 107.0,
+   "value_mean": 3.5,
+   "plan_share": 0.478,
+   "value_over_unmet": 0.0332,
+   "bikes_dropped_mean": 8.5,
+   "campus_share_of_drops": 0.249,
+   "campus_pickups_mean": 5.2,
+   "minutes_mean": 22.0
+  },
+  "afternoon_1500_1730": {
+   "slots": 343,
+   "unmet_mean": 363.0,
+   "value_mean": 21.6,
+   "plan_share": 0.994,
+   "value_over_unmet": 0.0596,
+   "bikes_dropped_mean": 27.9,
+   "campus_share_of_drops": 0.601,
+   "campus_pickups_mean": 2.7,
+   "minutes_mean": 35.1
+  }
+ }
+}

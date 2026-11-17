@@ -1,4 +1,28 @@
-# 報告（HW3 期中報告）
+# 報告
+
+## 期末報告（Final_54）
+
+期末報告以期中報告為底，新增或修改的地方用藍字，期中已經有的內容（不論當時是黑字或藍字）一律黑字。
+
+| 檔案 | 用途 |
+|---|---|
+| `build_final.js` | 產生 `Final_54.docx`。由 `build_hw3.js` 改寫而來：`BLUE` 設成不上色，新內容用 `fb`、`bodyF`、`capM` 等函式或字串裡的 `{{…}}` 標成藍色 |
+| `layout_final.json`、`layout_final_space.py` | 期末報告每張圖的位置，以及搜尋時每張圖可以放的段落 |
+| `video_url.txt`（自行新增） | 放 YouTube 連結。標題下方、作者上方那一行會印出這個連結；沒有這個檔時印「link to be added after upload」 |
+
+重建：
+
+```
+echo "https://youtu.be/影片代號" > video_url.txt          # 影片上傳後
+node build_final.js                                       # -> Final_54.docx
+soffice --headless --convert-to pdf Final_54.docx
+python whitespace.py Final_54.pdf
+BUILD_JS=build_final.js DOC=Final_54 LAYOUT_OUT=layout_final.json LAYOUT_SPACE=layout_final_space python layout_seq.py   # 內容長度變了才需要重排圖
+```
+
+繳交用的 PDF 建議在 Windows 的 Word 開 `Final_54.docx` 再匯出，中文才會是真正的標楷體。
+
+## 期中報告（HW3_54）
 
 | 檔案 | 用途 |
 |---|---|
