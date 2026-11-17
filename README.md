@@ -28,14 +28,17 @@
 
 ## 維護
 
-- 每週看一次 Actions 分頁有沒有一整排紅色；偶爾一兩次紅的是 API 逾時，不用管。
-  連續三次抓不到才會把 job 標成失敗（GitHub 會寄信）。
+- 一個 run 會連續記錄約 5 小時 40 分（`logger/loop.sh`），結束前自己啟動下一個。Actions 分頁正常的樣子是：
+  一個跑很久的黃色 run，加上每 20 分鐘一個幾秒就結束的綠色備援 run。
+- YouBike 的 API 會對某些 GitHub 機器整段回 HTTP 503。碰到時該 run 會記一行到 `data/errors.log`、
+  立刻交棒給下一個 run（換一台機器），通常幾分鐘內恢復。`fetch failed …` 的 commit 就是這種情況。
+- 偶爾會收到 GitHub 寄的失敗通知，原因多半是「The hosted runner lost communication」，是 GitHub 的機器斷線。
+  備援排程看到 25 分鐘沒有新資料就會接手，不用處理。
 - GitHub 規定公開 repo 若 60 天內沒有人為活動，會自動停掉排程。
-  **11 月中旬請任何一位組員隨便改一下 README 並 commit**，保險起見。
+  **每隔一個多月請任何一位組員隨便改一下 README 並 commit**，保險起見。
 - 想看目前累積了多少：clone 下來後執行
   `python3 logger/check_coverage.py`，會列出每天的快照數、最大間隔、缺車列數。
-- GitHub 的排程在尖峰時段會延遲幾分鐘、偶爾漏一次，這是正常的；
-  分析時會把資料重新對齊到 10 分鐘格。
+- 快照不一定落在整 10 分鐘（交棒時會多一兩筆），分析時會把資料重新對齊到 10 分鐘格。
 
 ## 資料格式
 

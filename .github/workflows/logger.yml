@@ -4,23 +4,35 @@ name: youbike-logger
 # --------------
 # GitHub's cron scheduler is unreliable for new, quiet repositories (it fired only a
 # handful of times per day for this repo), so one run does not take one snapshot: it
-# stays alive for LOOP_MINUTES, takes a snapshot every 10 minutes and commits each one.
-# Just before it ends it starts its successor with workflow_dispatch, so the chain
-# continues around the clock. The hourly cron is only a backup that restarts the chain
-# if a run ever dies; a cron run that finds a loop already active exits at once.
+# stays alive for LOOP_MINUTES, takes a snapshot every 10 minutes and commits each one
+# (logger/loop.sh). Just before it ends it starts its successor with workflow_dispatch,
+# so the chain continues around the clock.
+#
+# Three things can break the chain, and each has its own remedy:
+#   - The YouBike API answers some runners with HTTP 503 for their whole life. The loop
+#     then gives up at once and its successor tries from a new runner.
+#   - A runner dies ("lost communication with the server"). The cron below is the backup:
+#     a cron run starts logging when the repository shows no heartbeat for 25 minutes
+#     (logger/should_run.py) and exits within seconds otherwise.
+#   - Two loops end up side by side. Every commit carries its run id; the younger loop
+#     stands down when it sees the older one's commits.
 #
 # Normal picture on the Actions page: one long yellow run at a time (hours), plus short
-# green ones that say "another run is already logging".
+# green ones from the cron that found the loop alive.
 
 on:
   schedule:
-    - cron: "7 * * * *"            # hourly backup (often delayed or skipped by GitHub)
+    - cron: "7,27,47 * * * *"      # backup, three times an hour (often delayed or skipped by GitHub)
   workflow_dispatch:
     inputs:
       parent:
         description: "run id of the run that started this one (filled in automatically)"
         required: false
         default: ""
+      streak:
+        description: "runs in a row that the YouBike API refused (filled in automatically)"
+        required: false
+        default: "0"
 
 permissions:
   contents: write                  # commit snapshots back to this repository
@@ -36,6 +48,8 @@ jobs:
       RADIUS_KM: "5"               # stations within 5 km of NSYSU (~310); "0" = all of Kaohsiung
       LOOP_MINUTES: "340"          # how long one run keeps logging before handing over
       GH_TOKEN: ${{ github.token }}
+      PARENT: ${{ inputs.parent }}
+      STREAK: ${{ inputs.streak || '0' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,50 +58,26 @@ jobs:
       - name: Check that no other run is already logging
         id: guard
         run: |
-          sleep 60
-          decision=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/logger.yml/runs?status=in_progress&per_page=50" \
-                     | python3 logger/should_run.py "${GITHUB_RUN_ID}" "${{ inputs.parent }}")
+          decision=$(python3 logger/should_run.py "${PARENT}")
           echo "decision=${decision}" >> "$GITHUB_OUTPUT"
           echo "decision: ${decision}"
 
       - name: Install the demo dependencies (predictor, chain, route search)
         if: steps.guard.outputs.decision == 'run'
-        run: pip install -q numpy pandas scipy lightgbm
+        run: |
+          pip install -q numpy pandas scipy lightgbm \
+            || echo "pip failed, snapshots are still logged but the demo state is not refreshed"
 
       - name: Log every 10 minutes
+        id: loop
         if: steps.guard.outputs.decision == 'run'
-        run: |
-          git config user.name  "youbike-logger"
-          git config user.email "youbike-logger@users.noreply.github.com"
-          snapshot() {
-            python3 logger/fetch_youbike.py || true
-            # demo state for docs/index.html: stockout probabilities and the pre-bell truck plan (about 5 s)
-            python3 analysis/code/demo_state.py data analysis/results docs/state.json --trucks 1 || true
-            # replays of the last 7 complete days for the page's replay menu (builds at most one missing day per iteration)
-            python3 analysis/code/demo_replays.py data analysis/results docs --days 7 --max-new 1 || true
-            git add -A data docs
-            if git diff --cached --quiet; then return 1; fi      # nothing new (the API did not answer)
-            git commit -q -m "log $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
-          }
-          end=$(( SECONDS + LOOP_MINUTES * 60 ))
-          while [ "$SECONDS" -lt "$end" ]; do
-            if snapshot; then
-              for attempt in 1 2 3; do
-                git push -q && break
-                # Someone pushed meanwhile (usually a change to docs/ or the demo code, which this loop also
-                # writes, so a rebase would conflict): drop our commit, move to the remote tip and take the
-                # snapshot again on top of it.
-                echo "push failed (attempt $attempt): resetting to the remote and taking the snapshot again"
-                git fetch -q origin "${GITHUB_REF_NAME}" && git reset -q --hard FETCH_HEAD
-                sleep 5
-                snapshot || true
-              done
-            fi
-            now=$(date +%s)
-            next=$(( (now / 600 + 1) * 600 ))   # next hh:00, hh:10, hh:20, ...
-            sleep $(( next - now ))
-          done
+        run: bash logger/loop.sh
 
       - name: Start the next run
-        if: always() && steps.guard.outputs.decision == 'run'
-        run: gh workflow run logger.yml --ref "${GITHUB_REF_NAME}" -f parent="${GITHUB_RUN_ID}"
+        if: always() && steps.guard.outputs.decision == 'run' && steps.loop.outputs.next != 'no'
+        run: |
+          for attempt in 1 2 3; do
+            gh workflow run logger.yml --ref "${GITHUB_REF_NAME}" \
+              -f parent="${GITHUB_RUN_ID}" -f streak="${{ steps.loop.outputs.streak || '0' }}" && break
+            echo "could not start the next run (attempt $attempt)"; sleep 20
+          done

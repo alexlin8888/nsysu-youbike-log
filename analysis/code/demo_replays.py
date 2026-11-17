@@ -33,5 +33,11 @@ for f in DOCS.glob("replay_*.json"):
     if f.stem[7:] not in wanted:
         f.unlink()
 have = sorted([d for d in wanted if (DOCS / f"replay_{d}.json").exists()], reverse=True)
-json.dump({"days": have, "generated_at": datetime.now(TZ).isoformat(timespec="seconds")}, open(DOCS / "replays.json", "w"))
+index = DOCS / "replays.json"
+try:
+    unchanged = json.loads(index.read_text(encoding="utf-8")).get("days") == have
+except Exception:  # noqa: BLE001 - a missing or broken index is simply rewritten
+    unchanged = False
+if not unchanged:   # rewritten only when the list of days changes, so a snapshot without news leaves it alone
+    index.write_text(json.dumps({"days": have, "generated_at": datetime.now(TZ).isoformat(timespec="seconds")}), encoding="utf-8")
 print("replays:", have)

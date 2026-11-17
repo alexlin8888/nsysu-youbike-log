@@ -11,6 +11,8 @@ Outputs (all paths relative to DATA_DIR, default ./data):
   latest.json                the most recent snapshot of the logged stations (for the demo page)
   errors.log                 one line per failed fetch
 
+Exit status: 0 when a snapshot was written, 3 when the API could not be read (after the retries).
+
 Row format of the daily CSV:
   time    HH:MM:SS local time at which the API was fetched
   sno     station number (e.g. 501208097)
@@ -47,6 +49,7 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
 DAILY_DIR = DATA_DIR / "kaohsiung"
 ROW_FIELDS = ["time", "sno", "bikes", "ebikes", "empty", "status", "age"]
 STATION_FIELDS = ["sno", "name_tw", "name_en", "district", "lat", "lng", "capacity", "dist_m", "logged"]
+FETCH_FAILED = 3  # exit status when no snapshot was written; the workflow hands over to a new runner on it
 
 
 def fetch_json(retries=3, backoff=10):
@@ -86,20 +89,10 @@ def parse_age(updated_at, now):
 
 
 def record_error(msg, now):
+    """Append one line to errors.log. The log is also the loop's heartbeat while fetches fail."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    log = DATA_DIR / "errors.log"
-    with log.open("a", encoding="utf-8") as fh:
+    with (DATA_DIR / "errors.log").open("a", encoding="utf-8") as fh:
         fh.write(f"{now.isoformat()} {msg}\n")
-    # Fail the job (which triggers a GitHub e-mail) only when three fetches in a row failed.
-    recent = 0
-    for line in log.read_text(encoding="utf-8").splitlines()[-3:]:
-        try:
-            ts = datetime.fromisoformat(line.split(" ", 1)[0])
-            if (now - ts) <= timedelta(minutes=35):
-                recent += 1
-        except Exception:  # noqa: BLE001
-            pass
-    return recent >= 3
 
 
 def compact_old_days(today_name):
@@ -129,12 +122,14 @@ def main():
         stations = fetch_json()
     except Exception as exc:  # noqa: BLE001
         print(f"ERROR {exc}", file=sys.stderr)
-        sys.exit(1 if record_error(str(exc), now) else 0)
+        record_error(str(exc), now)
+        sys.exit(FETCH_FAILED)
 
     area = [s for s in stations if str(s.get("area_code")) in AREA_CODES]
     if not area:
         print("ERROR no stations matched AREA_CODES", file=sys.stderr)
-        sys.exit(1 if record_error("no stations matched AREA_CODES", now) else 0)
+        record_error("no stations matched AREA_CODES", now)
+        sys.exit(FETCH_FAILED)
 
     DAILY_DIR.mkdir(parents=True, exist_ok=True)
     today_name = now.strftime("%Y-%m-%d")
