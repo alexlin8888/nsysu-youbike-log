@@ -1,0 +1,111 @@
+<div class="shell" id="shell" data-tab="rider" data-sheet="half" data-mode="live">
+  <header class="top">
+    <a class="brand" href="./" aria-label="Beat the Bell">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="var(--line-2)" stroke-width="3"/><path d="M16 3 A13 13 0 1 1 4.7 22.5" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="16" r="7.5" fill="var(--risk-fill)"/></svg>
+      <span class="wordmark">Beat the Bell</span>
+      <span class="where" id="where">中山大學 YouBike</span>
+    </a>
+    <div class="mini" id="mini"><div class="lbl" id="miniLbl"></div><div class="left" id="miniLeft"></div></div>
+    <span class="spacer"></span>
+    <span class="seg" role="group" id="modeSeg"><button id="mLive" type="button" aria-pressed="true">即時</button><button id="mReplay" type="button" aria-pressed="false">重播</button></span>
+    <span class="status wait" id="status" aria-live="polite"><span class="dot"></span><span id="statusText">讀取資料中</span></span>
+  </header>
+
+  <div class="side">
+    <section class="board" id="board" aria-live="off">
+      <div class="lbl" id="boardLbl"></div>
+      <div class="line"><span class="at" id="boardAt">–</span><span class="left" id="boardLeft"></span><span class="note" id="boardNote"></span></div>
+      <div class="ruler" id="ruler"></div>
+    </section>
+
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" id="tabRider" type="button" aria-selected="true" aria-controls="paneRider">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="16.5" r="3.5"/><circle cx="18" cy="16.5" r="3.5"/><path d="M6 16.5 9.5 8.5h5.2L18 16.5M9.5 8.5 12 16.5h6M8 8.5h3M14.7 8.5 14 6h2.4"/></svg>
+        <span id="tabRiderT">找車</span></button>
+      <button role="tab" id="tabOps" type="button" aria-selected="false" aria-controls="paneOps">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9.5h-11zM13.5 9.5h4.2l3.3 3.5V16h-7.5"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+        <span id="tabOpsT">調度</span></button>
+      <button role="tab" id="tabAbout" type="button" aria-selected="false" aria-controls="paneAbout">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.2"/></svg>
+        <span id="tabAboutT">說明</span></button>
+    </nav>
+
+    <aside class="panel" id="panel">
+      <button class="grip" id="grip" type="button" aria-label="展開或收合"></button>
+      <div class="scroll" id="scroll">
+        <section id="cardWrap" hidden><div class="card" id="card"></div></section>
+
+        <div id="paneRider" class="pane" role="tabpanel" aria-labelledby="tabRider">
+          <div class="search">
+            <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input id="q" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-controls="qres">
+            <div class="results" id="qres" hidden></div>
+          </div>
+          <button class="best" id="best" type="button" hidden></button>
+          <div class="origin" role="group" id="originGroup">
+            <span class="k" id="originK"></span>
+            <button class="opt" id="oCampus" type="button" aria-pressed="true"></button>
+            <button class="opt" id="oMe" type="button" aria-pressed="false"></button>
+            <button class="opt" id="oPick" type="button" aria-pressed="false"></button>
+          </div>
+          <section id="favSec">
+            <h2><span id="hFav"></span><span class="sub" id="hFavSub"></span></h2>
+            <ol class="rows" id="favs"></ol>
+          </section>
+          <section>
+            <h2><span id="hNear"></span><span class="sub" id="hNearSub"></span></h2>
+            <ol class="rows" id="near"></ol>
+            <button class="more" id="more" type="button"></button>
+          </section>
+        </div>
+
+        <div id="paneOps" class="pane" role="tabpanel" aria-labelledby="tabOps" hidden>
+          <section>
+            <h2 id="hKpi"></h2>
+            <div class="stats">
+              <div class="stat"><div class="v" id="tEmpty">–</div><div class="k" id="kEmpty"></div></div>
+              <div class="stat"><div class="v" id="tRisk">–</div><div class="k" id="kRisk"></div></div>
+              <div class="stat"><div class="v" id="tUnmet">–</div><div class="k" id="kUnmet"></div></div>
+              <div class="stat plan"><div class="v" id="tSaved">–</div><div class="k" id="kSaved"></div></div>
+            </div>
+          </section>
+          <section>
+            <h2><span id="hPlan"></span><button class="btn quiet" id="copyAll" type="button" hidden></button></h2>
+            <div id="plans"></div>
+          </section>
+          <section>
+            <h2><span id="hRisk"></span>
+              <span class="seg" role="group" id="horizonSeg"><button id="h30" type="button" aria-pressed="true"></button><button id="h60" type="button" aria-pressed="false"></button><button id="hU" type="button" aria-pressed="false"></button></span></h2>
+            <ol class="risk" id="risk"></ol>
+          </section>
+        </div>
+
+        <div id="paneAbout" class="pane about" role="tabpanel" aria-labelledby="tabAbout" hidden>
+          <section id="aboutWhat"></section>
+          <section><h3 id="aboutKeyH"></h3><ul class="key" id="aboutKey"></ul></section>
+          <section id="aboutHow"></section>
+          <section class="langrow"><span id="langK"></span><span class="seg" role="group" id="langSeg"><button id="lZh" type="button" aria-pressed="true">中文</button><button id="lEn" type="button" aria-pressed="false">English</button></span></section>
+          <section class="credit" id="credit"></section>
+        </div>
+
+        <div class="err" id="err" role="status" hidden></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="mapwrap">
+    <div id="map"></div>
+    <div class="hint" id="hint" hidden></div>
+    <div class="legend" id="legend"></div>
+    <button class="fab" id="fab" type="button" aria-pressed="false">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>
+    </button>
+    <div class="replaybar" id="replaybar" hidden>
+      <select id="replayDay"></select>
+      <button class="play" id="play" type="button"></button>
+      <span class="track"><input type="range" id="slider" min="0" max="0" value="0"><span class="marks" id="marks"></span></span>
+      <span class="t" id="sliderT">–</span>
+    </div>
+  </section>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>

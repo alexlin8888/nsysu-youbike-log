@@ -3,12 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="下課後哪裡還有車：中山大學周邊 309 個 YouBike 站的即時車數、缺車機率與下課後的預估，以及下一次鐘響前的卡車調度路線（人工智慧導論期末專案，第 54 組）">
-<meta property="og:title" content="Beat the Bell · 中山大學 YouBike 即時缺車預測與調度">
-<meta property="og:description" content="每 10 分鐘更新：附近的站、每站 30／60 分內的缺車機率、下課後 20 分預計剩幾台、建議的卡車路線。">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%231f6fd0' stroke-width='3'/%3E%3Cpath d='M16 3 A13 13 0 1 1 4.7 22.5' fill='none' stroke='%238e8c86' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23d6502a'/%3E%3C/svg%3E">
-<title>Beat the Bell 中山即時調度</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<title>Beat the Bell｜中山大學 YouBike</title>
+<meta name="description" content="中山大學周邊 309 個 YouBike 站，每 10 分鐘更新：現在可借幾台、30 分內會不會沒車、下課後預估剩幾台，以及下課前的卡車調度路線。">
+<meta property="og:title" content="Beat the Bell｜中山大學 YouBike">
+<meta property="og:description" content="下課後哪一站還有車，每 10 分鐘更新。">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#10202f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Beat the Bell">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&display=swap">
 <style>
 .leaflet-pane,
 .leaflet-tile,
@@ -584,411 +594,665 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		print-color-adjust: exact;
 		}
 	}
-/* layout: a top bar, a 420px side panel with two tabs (riders: find a bike; operator: the truck plan) beside a
-   full-height map; on phones the map sits on top and the panel scrolls below it */
+/* Beat the Bell: layout and look.
+   Phone: full-bleed map under a dark "bell board" header, a draggable sheet over the map, a bottom tab bar.
+   Tablet and desktop: a side column (board, tabs, scrolling content) next to the map.
+   The dark board with amber numerals is used for one thing only: time until the bell and what happens after it. */
 :root {
-  --bg: #f3f2ed; --panel: #ffffff; --panel2: #f8f7f3; --fg: #1a1a17; --fg2: #5b5955; --muted: #8e8c86; --line: #e2e0da; --line2: #cfccc4;
-  --accent: #1f6fd0; --accent-soft: #dce9fa; --route: #e2602a; --route-soft: #fbe6da; --good: #1f9a5e; --good-soft: #dff3e7; --warn: #c9871a; --warn-soft: #fbeccf;
-  --map-bg: #e8ebee; --tile-filter: saturate(0.25) brightness(1.04) contrast(0.92);
-  --r0: #eceae2; --r1: #f6d8bf; --r2: #ec9a6b; --r3: #d6502a; --r4: #8c1a0a;
-  --shadow: 0 2px 12px rgba(20, 20, 10, 0.12);
-  --font-ui: "IBM Plex Sans", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-  --font-num: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --ground: #eef1f4; --surface: #ffffff; --surface-2: #f3f5f7; --surface-3: #e8ecf0;
+  --ink: #10202f; --ink-2: #4b5b6b; --ink-3: #7c8997; --line: #e4e9ee; --line-2: #ccd4dc;
+  --board: #10202f; --board-2: #1c3044; --board-ink: #f1f5f9; --board-mute: #93a5b6; --board-line: #2f4459; --bell: #ffc832;
+  --accent: #2456e6; --accent-soft: #e6ecff; --on-accent: #ffffff;
+  --ok: #0f7f56; --ok-fill: #17a673; --ok-soft: #dff4ea;
+  --low: #946100; --low-fill: #f2b01e; --low-soft: #fdf1d3;
+  --risk: #c2470f; --risk-fill: #e0621f; --risk-soft: #fde7da;
+  --out: #b3261e; --out-fill: #c62d24; --out-soft: #fadcd9; --gone: #5c1512;
+  --r0: #e3e8ed; --r1: #f9dcc8; --r2: #f0a276; --r3: #da5a2c; --r4: #8e1d0e;
+  --map-bg: #e6eaee; --tile-filter: saturate(0.3) brightness(1.03) contrast(0.94);
+  --shadow-1: 0 1px 2px rgba(16, 32, 47, 0.08), 0 4px 14px rgba(16, 32, 47, 0.1);
+  --shadow-2: 0 -2px 22px rgba(16, 32, 47, 0.18);
+  --font-ui: "Barlow", -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans CJK TC", "Noto Sans TC", "Microsoft JhengHei UI", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-num: "Barlow Semi Condensed", "Barlow", -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans CJK TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --top-h: 54px; --nav-h: 58px; --side-w: 408px; --pad: 18px;
+  --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px);
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #121418; --panel: #1a1d23; --panel2: #20242b; --fg: #ebe9e2; --fg2: #b3b1aa; --muted: #7d7b75; --line: #2d3139; --line2: #3c414b;
-  --accent: #76aef2; --accent-soft: #1f2d42; --route: #ff8a5c; --route-soft: #3b2920; --good: #4fc083; --good-soft: #1d3327; --warn: #e0a84a; --warn-soft: #3a2f1a;
-  --map-bg: #1b1e24; --tile-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.78) contrast(0.9);
-  --r0: #2a2e36; --r1: #5a3f33; --r2: #a0563a; --r3: #e0603a; --r4: #ff9a6a;
-  --shadow: 0 2px 14px rgba(0, 0, 0, 0.5); color-scheme: dark; } }
+  --ground: #0b131b; --surface: #131e29; --surface-2: #1a2733; --surface-3: #223140;
+  --ink: #e9eef3; --ink-2: #aab7c4; --ink-3: #7d8b99; --line: #24323f; --line-2: #35465a;
+  --board: #0a1118; --board-2: #15222e; --board-ink: #f1f5f9; --board-mute: #8a9cad; --board-line: #27394b; --bell: #ffc832;
+  --accent: #8aabff; --accent-soft: #1b2a4d; --on-accent: #0b131b;
+  --ok: #4cc595; --ok-fill: #1a9c6d; --ok-soft: #143629;
+  --low: #f0bb42; --low-fill: #e0a41a; --low-soft: #3a2e10;
+  --risk: #ff9058; --risk-fill: #e3662a; --risk-soft: #40231a;
+  --out: #ff8076; --out-fill: #cf3a30; --out-soft: #401c1a; --gone: #8c2a22;
+  --r0: #2a3744; --r1: #5c4033; --r2: #a55a3a; --r3: #e2643c; --r4: #ffa277;
+  --map-bg: #17212b; --tile-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.8) contrast(0.9);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 -2px 24px rgba(0, 0, 0, 0.6); color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #121418; --panel: #1a1d23; --panel2: #20242b; --fg: #ebe9e2; --fg2: #b3b1aa; --muted: #7d7b75; --line: #2d3139; --line2: #3c414b;
-  --accent: #76aef2; --accent-soft: #1f2d42; --route: #ff8a5c; --route-soft: #3b2920; --good: #4fc083; --good-soft: #1d3327; --warn: #e0a84a; --warn-soft: #3a2f1a;
-  --map-bg: #1b1e24; --tile-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.78) contrast(0.9);
-  --r0: #2a2e36; --r1: #5a3f33; --r2: #a0563a; --r3: #e0603a; --r4: #ff9a6a;
-  --shadow: 0 2px 14px rgba(0, 0, 0, 0.5); color-scheme: dark; }
-html, body { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; }
+  --ground: #0b131b; --surface: #131e29; --surface-2: #1a2733; --surface-3: #223140;
+  --ink: #e9eef3; --ink-2: #aab7c4; --ink-3: #7d8b99; --line: #24323f; --line-2: #35465a;
+  --board: #0a1118; --board-2: #15222e; --board-ink: #f1f5f9; --board-mute: #8a9cad; --board-line: #27394b; --bell: #ffc832;
+  --accent: #8aabff; --accent-soft: #1b2a4d; --on-accent: #0b131b;
+  --ok: #4cc595; --ok-fill: #1a9c6d; --ok-soft: #143629;
+  --low: #f0bb42; --low-fill: #e0a41a; --low-soft: #3a2e10;
+  --risk: #ff9058; --risk-fill: #e3662a; --risk-soft: #40231a;
+  --out: #ff8076; --out-fill: #cf3a30; --out-soft: #401c1a; --gone: #8c2a22;
+  --r0: #2a3744; --r1: #5c4033; --r2: #a55a3a; --r3: #e2643c; --r4: #ffa277;
+  --map-bg: #17212b; --tile-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.8) contrast(0.9);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 -2px 24px rgba(0, 0, 0, 0.6); color-scheme: dark; }
+
 * { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font-ui); font-size: 14.5px; line-height: 1.5; overflow: hidden;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
-button { font: inherit; color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.shell { display: grid; grid-template-rows: auto 1fr; height: 100%; }
-.top { display: flex; align-items: center; gap: 12px; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  background: var(--panel); border-bottom: 1px solid var(--line); min-width: 0; flex-wrap: wrap; }
-.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.brand .eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2); font-weight: 600; white-space: nowrap; }
-.brand h1 { font-size: 15px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.brand h1 .short { display: none; }
-.top .spacer { flex: 1; }
-.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 7px; overflow: hidden; background: var(--panel2); }
-.seg button { background: transparent; border: 0; padding: 5px 11px; font-size: 12.5px; cursor: pointer; color: var(--fg2); }
-.seg button[aria-pressed="true"] { background: var(--fg); color: var(--panel); }
-.daysel { border: 1px solid var(--line2); border-radius: 7px; background: var(--panel2); color: var(--fg); font: inherit; font-size: 12.5px; padding: 4px 8px; }
-.status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--fg2); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
-.status.stale .dot { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 25%, transparent); }
-.status.replay .dot { background: var(--route); box-shadow: 0 0 0 3px color-mix(in srgb, var(--route) 25%, transparent); }
-.app { display: grid; grid-template-columns: 420px 1fr; min-height: 0; }
-.panel { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; min-width: 0;
-  padding-block: 14px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: grid; gap: 16px; align-content: start; }
-.mapwrap { position: relative; min-width: 0; background: var(--map-bg); }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- frame ---------- */
+.shell { height: 100vh; height: 100dvh; display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.top { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; min-height: var(--top-h); background: var(--surface); border-bottom: 1px solid var(--line);
+  padding: 8px max(var(--pad), var(--safe-r)) 8px max(var(--pad), var(--safe-l)); padding-top: calc(8px + var(--safe-t)); min-width: 0; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; text-decoration: none; color: inherit; }
+.brand svg { flex: none; }
+.brand .wordmark { font: 600 19px/1 var(--font-num); letter-spacing: 0.01em; white-space: nowrap; }
+.brand .where { font-size: 13px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .spacer { flex: 1 1 0; min-width: 0; }
+.mini { display: none; }
+.status { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok-fill); flex: none; }
+.status.stale .dot { background: var(--low-fill); }
+.status.replay .dot { background: var(--accent); }
+.status.wait .dot { background: var(--ink-3); }
+
+.seg { display: inline-flex; background: var(--surface-3); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 8px; padding: 5px 12px; font-size: 13px; color: var(--ink-2); min-height: 30px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(16, 32, 47, 0.16); }
+
+.side { grid-column: 1; grid-row: 2; display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; background: var(--surface); border-right: 1px solid var(--line); }
+.mapwrap { grid-column: 2; grid-row: 2; position: relative; z-index: 0; min-width: 0; min-height: 0; background: var(--map-bg); }
 #map { position: absolute; inset: 0; background: var(--map-bg); }
 #map.picking { cursor: crosshair; }
 .leaflet-tile-pane { filter: var(--tile-filter); }
-h2 { font-size: 11.5px; font-weight: 600; color: var(--fg2); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-h2 .sub { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); font-size: 11.5px; }
-.pane { display: grid; gap: 16px; }
 
-/* tabs */
-.tabs { display: flex; border: 1px solid var(--line2); border-radius: 9px; background: var(--panel2); }
-.tabs button { flex: 1 1 0; min-width: 0; border: 0; background: transparent; padding: 8px 10px; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--fg2); line-height: 1.3; }
-.tabs button:first-child { border-radius: 8px 0 0 8px; }
-.tabs button:last-child { border-radius: 0 8px 8px 0; }
-.tabs button[aria-selected="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
-.tabs button small { display: block; font-weight: 400; font-size: 11px; color: var(--muted); }
+/* ---------- the bell board ---------- */
+.board { background: var(--board); color: var(--board-ink); padding: 16px var(--pad) 12px; padding-left: max(var(--pad), var(--safe-l)); }
+.board .lbl { font-size: 12.5px; color: var(--board-mute); }
+.board .line { display: flex; align-items: baseline; gap: 14px; margin-top: 2px; flex-wrap: wrap; }
+.board .at { font: 600 38px/1 var(--font-num); letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+.board .left { font: 600 22px/1 var(--font-num); color: var(--bell); font-variant-numeric: tabular-nums; }
+.board .left small { font: 500 13px var(--font-ui); margin-left: 3px; }
+.board .at.calm { font: 600 24px/1.25 var(--font-ui); letter-spacing: 0; }
+.board .note { font-size: 13px; color: var(--board-mute); }
+.ruler { position: relative; height: 36px; margin-top: 12px; }
+.ruler .axis { position: absolute; left: 0; right: 0; top: 13px; height: 1px; background: var(--board-line); }
+.ruler .tick { position: absolute; top: 8px; width: 2px; height: 11px; background: var(--board-mute); opacity: 0.55; transform: translateX(-1px); border-radius: 1px; }
+.ruler .tick.major { height: 17px; top: 5px; opacity: 0.9; }
+.ruler .tick.past { opacity: 0.28; }
+.ruler .tick.next { background: var(--bell); opacity: 1; }
+.ruler .now { position: absolute; top: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--board-ink); transform: translateX(-4.5px); box-shadow: 0 0 0 3px var(--board); }
+.ruler .hr { position: absolute; top: 24px; font: 500 10.5px/1 var(--font-num); color: var(--board-mute); transform: translateX(-50%); }
+.ruler .hr.next { color: var(--bell); }
 
-/* countdown + bell strip */
-.bell { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel2); }
-.bell .row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.bell .big { font-family: var(--font-num); font-size: 30px; font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
-.bell .big small { font-size: 14px; color: var(--fg2); margin-left: 4px; font-family: var(--font-ui); }
-.bell .lbl { color: var(--fg2); font-size: 12.5px; }
-.strip { position: relative; height: 34px; margin-top: 10px; }
-.strip .axis { position: absolute; left: 0; right: 0; top: 14px; height: 2px; background: var(--line2); border-radius: 1px; }
-.strip .tick { position: absolute; top: 9px; width: 2px; height: 12px; background: var(--muted); transform: translateX(-1px); border-radius: 1px; }
-.strip .tick.major { background: var(--fg2); height: 16px; top: 7px; }
-.strip .tick.next { background: var(--route); }
-.strip .tlabel { position: absolute; top: 24px; font-family: var(--font-num); font-size: 9.5px; color: var(--muted); transform: translateX(-50%); }
-.strip .tlabel.next { color: var(--route); font-weight: 500; }
-.strip .now { position: absolute; top: 3px; width: 10px; height: 24px; transform: translateX(-5px); }
-.strip .now::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; background: var(--accent); }
-.strip .now::after { content: ""; position: absolute; left: 1px; top: -1px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-.strip .hlabel { position: absolute; top: 24px; font-family: var(--font-num); font-size: 9.5px; color: var(--muted); transform: translateX(-50%); }
+/* ---------- tabs: a segmented control in the side column, a bottom bar on phones ---------- */
+.tabs { display: flex; gap: 2px; margin: 12px var(--pad) 0; margin-left: max(var(--pad), var(--safe-l)); background: var(--surface-3); border-radius: 12px; padding: 3px; }
+.tabs button { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; background: transparent; border-radius: 9px; min-height: 36px; padding: 6px 8px;
+  font-size: 14px; color: var(--ink-2); }
+.tabs button svg { flex: none; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(16, 32, 47, 0.16); }
 
-/* rider tab */
-.tip { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--fg); line-height: 1.5; }
-.tip .x { margin-left: auto; border: 0; background: transparent; cursor: pointer; color: var(--fg2); font-size: 16px; line-height: 1; padding: 0 2px; }
+/* ---------- the scrolling column / the sheet ---------- */
+.panel { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
+.grip { display: none; }
+.scroll { overflow-y: auto; overscroll-behavior: contain; padding: 14px var(--pad) 28px; padding-left: max(var(--pad), var(--safe-l)); min-height: 0; scrollbar-width: thin; }
+.pane { display: grid; gap: 20px; align-content: start; }
+.pane > section { min-width: 0; }
+h2 { font-size: 13px; font-weight: 600; color: var(--ink-2); margin: 0 0 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 28px; }
+h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
+
+/* search and origin */
 .search { position: relative; }
-.search input { width: 100%; border: 1px solid var(--line2); border-radius: 9px; background: var(--panel2); color: var(--fg); font: inherit; font-size: 14px; padding: 9px 12px 9px 34px; -webkit-appearance: none; appearance: none; }
-.search input::placeholder { color: var(--muted); }
-.search .ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; font-size: 15px; }
-.search .results { position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: var(--panel); border: 1px solid var(--line2); border-radius: 9px; box-shadow: var(--shadow); z-index: 20; max-height: 260px; overflow-y: auto; }
-.search .results button { display: grid; grid-template-columns: 1fr auto; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 12px; cursor: pointer; font-size: 13px; }
-.search .results button:hover, .search .results button:focus-visible { background: var(--panel2); outline: none; }
-.search .results .en { color: var(--muted); font-size: 11.5px; }
-.search .results .none { padding: 8px 12px; color: var(--muted); font-size: 12.5px; }
-.origin { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--fg2); }
-.origin .lbl { margin-right: 4px; }
-.btn { border: 1px solid var(--line2); background: var(--panel2); border-radius: 7px; padding: 5px 10px; font-size: 12.5px; cursor: pointer; color: var(--fg); display: inline-flex; align-items: center; gap: 6px; text-decoration: none; line-height: 1.3; }
-.btn:hover { border-color: var(--fg2); }
-.btn[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn.small { padding: 3px 8px; font-size: 12px; }
-.chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; white-space: nowrap; line-height: 1.5; }
-.chip.g { background: var(--good-soft); color: var(--good); }
-.chip.y { background: var(--warn-soft); color: var(--warn); }
-.chip.o { background: var(--route-soft); color: var(--route); }
-.chip.r { background: var(--r4); color: #fff; }
-.chip.n { background: var(--panel2); color: var(--fg2); border: 1px solid var(--line); font-weight: 500; }
-.best { border: 1px solid var(--good); background: var(--good-soft); border-radius: 10px; padding: 10px 12px; font-size: 13px; cursor: pointer; display: grid; gap: 3px; }
-.best.none { border-color: var(--line2); background: var(--panel2); cursor: default; }
-.best .k { font-size: 11px; color: var(--fg2); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
-.best .nm { font-weight: 600; font-size: 14px; }
-.best .d { color: var(--fg2); font-size: 12.5px; }
-.best .d b { font-family: var(--font-num); color: var(--fg); font-weight: 500; }
-.slist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.srow { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; cursor: pointer; background: var(--panel); }
-.srow:hover, .srow:focus-visible { border-color: var(--accent); outline: none; }
-.srow.sel { border-color: var(--accent); background: var(--accent-soft); }
-.srow .nm { font-weight: 600; font-size: 13.5px; min-width: 0; line-height: 1.3; }
-.srow .nm .en { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
-.srow .walk { font-family: var(--font-num); font-size: 12px; color: var(--fg2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.srow .st { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; grid-column: 1 / -1; font-size: 12.5px; color: var(--fg2); }
-.srow .st b { font-family: var(--font-num); color: var(--fg); font-weight: 500; }
-.empty-note { font-size: 12.5px; color: var(--fg2); border: 1px dashed var(--line2); border-radius: 8px; padding: 10px 12px; }
+.search input { width: 100%; height: 44px; border: 1px solid transparent; border-radius: 12px; background: var(--surface-3); padding: 0 14px 0 40px; font-size: 15px; -webkit-appearance: none; appearance: none; }
+.search input:focus { background: var(--surface); border-color: var(--accent); outline: none; }
+.search input::placeholder { color: var(--ink-3); }
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.search .ico { position: absolute; left: 13px; top: 13px; color: var(--ink-3); pointer-events: none; }
+.results { position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow-1); z-index: 30; max-height: 300px; overflow-y: auto; padding: 4px; }
+.results button { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: transparent; border-radius: 9px; padding: 9px 10px; font-size: 14px; min-height: 44px; }
+.results button:hover, .results button:focus-visible { background: var(--surface-2); outline: none; }
+.results .alt { display: block; color: var(--ink-3); font-size: 12px; }
+.results .badge { width: 30px; height: 30px; font-size: 14px; }
+.results .none { padding: 12px; color: var(--ink-2); font-size: 13.5px; }
+.origin { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.origin .k { font-size: 13px; color: var(--ink-2); }
+.opt { border: 1px solid var(--line-2); background: var(--surface); border-radius: 999px; padding: 5px 13px; font-size: 13px; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+.opt[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 
-/* KPI tiles */
-.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-.tile { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; background: var(--panel); }
-.tile .v { font-family: var(--font-num); font-size: 24px; font-weight: 500; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.tile .v small { font-size: 12px; color: var(--fg2); font-family: var(--font-ui); margin-left: 3px; letter-spacing: 0; }
-.tile .k { font-size: 11.5px; color: var(--fg2); margin-top: 3px; line-height: 1.3; }
-.tile.plan { border-color: var(--route); background: var(--route-soft); }
-.tile.plan .v { color: var(--route); }
+/* station rows: the round badge is the same mark as on the map (bikes now, coloured by the 30-minute outlook) */
+.badge { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 600 17px/1 var(--font-num); color: #fff; flex: none; font-variant-numeric: tabular-nums; }
+.badge.g { background: var(--ok-fill); } .badge.y { background: var(--low-fill); color: #10202f; } .badge.o { background: var(--risk-fill); }
+.badge.r { background: var(--out-fill); } .badge.x { background: var(--gone); } .badge.n { background: var(--surface-3); color: var(--ink-3); }
+.state { font-weight: 600; }
+.state.g { color: var(--ok); } .state.y { color: var(--low); } .state.o { color: var(--risk); } .state.r, .state.x { color: var(--out); } .state.n { color: var(--ink-3); }
+.rows { list-style: none; margin: 0 calc(-1 * var(--pad)); padding: 0; }
+.row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 11px var(--pad); min-height: 64px; cursor: pointer; position: relative; }
+.row + .row::before { content: ""; position: absolute; left: calc(var(--pad) + 52px); right: var(--pad); top: 0; border-top: 1px solid var(--line); }
+.row:hover { background: var(--surface-2); }
+.row:focus-visible { outline-offset: -2px; }
+.row.sel { background: var(--accent-soft); }
+.row .nm { display: block; font-weight: 600; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.row .nm .star { color: var(--low-fill); margin-left: 4px; }
+.row .sub { font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; column-gap: 10px; line-height: 1.45; margin-top: 1px; }
+.row .walk { text-align: right; white-space: nowrap; font: 600 18px/1.1 var(--font-num); font-variant-numeric: tabular-nums; }
+.row .walk small { display: block; font: 400 11.5px/1.3 var(--font-ui); color: var(--ink-3); }
+.rows .empty { margin: 0 var(--pad); }
+.empty { font-size: 13.5px; color: var(--ink-2); background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+.more { width: 100%; border: 0; background: var(--surface-2); border-radius: 12px; min-height: 42px; font-size: 13.5px; color: var(--ink-2); margin-top: 6px; }
+.more:hover { background: var(--surface-3); color: var(--ink); }
 
-/* truck plan */
-.truck-sum { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--fg2); margin: 0 0 10px; }
-.truck-sum b { color: var(--fg); font-weight: 600; }
-h2 .copy { border: 1px solid var(--line2); background: var(--panel2); border-radius: 6px; padding: 2px 8px; font-size: 11.5px; cursor: pointer; color: var(--fg2); letter-spacing: 0; text-transform: none; font-weight: 500; }
-h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
+/* the suggestion */
+.best { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--ok-soft); cursor: pointer; width: 100%; text-align: left; border: 0; }
+.best .why { display: block; font-size: 12.5px; color: var(--ok); font-weight: 600; }
+.best .nm { display: block; font-weight: 600; font-size: 16px; line-height: 1.3; }
+.best .sub { font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; column-gap: 10px; }
+.best .walk { text-align: right; white-space: nowrap; font: 600 20px/1.1 var(--font-num); }
+.best .walk small { display: block; font: 400 11.5px/1.3 var(--font-ui); color: var(--ink-2); }
+.best.none { background: var(--surface-2); cursor: default; grid-template-columns: minmax(0, 1fr); }
+.best.none .why { color: var(--ink-2); }
+.best.none .sub { font-size: 13.5px; color: var(--ink); }
+
+/* buttons */
+.btn { border: 0; background: var(--surface-3); border-radius: 10px; padding: 8px 14px; font-size: 13.5px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; color: var(--ink); white-space: nowrap; }
+.btn:hover { background: var(--line-2); }
+.btn.primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+.btn.quiet { background: transparent; color: var(--ink-2); padding: 4px 10px; min-height: 30px; font-size: 13px; border: 1px solid var(--line-2); }
+.btn.quiet:hover { color: var(--ink); border-color: var(--ink-3); background: transparent; }
+
+/* ---------- station card ---------- */
+.card { background: var(--surface-2); border-radius: 16px; padding: 14px 16px 16px; margin-bottom: 18px; }
+.card .hd { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
+.card .nm { font-weight: 700; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; }
+.card .alt { color: var(--ink-2); font-size: 12.5px; line-height: 1.35; }
+.card .x { border: 0; background: var(--surface-3); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); align-self: start; }
+.card .x:hover { color: var(--ink); background: var(--line-2); }
+.card .says { margin-top: 10px; font-size: 14px; display: flex; flex-wrap: wrap; column-gap: 12px; row-gap: 2px; align-items: baseline; }
+.card .tag { font-size: 12px; color: var(--ink-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+.card .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.card .fact { padding: 9px 0 8px; }
+.card .fact + .fact { border-left: 1px solid var(--line); padding-left: 12px; }
+.card .fact .v { font: 600 26px/1.05 var(--font-num); font-variant-numeric: tabular-nums; }
+.card .fact .v small { font: 500 13px var(--font-num); color: var(--ink-2); margin-left: 2px; }
+.card .fact .k { font-size: 12px; color: var(--ink-2); margin-top: 2px; line-height: 1.3; }
+/* the after-class forecast borrows the board's look */
+.after { margin-top: 12px; background: var(--board); color: var(--board-ink); border-radius: 12px; padding: 11px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
+.after .when { font-size: 12.5px; color: var(--board-mute); line-height: 1.35; }
+.after .when b { font: 600 17px/1.2 var(--font-num); color: var(--board-ink); display: block; }
+.after .est { font: 600 26px/1 var(--font-num); color: var(--bell); text-align: right; white-space: nowrap; }
+.after .est small { font: 500 13px var(--font-ui); margin-left: 3px; }
+.after .odds { grid-column: 1 / -1; font-size: 12.5px; color: var(--board-mute); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--board-line); display: flex; flex-wrap: wrap; column-gap: 14px; }
+.after .odds b { color: var(--board-ink); font: 600 13.5px var(--font-num); }
+.after.plain { display: block; font-size: 13px; color: var(--board-mute); }
+.card .chart { margin-top: 12px; }
+.card .chart .cap { font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+.card .chart svg { width: 100%; height: 88px; display: block; }
+.card .foot { font-size: 12px; color: var(--ink-3); margin-top: 8px; }
+.card .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+
+/* ---------- dispatch tab ---------- */
+.stats { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+.stat { padding: 10px 0 11px; border-bottom: 1px solid var(--line); min-width: 0; }
+.stat:nth-child(odd) { padding-right: 12px; }
+.stat:nth-child(even) { border-left: 1px solid var(--line); padding-left: 14px; }
+.stat .v { font: 600 28px/1.05 var(--font-num); font-variant-numeric: tabular-nums; }
+.stat .v small { font: 500 13px var(--font-ui); color: var(--ink-2); margin-left: 5px; }
+.stat .v small + small { font: 600 14px var(--font-num); color: var(--accent); margin-left: 8px; }
+.stat.plan .v small:first-of-type { color: var(--ink-2); }
+.stat .k { font-size: 12.5px; color: var(--ink-2); margin-top: 3px; line-height: 1.35; }
+.stat.plan .v { color: var(--accent); }
+.trip { font-size: 13px; color: var(--ink-2); margin: 0 0 8px; display: flex; flex-wrap: wrap; column-gap: 12px; }
+.trip b { color: var(--ink); font-weight: 600; }
 .stops { list-style: none; margin: 0; padding: 0; position: relative; }
-.stops::before { content: ""; position: absolute; left: 12px; top: 12px; bottom: 12px; width: 2px; background: var(--line2); }
-.stop { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: start; padding: 6px 0; position: relative; cursor: pointer; border-radius: 6px; }
-.stop:hover { background: var(--panel2); }
-.stop .n { width: 26px; height: 26px; border-radius: 50%; background: var(--route); color: #fff; font-family: var(--font-num); font-size: 12px; font-weight: 500; display: grid; place-items: center; border: 3px solid var(--panel); position: relative; }
-.stop .act { font-weight: 600; font-size: 13.5px; }
-.stop .act.pick { color: var(--accent); }
-.stop .act.drop { color: var(--route); }
-.stop .nm { font-size: 13.5px; }
-.stop .meta { color: var(--fg2); font-size: 12px; margin-top: 1px; }
-.stop .eta { font-family: var(--font-num); color: var(--fg2); font-size: 12px; white-space: nowrap; padding-top: 4px; font-variant-numeric: tabular-nums; text-align: right; }
-.loadbar { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 5px; width: 120px; }
-.loadbar i { display: block; height: 100%; background: var(--accent); }
-
-/* risk list */
-.risk { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
-.risk li { display: grid; grid-template-columns: 1fr 52px 64px 38px; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; border-radius: 6px; padding: 4px 6px; }
-.risk li:hover, .risk li:focus-visible { background: var(--panel2); outline: none; }
+.stops::before { content: ""; position: absolute; left: 13px; top: 18px; bottom: 18px; width: 2px; background: var(--line-2); }
+.stop { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 12px; align-items: start; padding: 8px 0; position: relative; cursor: pointer; border-radius: 10px; }
+.stop:hover { background: var(--surface-2); }
+.stop .n { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font: 600 14px/1 var(--font-num); display: grid; place-items: center; box-shadow: 0 0 0 3px var(--surface); position: relative; }
+.stop .act { font-weight: 600; font-size: 14.5px; }
+.stop .nm { font-size: 14.5px; }
+.stop .meta { color: var(--ink-2); font-size: 12.5px; }
+.stop .eta { color: var(--ink-2); font-size: 12.5px; white-space: nowrap; padding-top: 2px; text-align: right; }
+.stop .eta b { font: 600 15px var(--font-num); color: var(--ink); }
+.load { height: 4px; background: var(--surface-3); border-radius: 2px; overflow: hidden; margin-top: 5px; width: 120px; }
+.load i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.risk { list-style: none; margin: 0 calc(-1 * var(--pad)); padding: 0; }
+.risk li { display: grid; grid-template-columns: minmax(0, 1fr) 52px 64px 40px; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; padding: 7px var(--pad); min-height: 40px; }
+.risk li:hover { background: var(--surface-2); }
+.risk li:focus-visible { outline-offset: -2px; }
 .risk li.sel { background: var(--accent-soft); }
 .risk .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.risk .nm .tag { display: inline-block; font-size: 10px; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 0 4px; margin-left: 5px; vertical-align: 1px; }
-.risk .nm .tag.gw { color: var(--fg2); border-color: var(--line2); }
-.risk .bk { font-family: var(--font-num); font-size: 12px; color: var(--fg2); text-align: right; font-variant-numeric: tabular-nums; }
-.bar { position: relative; height: 8px; background: var(--r0); border-radius: 2px; overflow: hidden; }
-.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--r3); }
-.risk .pv { font-family: var(--font-num); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.risk .tag { font-size: 11px; color: var(--ink-2); border: 1px solid var(--line-2); border-radius: 5px; padding: 0 5px; margin-left: 6px; }
+.risk .tag.in { color: var(--accent); border-color: var(--accent); }
+.risk .bk { font: 500 13.5px var(--font-num); color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 8px; background: var(--r0); border-radius: 4px; overflow: hidden; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--r3); border-radius: 4px; }
+.risk .pv { font: 600 14px var(--font-num); text-align: right; font-variant-numeric: tabular-nums; }
 
-/* station card */
-.card { border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; background: var(--panel); box-shadow: var(--shadow); }
-.card .hd { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
-.card .nm { font-weight: 600; font-size: 15px; }
-.card .en { color: var(--fg2); font-size: 12px; }
-.card .x { border: 0; background: transparent; color: var(--fg2); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; }
-.card .verdict { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 13px; }
-.card .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.card .fact .v { font-family: var(--font-num); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.card .fact .k { font-size: 11px; color: var(--fg2); }
-.card .bellbox { margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--panel2); font-size: 12.5px; display: grid; gap: 4px; line-height: 1.5; }
-.card .bellbox b { font-family: var(--font-num); font-weight: 500; }
-.card .spark { margin-top: 10px; }
-.card .spark svg { width: 100%; height: 86px; display: block; }
-.card .foot { font-size: 11px; color: var(--muted); margin-top: 6px; }
-.card .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
-
-/* legend, replay bar, about */
-.legend { position: absolute; left: 10px; bottom: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 11px; z-index: 500; color: var(--fg2); box-shadow: var(--shadow); }
-.legend .ramp { display: flex; height: 8px; width: 150px; margin: 4px 0 2px; border-radius: 2px; overflow: hidden; }
-.legend .ramp i { flex: 1; }
-.legend .ends { display: flex; justify-content: space-between; font-family: var(--font-num); }
-.legend .row { display: flex; align-items: center; gap: 7px; margin-top: 5px; }
-.legend .ln { width: 18px; height: 3px; background: var(--route); border-radius: 2px; }
-.replaybar { position: absolute; right: 12px; bottom: 26px; width: min(600px, calc(100% - 200px)); background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-  padding: 8px 12px; z-index: 500; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow); }
-.replaybar button { border: 1px solid var(--line2); background: var(--panel2); border-radius: 6px; width: 34px; height: 30px; cursor: pointer; font-size: 14px; }
-.replaybar .sliderwrap { flex: 1; min-width: 0; position: relative; padding-bottom: 8px; }
-.replaybar input[type="range"] { width: 100%; accent-color: var(--route); min-width: 0; margin: 0; display: block; }
-.replaybar .sticks { position: absolute; left: 7px; right: 7px; bottom: 0; height: 6px; }
-.replaybar .sticks i { position: absolute; top: 0; width: 1.5px; height: 6px; background: var(--muted); transform: translateX(-50%); }
-.replaybar .sticks i.major { background: var(--fg2); height: 8px; top: -1px; }
-.replaybar .t { font-family: var(--font-num); font-size: 13px; min-width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
-.pickhint { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); background: var(--fg); color: var(--panel); border-radius: 999px; padding: 6px 14px; font-size: 12.5px; z-index: 600; box-shadow: var(--shadow); white-space: nowrap; }
-.about summary { cursor: pointer; font-size: 12px; color: var(--fg2); }
-.about .body { font-size: 12px; color: var(--fg2); line-height: 1.55; margin-top: 8px; display: grid; gap: 6px; }
-.about b { color: var(--fg); font-weight: 600; }
+/* ---------- about tab ---------- */
+.about { font-size: 14px; line-height: 1.7; }
+.about p { margin: 0 0 10px; max-width: 34em; }
+.about h3 { font-size: 15px; margin: 0 0 6px; font-weight: 700; }
 .about a { color: var(--accent); }
-.err { color: var(--route); font-size: 12px; }
+.key { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; font-size: 13.5px; line-height: 1.45; }
+.key li { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 12px; align-items: center; }
+.key .sw { display: grid; place-items: center; }
+.key .badge { width: 28px; height: 28px; font-size: 13px; }
+.key .ln { width: 26px; height: 0; border-top: 3px dashed var(--accent); }
+.langrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.credit { font-size: 12.5px; color: var(--ink-2); }
+.err { color: var(--out); font-size: 13px; margin-top: 14px; background: var(--out-soft); border-radius: 10px; padding: 10px 12px; }
 
-/* map glyphs */
+/* ---------- things that float over the map ---------- */
+.legend { position: absolute; left: 12px; bottom: 26px; background: var(--surface); border-radius: 12px; padding: 10px 12px; font-size: 12px; z-index: 500; color: var(--ink-2); box-shadow: var(--shadow-1); max-width: 230px; line-height: 1.4; }
+.legend .ttl { color: var(--ink); font-weight: 600; margin-bottom: 6px; }
+.legend .ramp { display: flex; height: 8px; margin: 2px 0 3px; border-radius: 4px; overflow: hidden; }
+.legend .ramp i { flex: 1; }
+.legend .ends { display: flex; justify-content: space-between; font: 500 11.5px var(--font-num); }
+.legend .it { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.legend .it.gap { margin-top: 9px; }
+.legend .sw { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.legend .ln { width: 18px; height: 0; border-top: 3px dashed var(--accent); flex: none; }
+.replaybar { position: absolute; right: 68px; bottom: 26px; left: 256px; max-width: 640px; margin-left: auto; background: var(--surface); border-radius: 14px; padding: 8px 12px; z-index: 500; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-1); }
+.replaybar select { border: 0; background: var(--surface-3); border-radius: 9px; padding: 0 8px; height: 36px; font-size: 13.5px; max-width: 132px; }
+.replaybar .play { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; flex: none; }
+.replaybar .track { flex: 1; min-width: 0; position: relative; padding-bottom: 8px; }
+.replaybar input[type="range"] { width: 100%; accent-color: var(--accent); min-width: 0; margin: 0; display: block; height: 24px; }
+.replaybar .marks { position: absolute; left: 8px; right: 8px; bottom: 0; height: 7px; pointer-events: none; }
+.replaybar .marks i { position: absolute; top: 1px; width: 1.5px; height: 5px; background: var(--ink-3); transform: translateX(-50%); }
+.replaybar .marks i.major { background: var(--ink); height: 7px; top: 0; }
+.replaybar .t { font: 600 17px var(--font-num); min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+.fab { position: absolute; right: 10px; bottom: 126px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-1); z-index: 500; display: grid; place-items: center; }
+.fab[aria-pressed="true"] { color: var(--accent); }
+.fab.busy svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hint, .toast { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: var(--board); color: var(--board-ink); border-radius: 999px; padding: 8px 16px; font-size: 13.5px; z-index: 650; box-shadow: var(--shadow-1); max-width: calc(100% - 24px); text-align: center; }
+.toast { position: fixed; z-index: 900; top: auto; bottom: 30px; left: calc(var(--side-w) + (100vw - var(--side-w)) / 2); pointer-events: none; max-width: min(420px, calc(100vw - 32px)); }
+
+/* ---------- map marks ---------- */
 .glyph { position: relative; }
 .glyph svg { display: block; overflow: visible; }
-.glyph .lbl { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--fg); padding: 1px 4px; background: color-mix(in srgb, var(--panel) 82%, transparent); border-radius: 3px; pointer-events: none; }
-.glyph.sel svg { filter: drop-shadow(0 0 4px var(--accent)); }
-.glyph .star { position: absolute; right: -5px; top: -6px; font-size: 12px; color: var(--warn); pointer-events: none; text-shadow: 0 0 2px var(--panel); }
-.stopicon { background: var(--route); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; font: 500 11.5px var(--font-num); border: 2px solid var(--panel); box-shadow: var(--shadow); }
-.originicon { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 3px solid var(--panel); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent); }
-.route-line { stroke-dasharray: 10 8; animation: march 1.2s linear infinite; }
-@keyframes march { to { stroke-dashoffset: -18; } }
+.glyph text { font-family: var(--font-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+.glyph .lbl { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--ink); padding: 0 5px; background: var(--surface); background: color-mix(in srgb, var(--surface) 86%, transparent); border-radius: 4px; pointer-events: none; line-height: 1.5; }
+.glyph.sel svg { filter: drop-shadow(0 0 0 var(--accent)) drop-shadow(0 0 5px var(--accent)); }
+.glyph .star { position: absolute; right: -6px; top: -8px; font-size: 13px; color: var(--low-fill); pointer-events: none; text-shadow: 0 0 2px var(--surface), 0 0 2px var(--surface); }
+.stopicon { background: var(--accent); color: var(--on-accent); border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; font: 600 13px/1 var(--font-num); box-shadow: 0 0 0 2px var(--surface), var(--shadow-1); }
+.originicon { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 6px var(--accent-soft); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent); }
+.route-line { stroke-dasharray: 2 9; stroke-linecap: round; animation: march 1.4s linear infinite; }
+@keyframes march { to { stroke-dashoffset: -22; } }
 .leaflet-container { font-family: var(--font-ui); }
-.leaflet-popup-content-wrapper { background: var(--panel); color: var(--fg); border-radius: 8px; font-family: var(--font-ui); font-size: 12.5px; box-shadow: var(--shadow); }
-.leaflet-popup-tip { background: var(--panel); }
-.leaflet-popup-content { margin: 9px 12px; line-height: 1.4; }
-.leaflet-bar a { background: var(--panel); color: var(--fg); border-bottom-color: var(--line); }
-.leaflet-bar a:hover { background: var(--panel2); }
-.leaflet-control-attribution { background: color-mix(in srgb, var(--panel) 85%, transparent); color: var(--muted); font-size: 10px; }
-.leaflet-control-attribution a { color: var(--accent); }
-.leaflet-control-scale-line { background: color-mix(in srgb, var(--panel) 85%, transparent); color: var(--fg2); border-color: var(--muted); }
+.leaflet-bar { border: 0 !important; box-shadow: var(--shadow-1) !important; border-radius: 12px !important; overflow: hidden; }
+.leaflet-bar a { background: var(--surface); color: var(--ink); border-bottom-color: var(--line); width: 40px; height: 40px; line-height: 40px; }
+.leaflet-bar a:hover { background: var(--surface-2); color: var(--ink); }
+.leaflet-control-attribution { background: var(--surface) !important; background: color-mix(in srgb, var(--surface) 80%, transparent) !important; color: var(--ink-3); font-size: 10px; }
+.leaflet-control-attribution a { color: var(--ink-2); }
+.leaflet-control-scale-line { background: var(--surface); background: color-mix(in srgb, var(--surface) 80%, transparent); color: var(--ink-2); border-color: var(--ink-3); }
+.leaflet-bottom.leaflet-right .leaflet-bar { margin-bottom: 10px; margin-right: 10px; }
 
-@media (max-width: 860px) {
-  .app { grid-template-columns: 1fr; grid-template-rows: 42vh 1fr; }
-  .panel { border-right: 0; border-top: 1px solid var(--line); order: 2; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .mapwrap { order: 1; }
-  .replaybar { width: calc(100% - 20px); bottom: 10px; }
+/* ---------- tablet ---------- */
+@media (max-width: 1099px) { :root { --side-w: 372px; --pad: 16px; } .brand .where { display: none; } .legend { display: none; } .replaybar { left: 12px; } }
+
+/* ---------- short windows (a phone held sideways): keep the board to one line ---------- */
+@media (max-height: 520px) and (min-width: 768px) { .ruler { display: none; } .board { padding-top: 10px; padding-bottom: 10px; } .board .at { font-size: 28px; } .tabs { margin-top: 8px; } }
+
+/* ---------- phone: map first, sheet over it, tabs at the bottom ---------- */
+@media (max-width: 767px) {
+  :root { --pad: 16px; --top-h: 58px; }
+  body { font-size: 15px; }
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .top { background: var(--board); color: var(--board-ink); border-bottom: 0; gap: 10px; padding-bottom: 8px; }
+  .brand, .top .spacer { display: none; }
+  .mini { display: block; flex: 1 1 0; min-width: 0; }
+  .mini .lbl { font-size: 12px; color: var(--board-mute); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini .left { font: 600 24px/1.1 var(--font-num); color: var(--bell); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mini .left small { font: 500 13px var(--font-ui); margin-left: 3px; }
+  .mini .left.calm { color: var(--board-ink); font-size: 18px; font-family: var(--font-ui); line-height: 1.35; }
+  .top .seg { background: var(--board-2); }
+  .top .seg button { color: var(--board-mute); padding: 5px 11px; min-height: 32px; }
+  .top .seg button[aria-pressed="true"] { background: var(--board-ink); color: var(--board); box-shadow: none; }
+  .status { position: fixed; z-index: 640; left: calc(10px + var(--safe-l)); top: calc(var(--top-h) + var(--safe-t) + 10px); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 5px 11px 5px 9px; box-shadow: var(--shadow-1); font-size: 12px; max-width: calc(100vw - 80px); overflow: hidden; text-overflow: ellipsis; }
+  .shell[data-mode="replay"] .status { display: none; }
+  .side { display: contents; }
+  .board { display: none; }
+  .mapwrap { grid-column: 1; grid-row: 2; }
+  .tabs { grid-column: 1; grid-row: 3; margin: 0; border-radius: 0; background: var(--surface); border-top: 1px solid var(--line); padding: 0 max(6px, var(--safe-r)) var(--safe-b) max(6px, var(--safe-l)); gap: 0; z-index: 700; position: relative; }
+  .tabs button { flex-direction: column; gap: 2px; min-height: var(--nav-h); border-radius: 0; font-size: 11.5px; color: var(--ink-3); padding: 6px 4px; }
+  .tabs button[aria-selected="true"] { background: transparent; color: var(--accent); box-shadow: none; font-weight: 600; }
+  .panel { position: fixed; z-index: 660; left: 0; right: 0; bottom: calc(var(--nav-h) + var(--safe-b) + 1px); height: var(--sheet-full, 70vh); background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: var(--shadow-2);
+    grid-template-rows: auto minmax(0, 1fr); transform: translateY(var(--sheet-y, 50%)); transition: transform 0.26s cubic-bezier(0.22, 0.9, 0.3, 1); will-change: transform; touch-action: none; }
+  .panel.dragging { transition: none; }
+  .grip { display: block; border: 0; background: transparent; width: 100%; height: 30px; padding: 0; touch-action: none; cursor: grab; border-radius: 18px 18px 0 0; }
+  .grip::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line-2); margin: 0 auto; }
+  .scroll { padding: 0 max(var(--pad), var(--safe-r)) 24px max(var(--pad), var(--safe-l)); height: var(--sheet-vis, auto); max-height: 100%; }
+  .shell[data-sheet="full"] .panel { touch-action: pan-y; }
+  .shell:not([data-sheet="full"]) .scroll { overflow-y: hidden; }
+  .pane { gap: 18px; }
+  .row { min-height: 68px; }
+  .risk li { min-height: 46px; }
+  .fab { bottom: calc(var(--sheet-up, 160px) + 14px); right: calc(12px + var(--safe-r)); transition: bottom 0.26s cubic-bezier(0.22, 0.9, 0.3, 1); width: 48px; height: 48px; }
+  .shell[data-sheet="full"] .fab { display: none; }
+  .toast { left: 50%; bottom: calc(var(--nav-h) + var(--safe-b) + 14px); border-radius: 14px; }
   .legend { display: none; }
-  .brand { flex: 1 1 0; }
-  .brand .eyebrow { display: none; }
-  .brand h1 { font-size: 14px; }
-  .brand h1 .long { display: none; }
-  .brand h1 .short { display: inline; }
-  .top { gap: 8px; }
-  .top .seg button { padding: 5px 8px; font-size: 12px; }
-  .top .status { order: 9; width: 100%; }
+  .replaybar { left: calc(10px + var(--safe-l)); right: calc(10px + var(--safe-r)); top: 10px; bottom: auto; max-width: none; padding: 7px 10px; gap: 8px; }
+  .replaybar select { max-width: 104px; padding: 0 4px; }
+  .hint { top: 54px; }
+  .shell[data-mode="replay"] .hint { top: 104px; }
+  .leaflet-control-zoom, .leaflet-control-scale { display: none; }
+  .leaflet-top.leaflet-right .leaflet-control-attribution { margin: 10px calc(10px + var(--safe-r)) 0 0; border-radius: 999px; padding: 2px 9px; box-shadow: var(--shadow-1); background: var(--surface) !important; }
+  .shell[data-mode="replay"] .leaflet-top.leaflet-right { top: 62px; }
+  .card { margin-left: -4px; margin-right: -4px; }
 }
-@media (prefers-reduced-motion: reduce) { .route-line { animation: none; } * { transition: none !important; } }
+@media (max-width: 359px) { .mini .left { font-size: 21px; } .top .seg button { padding: 5px 8px; } .row .walk { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .route-line, .fab.busy svg { animation: none; } * { transition: none !important; } }
 </style>
-
 </head>
 <body>
-<div class="shell">
+<div class="shell" id="shell" data-tab="rider" data-sheet="half" data-mode="live">
   <header class="top">
-    <div class="brand"><span class="eyebrow">Beat the Bell · Group 54</span><h1><span class="long" id="title">中山大學 YouBike 即時缺車預測與調度</span><span class="short" id="titleShort">中山 YouBike 找車</span></h1></div>
+    <a class="brand" href="./" aria-label="Beat the Bell">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="var(--line-2)" stroke-width="3"/><path d="M16 3 A13 13 0 1 1 4.7 22.5" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="16" r="7.5" fill="var(--risk-fill)"/></svg>
+      <span class="wordmark">Beat the Bell</span>
+      <span class="where" id="where">中山大學 YouBike</span>
+    </a>
+    <div class="mini" id="mini"><div class="lbl" id="miniLbl"></div><div class="left" id="miniLeft"></div></div>
     <span class="spacer"></span>
-    <span class="seg" role="group" aria-label="mode"><button id="mLive" aria-pressed="true">即時</button><button id="mReplay" aria-pressed="false">重播</button></span>
-    <select id="replayDay" class="daysel" aria-label="replay day" hidden></select>
-    <span class="seg" role="group" aria-label="language"><button id="lZh" aria-pressed="true">中</button><button id="lEn" aria-pressed="false">EN</button></span>
-    <span class="status" id="status" aria-live="polite"><span class="dot"></span><span id="statusText">讀取中…</span></span>
+    <span class="seg" role="group" id="modeSeg"><button id="mLive" type="button" aria-pressed="true">即時</button><button id="mReplay" type="button" aria-pressed="false">重播</button></span>
+    <span class="status wait" id="status" aria-live="polite"><span class="dot"></span><span id="statusText">讀取資料中</span></span>
   </header>
-  <div class="app">
-    <aside class="panel">
-      <section class="bell">
-        <div class="row"><div class="big" id="bellBig">–</div><div class="lbl" id="bellLbl"></div></div>
-        <div class="strip" id="strip"></div>
-      </section>
 
-      <div class="tabs" role="tablist">
-        <button role="tab" id="tabRider" aria-selected="true" aria-controls="paneRider"><span id="tabRiderT">找車</span><small id="tabRiderSub">下課後哪裡還有車</small></button>
-        <button role="tab" id="tabOps" aria-selected="false" aria-controls="paneOps"><span id="tabOpsT">調度</span><small id="tabOpsSub">鐘響前的卡車路線</small></button>
-      </div>
-
-      <section id="cardWrap" hidden><div class="card" id="card"></div></section>
-
-      <div id="paneRider" class="pane" role="tabpanel">
-        <div class="tip" id="tip" hidden><span id="tipText"></span><button class="x" id="tipX" aria-label="close">×</button></div>
-        <div class="search">
-          <span class="ico" aria-hidden="true">⌕</span>
-          <input id="q" type="search" autocomplete="off" placeholder="搜尋站名，例如 圖資、西子灣" aria-label="search">
-          <div class="results" id="qres" hidden></div>
-        </div>
-        <div class="origin">
-          <span class="lbl" id="originLbl"></span>
-          <button class="btn small" id="btnGeo" type="button">◎ <span id="btnGeoT">用我的位置</span></button>
-          <button class="btn small" id="btnPick" type="button" aria-pressed="false"><span id="btnPickT">點地圖選起點</span></button>
-          <button class="btn small" id="btnCampus" type="button" hidden><span id="btnCampusT">回到校園</span></button>
-        </div>
-        <div class="best" id="best" hidden></div>
-        <section>
-          <h2><span id="hFav">我的站</span><span class="sub" id="hFavSub"></span></h2>
-          <ol class="slist" id="favs"></ol>
-        </section>
-        <section>
-          <h2><span id="hNear">附近的站</span><span class="sub" id="hNearSub"></span></h2>
-          <ol class="slist" id="near"></ol>
-        </section>
-      </div>
-
-      <div id="paneOps" class="pane" role="tabpanel" hidden>
-        <section>
-          <h2 id="hKpi">目前狀態</h2>
-          <div class="kpis">
-            <div class="tile"><div class="v" id="tEmpty">–</div><div class="k" id="kEmpty"></div></div>
-            <div class="tile"><div class="v" id="tRisk">–</div><div class="k" id="kRisk"></div></div>
-            <div class="tile"><div class="v" id="tUnmet">–</div><div class="k" id="kUnmet"></div></div>
-            <div class="tile plan"><div class="v" id="tSaved">–</div><div class="k" id="kSaved"></div></div>
-          </div>
-        </section>
-        <section>
-          <h2><span id="hPlan"></span><button class="copy" id="copyAll" type="button" hidden></button></h2>
-          <div id="plans"></div>
-        </section>
-        <section>
-          <h2><span id="hRisk"></span>
-            <span class="seg" role="group" aria-label="horizon"><button id="h30" aria-pressed="true">30 分</button><button id="h60" aria-pressed="false">60 分</button><button id="hU" aria-pressed="false">90 分缺口</button></span></h2>
-          <ol class="risk" id="risk"></ol>
-        </section>
-      </div>
-
-      <details class="about"><summary id="aboutSum"></summary><div class="body" id="aboutBody"></div></details>
-      <div class="err" id="err" hidden></div>
-    </aside>
-    <section class="mapwrap">
-      <div id="map" role="img" aria-label="map"></div>
-      <div class="pickhint" id="pickhint" hidden></div>
-      <div class="legend" id="legend"></div>
-      <div class="replaybar" id="replaybar" hidden>
-        <button id="play" aria-label="play">▶</button>
-        <span class="sliderwrap"><input type="range" id="slider" min="0" max="0" value="0" aria-label="time"><span class="sticks" id="sticks"></span></span>
-        <span class="t" id="sliderT">–</span>
-      </div>
+  <div class="side">
+    <section class="board" id="board" aria-live="off">
+      <div class="lbl" id="boardLbl"></div>
+      <div class="line"><span class="at" id="boardAt">–</span><span class="left" id="boardLeft"></span><span class="note" id="boardNote"></span></div>
+      <div class="ruler" id="ruler"></div>
     </section>
-  </div>
-</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" id="tabRider" type="button" aria-selected="true" aria-controls="paneRider">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="16.5" r="3.5"/><circle cx="18" cy="16.5" r="3.5"/><path d="M6 16.5 9.5 8.5h5.2L18 16.5M9.5 8.5 12 16.5h6M8 8.5h3M14.7 8.5 14 6h2.4"/></svg>
+        <span id="tabRiderT">找車</span></button>
+      <button role="tab" id="tabOps" type="button" aria-selected="false" aria-controls="paneOps">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9.5h-11zM13.5 9.5h4.2l3.3 3.5V16h-7.5"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+        <span id="tabOpsT">調度</span></button>
+      <button role="tab" id="tabAbout" type="button" aria-selected="false" aria-controls="paneAbout">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.2"/></svg>
+        <span id="tabAboutT">說明</span></button>
+    </nav>
+
+    <aside class="panel" id="panel">
+      <button class="grip" id="grip" type="button" aria-label="展開或收合"></button>
+      <div class="scroll" id="scroll">
+        <section id="cardWrap" hidden><div class="card" id="card"></div></section>
+
+        <div id="paneRider" class="pane" role="tabpanel" aria-labelledby="tabRider">
+          <div class="search">
+            <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input id="q" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-controls="qres">
+            <div class="results" id="qres" hidden></div>
+          </div>
+          <button class="best" id="best" type="button" hidden></button>
+          <div class="origin" role="group" id="originGroup">
+            <span class="k" id="originK"></span>
+            <button class="opt" id="oCampus" type="button" aria-pressed="true"></button>
+            <button class="opt" id="oMe" type="button" aria-pressed="false"></button>
+            <button class="opt" id="oPick" type="button" aria-pressed="false"></button>
+          </div>
+          <section id="favSec">
+            <h2><span id="hFav"></span><span class="sub" id="hFavSub"></span></h2>
+            <ol class="rows" id="favs"></ol>
+          </section>
+          <section>
+            <h2><span id="hNear"></span><span class="sub" id="hNearSub"></span></h2>
+            <ol class="rows" id="near"></ol>
+            <button class="more" id="more" type="button"></button>
+          </section>
+        </div>
+
+        <div id="paneOps" class="pane" role="tabpanel" aria-labelledby="tabOps" hidden>
+          <section>
+            <h2 id="hKpi"></h2>
+            <div class="stats">
+              <div class="stat"><div class="v" id="tEmpty">–</div><div class="k" id="kEmpty"></div></div>
+              <div class="stat"><div class="v" id="tRisk">–</div><div class="k" id="kRisk"></div></div>
+              <div class="stat"><div class="v" id="tUnmet">–</div><div class="k" id="kUnmet"></div></div>
+              <div class="stat plan"><div class="v" id="tSaved">–</div><div class="k" id="kSaved"></div></div>
+            </div>
+          </section>
+          <section>
+            <h2><span id="hPlan"></span><button class="btn quiet" id="copyAll" type="button" hidden></button></h2>
+            <div id="plans"></div>
+          </section>
+          <section>
+            <h2><span id="hRisk"></span>
+              <span class="seg" role="group" id="horizonSeg"><button id="h30" type="button" aria-pressed="true"></button><button id="h60" type="button" aria-pressed="false"></button><button id="hU" type="button" aria-pressed="false"></button></span></h2>
+            <ol class="risk" id="risk"></ol>
+          </section>
+        </div>
+
+        <div id="paneAbout" class="pane about" role="tabpanel" aria-labelledby="tabAbout" hidden>
+          <section id="aboutWhat"></section>
+          <section><h3 id="aboutKeyH"></h3><ul class="key" id="aboutKey"></ul></section>
+          <section id="aboutHow"></section>
+          <section class="langrow"><span id="langK"></span><span class="seg" role="group" id="langSeg"><button id="lZh" type="button" aria-pressed="true">中文</button><button id="lEn" type="button" aria-pressed="false">English</button></span></section>
+          <section class="credit" id="credit"></section>
+        </div>
+
+        <div class="err" id="err" role="status" hidden></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="mapwrap">
+    <div id="map"></div>
+    <div class="hint" id="hint" hidden></div>
+    <div class="legend" id="legend"></div>
+    <button class="fab" id="fab" type="button" aria-pressed="false">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>
+    </button>
+    <div class="replaybar" id="replaybar" hidden>
+      <select id="replayDay"></select>
+      <button class="play" id="play" type="button"></button>
+      <span class="track"><input type="range" id="slider" min="0" max="0" value="0"><span class="marks" id="marks"></span></span>
+      <span class="t" id="sliderT">–</span>
+    </div>
+  </section>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+<script src="vendor/leaflet.js"></script>
 <script>
+// Every word the page shows, in both languages. {x} marks a value filled in by app.js.
+var T = {
+  zh: {
+    docTitle: "Beat the Bell｜中山大學 YouBike", where: "中山大學 YouBike",
+    live: "即時", replay: "重播", tabRider: "找車", tabOps: "調度", tabAbout: "說明",
+    loading: "讀取資料中", liveAt: "{t} 更新", ago: "{m} 分鐘前", agoH: "{h} 小時前", justNow: "剛剛", replayAt: "重播 {d} {t}",
+    stale: "讀不到新資料，先顯示 {t} 那一筆。",
+    stalebig: "紀錄器已經 {m} 分鐘沒有新資料，畫面是最後一筆。",
+    loadFail: "資料讀不進來（{e}）。請重新整理，或過幾分鐘再試。",
+    replayFail: "這一天的重播讀不進來（{e}）。",
+
+    bellNext: "下一次下課", bellIn: "還有 {m} 分", bellInH: "還有 {h} 小時 {m} 分", inMin: "{m} 分", inHour: "{h} 小時 {m} 分", nowIs: "現在 {t}",
+    offdayBig: "今天沒課", offdayNote: "假日沒有下課人潮", overBig: "今天下課了", overNote: "最後一堂在 {t} 下課",
+
+    search: "搜尋站名，例如 圖資", noMatch: "找不到這個站",
+    originK: "起點", oCampus: "中山校園", oMe: "我的位置", oPick: "地圖選點",
+    geoFail: "拿不到你的位置，改用地圖選點", tooFar: "你不在中山附近，起點先留在校園。", picking: "在地圖上點一下，設成起點", fabLabel: "用我的位置當起點",
+    bestK: "建議", bestNearest: "最近的站就有車", bestFar: "近一點的站可能沒車，這站比較保險",
+    bestNoneK: "附近可能都沒車", bestNone: "2 公里內的站都可能沒車。往外找地圖上綠色的站。",
+    fav: "我的站", near: "附近的站", nearSub: "由近到遠", more: "再看 8 站", less: "收起來",
+    walkK: "步行", walkMin: "{m} 分", farK: "直線", walkKm: "{k} 公里",
+    sGood: "30 分內有車", sLow: "30 分內可能變少", sEmpty: "30 分內可能沒車", sVery: "30 分內很可能沒車", sGone: "現在沒車", sNone: "沒有資料", sOos: "暫停服務",
+    lGood: "有車", lLow: "可能變少", lEmpty: "可能沒車", lVery: "很可能沒車", lGone: "現在沒車",
+    noDock: "沒位子還車", ret: "可還 {d}", afterBell: "{at} 預估剩 {b} 台",
+
+    fBikes: "可借", fDocks: "可還", fP30: "30 分內沒車機率", fP60: "60 分內沒車機率",
+    afterWhen: "{t} 下課後 {a} 分，預估剩", afterEst: "{b} 台", afterEmpty: "沒車的機率 {p}%", afterFull: "沒位子還車的機率 {p}%",
+    afterNone: "今天沒有下一次下課了，所以沒有下課後的預估。",
+    chartCap: "今天的車數，虛線是下課鐘", addFav: "加入我的站", rmFav: "移出我的站", nav: "步行導航",
+    stale2: "這站的資料是 {m} 分鐘前的", excluded: "旗津的站，卡車路線不會排到", inCampus: "校內", nearCampus: "校外鄰近",
+    favAdded: "加進我的站了", favRemoved: "移出我的站了", close: "關閉",
+
+    kpi: "現在的狀況", kpiSub: "{n} 站有資料", uSta: "站", uRide: "人次", kEmpty: "現在沒車", kRisk: "30 分內可能沒車", kUnmet: "未來 {h} 分預估借不到車", kSaved: "照建議路線可以少掉",
+    plan: "下課前的卡車路線", copy: "複製路線", copied: "已複製",
+    pickN: "載走 {n} 台", dropN: "補 {n} 台", nowAt: "現在 {b}/{c}", eta: "分後到", onTruck: "車上 {n} 台", truck: "卡車 {k}", nStops: "{n} 站",
+    tripLen: "約 {t} 分鐘、{k} 公里", tripGain: "預估少 {v} 人次借不到車",
+    noPlan: "現在不建議出車。借不到車的人次分散在很多站，最多的一站也只有 {m} 人次，跑一趟補到的抵不過花的時間。", offWindow: "路線只在 06:00 到 23:00 之間規劃。",
+    riskH: "最可能沒車的站", unmetH: "未來 90 分缺最多車的站", h30: "30 分", h60: "60 分", hU: "90 分缺口",
+
+    legOutlook: "30 分內的狀況", legP: "{h} 分內沒車的機率", legU: "未來 {h} 分借不到車的人次",
+    legNum: "數字是現在可借的車", legCampus: "藍框是校內的站", legRoute: "卡車路線",
+    keyH: "地圖和清單怎麼看",
+    keyGood: "綠色是 30 分內有車。圓圈裡的數字是現在可借的車。", keyLow: "黃色是可能變少，沒車的機率在 25% 到 50% 之間。", keyEmpty: "橘色是可能沒車，機率 50% 到 75%。",
+    keyVery: "紅色是很可能沒車，機率 75% 以上。", keyGone: "深紅是現在就沒車。", keyNone: "灰色是暫停服務或沒有資料。",
+    keyRing: "地圖上圓圈外緣的弧線是車柱有車的比例，藍框是校內的站。", keyRoute: "虛線是建議的卡車路線，圓圈裡的數字是停靠順序。",
+    aboutWhat: "<h3>這個頁面在做什麼</h3><p>下課那幾分鐘，中山校內的 YouBike 站很容易被借空。這個頁面每 10 分鐘更新一次。要借車的人可以看哪一站等一下還有車，調度的人可以看下課前卡車該先補哪幾站。</p>",
+    aboutHow: "<h3>數字怎麼來的</h3>" +
+      "<p>車數來自 YouBike 官方 API。紀錄器每 10 分鐘抓一次中山大學周邊 5 公里內的 {n} 個站，從 2026 年 10 月 1 日記到現在。</p>" +
+      "<p>「30 分內沒車的機率」是一個 LightGBM 模型算的。模型用臺大周邊 10 個月的站點資料訓練，只看車數和時間，沒有拿中山的資料再調過。在臺大的測試月份 AUC 是 0.93，直接搬到中山也是 0.93。</p>" +
+      "<p>「下課後預估剩幾台」把每一站當成一條生滅鏈：借走一台少一台，還進一台多一台。借還的速率用紀錄器的資料估，再從現在的車數往後推到下課後 20 分。</p>" +
+      "<p>卡車路線先估每一站未來 {h} 分有幾個人借不到車，再搜尋一條路線，決定先去哪一站、載走或補上幾台。一台卡車最多載 {q} 台、時速 {s} 公里、每站停 {st} 分鐘。用臺大的真實騎乘紀錄重播，派 1、3、6 台卡車，借不到車的人次分別少 13%、30%、45%。</p>" +
+      "<p>車程是用直線距離乘 1.3 估的，旗津的站不排進路線。「我的站」只存在這台裝置的瀏覽器裡，不會上傳。</p>",
+    langK: "語言", credit: "人工智慧導論期末專案，第 54 組。程式和資料放在 <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\" target=\"_blank\" rel=\"noopener\">GitHub</a>。",
+    gripLabel: "拉高或收合清單", playLabel: "播放", pauseLabel: "暫停", sliderLabel: "時間", dayLabel: "日期", modeLabel: "即時或重播", horizonLabel: "排序依據", mapLabel: "站點地圖",
+    weekdays: ["日", "一", "二", "三", "四", "五", "六"]
+  },
+  en: {
+    docTitle: "Beat the Bell | NSYSU YouBike", where: "NSYSU YouBike",
+    live: "Live", replay: "Replay", tabRider: "Find a bike", tabOps: "Dispatch", tabAbout: "About",
+    loading: "Loading data", liveAt: "Updated {t}", ago: "{m} min ago", agoH: "{h} h ago", justNow: "just now", replayAt: "Replay {d} {t}",
+    stale: "Can't reach new data. Showing the {t} snapshot.",
+    stalebig: "The logger has sent nothing for {m} min. This is its last snapshot.",
+    loadFail: "The data did not load ({e}). Reload the page, or try again in a few minutes.",
+    replayFail: "This day's replay did not load ({e}).",
+
+    bellNext: "Next class ends", bellIn: "in {m} min", bellInH: "in {h} h {m} min", inMin: "{m} min", inHour: "{h} h {m} min", nowIs: "now {t}",
+    offdayBig: "No classes today", offdayNote: "No end-of-class rush on a day off", overBig: "Classes are over", overNote: "The last one ended at {t}",
+
+    search: "Search stations, e.g. Library", noMatch: "No station by that name",
+    originK: "From", oCampus: "Campus", oMe: "My location", oPick: "Pick on map",
+    geoFail: "Couldn't get your location. Pick a point on the map instead.", tooFar: "You are far from NSYSU, so the start stays on campus.", picking: "Tap the map to set where you start", fabLabel: "Start from my location",
+    bestK: "Suggested", bestNearest: "the nearest station has bikes", bestFar: "closer stations may run out, this one is safer",
+    bestNoneK: "Nearby stations may all run out", bestNone: "Every station within 2 km may be empty. Look for a green one further out on the map.",
+    fav: "My stations", near: "Nearby", nearSub: "nearest first", more: "Show 8 more", less: "Show fewer",
+    walkK: "walk", walkMin: "{m} min", farK: "away", walkKm: "{k} km",
+    sGood: "Bikes for the next 30 min", sLow: "May run low within 30 min", sEmpty: "May be empty within 30 min", sVery: "Likely empty within 30 min", sGone: "Empty now", sNone: "No data", sOos: "Out of service",
+    lGood: "Bikes available", lLow: "May run low", lEmpty: "May be empty", lVery: "Likely empty", lGone: "Empty now",
+    noDock: "No free dock", ret: "{d} docks free", afterBell: "about {b} left at {at}",
+
+    fBikes: "Bikes", fDocks: "Free docks", fP30: "Empty within 30 min", fP60: "Empty within 60 min",
+    afterWhen: "{a} min after the {t} bell, expected", afterEst: "{b} bikes", afterEmpty: "{p}% chance of no bikes", afterFull: "{p}% chance of no free dock",
+    afterNone: "No more classes end today, so there is no after-class estimate.",
+    chartCap: "Bikes today; dashed lines are class-end bells", addFav: "Save station", rmFav: "Remove station", nav: "Walking directions",
+    stale2: "This station last reported {m} min ago", excluded: "A Qijin station; the truck route never includes it", inCampus: "on campus", nearCampus: "near campus",
+    favAdded: "Saved to My stations", favRemoved: "Removed from My stations", close: "Close",
+
+    kpi: "Right now", kpiSub: "{n} stations reporting", uSta: "stations", uRide: "riders", kEmpty: "empty now", kRisk: "may be empty within 30 min", kUnmet: "expected to find no bike in the next {h} min", kSaved: "spared if the truck follows the route",
+    plan: "Truck route before the bell", copy: "Copy route", copied: "Copied",
+    pickN: "Pick up {n}", dropN: "Drop off {n}", nowAt: "now {b}/{c}", eta: "min away", onTruck: "{n} on the truck", truck: "Truck {k}", nStops: "{n} stops",
+    tripLen: "about {t} min, {k} km", tripGain: "about {v} fewer riders left without a bike",
+    noPlan: "No trip is worth making now. The shortfall is spread over many stations, {m} riders at the worst one, so a run would save less than it costs in time.", offWindow: "Routes are planned between 06:00 and 23:00 only.",
+    riskH: "Most likely to run out", unmetH: "Largest shortfall, next 90 min", h30: "30 min", h60: "60 min", hU: "90-min shortfall",
+
+    legOutlook: "Next 30 minutes", legP: "Chance of no bikes within {h} min", legU: "Riders without a bike, next {h} min",
+    legNum: "The number is bikes available now", legCampus: "A blue outline marks a campus station", legRoute: "Truck route",
+    keyH: "Reading the map and the list",
+    keyGood: "Green: bikes for the next 30 minutes. The number in the circle is bikes available now.", keyLow: "Yellow: may run low, a 25% to 50% chance of no bikes.", keyEmpty: "Orange: may be empty, 50% to 75%.",
+    keyVery: "Red: likely empty, 75% or more.", keyGone: "Dark red: empty right now.", keyNone: "Grey: out of service or no data.",
+    keyRing: "On the map, the arc around a circle is the share of docks holding a bike. A blue outline marks a campus station.", keyRoute: "The dotted line is the suggested truck route; the numbers are the order of its stops.",
+    aboutWhat: "<h3>What this page does</h3><p>In the few minutes after a class ends, the YouBike stations on the NSYSU campus are often emptied. This page updates every 10 minutes. Riders can see which station will still have bikes; dispatchers can see which stations a truck should restock before the bell.</p>",
+    aboutHow: "<h3>Where the numbers come from</h3>" +
+      "<p>Bike counts come from the official YouBike API. A logger reads the {n} stations within 5 km of NSYSU every 10 minutes and has done so since 1 October 2026.</p>" +
+      "<p>The chance of no bikes within 30 minutes comes from a LightGBM model. It was trained on 10 months of station data around NTU, uses only bike counts and time, and was never tuned on NSYSU data. Its AUC is 0.93 on the NTU test months and 0.93 at NSYSU.</p>" +
+      "<p>The after-class estimate treats each station as a birth-death chain: a rental removes a bike, a return adds one. The rental and return rates are fitted to the logger's data, and the chain runs forward from the current count to 20 minutes after the bell.</p>" +
+      "<p>The truck route starts from how many riders each station is expected to turn away over the next {h} minutes. A search then decides where the truck goes first and how many bikes it picks up or drops off. A truck carries {q} bikes, travels at {s} km/h and spends {st} minutes per stop. Replayed on real NTU trips, 1, 3 and 6 trucks cut the number of riders turned away by 13%, 30% and 45%.</p>" +
+      "<p>Travel times are straight-line distance times 1.3, and Qijin stations are left out of the route. My stations are kept in this browser only and are never uploaded.</p>",
+    langK: "Language", credit: "Final project for Introduction to Artificial Intelligence, Group 54. Code and data are on <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\" target=\"_blank\" rel=\"noopener\">GitHub</a>.",
+    gripLabel: "Expand or collapse the list", playLabel: "Play", pauseLabel: "Pause", sliderLabel: "Time", dayLabel: "Day", modeLabel: "Live or replay", horizonLabel: "Rank by", mapLabel: "Station map",
+    weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  }
+};
+
+// Beat the Bell: page logic. Reads docs/state.json (live) or docs/replay_YYYY-MM-DD.json and draws the same three
+// tabs from either. Strings live in strings.js (T), the look in style.css. No framework; Leaflet draws the map.
 (function () {
-  var CAMPUS = { "501209052": 1, "501209070": 1, "501209051": 1, "501209054": 1, "501209039": 1, "501209069": 1, "501209040": 1, "501209071": 1 };
-  var GATEWAY = { "501209024": 1, "501209062": 1, "501209042": 1, "501209036": 1, "501209026": 1, "501209023": 1, "501209022": 1, "501209032": 1, "501209025": 1, "501209104": 1, "501209028": 1 };
+  "use strict";
   var SHORT = { "501209052": ["圖資", "Library"], "501209070": ["西灣藝廊", "Xiziwan Hall"], "501209051": ["工學院", "Engineering"], "501209054": ["材料", "Materials"],
                 "501209039": ["社科院", "Social Sci."], "501209069": ["體育館", "Gym"], "501209040": ["海工館", "Marine Eng."], "501209071": ["海資館", "Marine Res."] };
   var CAMPUS_CENTER = [22.6273, 120.2658];
-  var T = {
-    zh: { title: "中山大學 YouBike 即時缺車預測與調度", titleShort: "中山 YouBike 找車", live: "即時", replay: "重播", loading: "讀取中…", liveAt: "即時 · 快照 {t}", ago: "（{m} 分鐘前）", replayAt: "重播 {d} · {t}",
-          stale: "暫時讀不到新資料，顯示 {t} 的快照", stalebig: "紀錄器已 {m} 分鐘沒有新資料，顯示的是最後一筆快照。", min: "分", toBell: "距下一次鐘響 {b}", noBellToday: "今天沒有鐘響",
-          offday: "假日：校園站不會因下課被借空", dayOver: "今天的課結束了", bellTime: "現在 {t}",
-          tabRider: "找車", tabRiderSub: "下課後哪裡還有車", tabOps: "調度", tabOpsSub: "鐘響前的卡車路線",
-          tip: "點地圖上的站，看它在下課後會不會沒車；打開站點卡片按 ☆，常用的站下次打開就排在最前面。", search: "搜尋站名，例如 圖資、西子灣", noMatch: "沒有符合的站",
-          originCampus: "起點：中山大學", originMe: "起點：我的位置", originPick: "起點：地圖上選的點", geo: "用我的位置", geoFail: "拿不到位置，請改用地圖選起點", pick: "點地圖選起點", picking: "點一下地圖，把那裡設為起點", campus: "回到校園",
-          pickK: "建議去", pickNearest: "最近的站就有車", pickFar: "更近的站可能沒車", pickNone: "附近 2 km 內的站都可能沒車，請看地圖上較遠的綠色站", pickD: "步行 {m} 分 · 現在 {b} 台",
-          fav: "我的站", favEmpty: "還沒有加入的站。打開站點卡片按 ☆ 加入。", near: "附近的站", nearSub: "依步行時間", walk: "步行 {m} 分", walkFar: "{k} km",
-          vGood: "有車", vLow: "可能變少", vEmpty: "可能沒車", vVery: "很可能沒車", vEmptyNow: "現在沒車", vFull: "沒位子還車", vNone: "無資料", vOos: "暫停服務",
-          within30: "30 分內", docksNow: "{d} 空位", afterBell: "{at} 約 {b} 台",
-          bellBox: "{at}（{t} 下課後 {a} 分）預計剩 {b} 台，沒車機率 {p}%", bellBoxFull: "要還車：{p}% 機率沒位子", bellNone: "今天沒有下一次鐘響了，沒有下課後的預估",
-          kpi: "目前狀態", empty: "目前空站（共 {n} 站有資料）", risk: "30 分內缺車機率 ≥ 50% 的站", unmet: "未來 {h} 分預期借不到車（人次）", saved: "依建議路線可避免（人次）",
-          plan: "下一次鐘響前的卡車路線", riskH: "缺車風險最高的站", unmetH: "未來 90 分缺口最大的站", modeU: "90 分缺口", copy: "複製路線", copied: "已複製",
-          pickN: "載走 {n} 台", drop: "送 {n} 台", now: "目前 {b} / {c}", eta: "+{t} 分", onTruck: "車上 {n} 台", truck: "卡車 {k}", stops: "{n} 站", about: "約 {t} 分、{k} km", avoid: "預計避免 {v} 人次借不到車",
-          noPlan: "目前沒有值得出車的調度：未來 {h} 分內各站預期的缺車都很少，出車的時間成本高於能避免的人次。", window: "規劃器只在 06:00–23:00 運作。",
-          campusTag: "校內", gateway: "門戶", legend: "缺車機率（{h} 分內）", legendU: "未來 {h} 分預期借不到車（人次）", legCampus: "校內站（藍圈）", legRing: "外圈 = 車柱裡有車的比例", legRoute: "建議卡車路線", legGrey: "灰色 = 暫停服務或無資料", legStar: "★ 我的站",
-          bikes: "車", docks: "空位", p30: "30 分沒車機率", p60: "60 分沒車機率", unmetS: "90 分預期借不到", stale2: "資料 {m} 分鐘前更新", oos: "暫停服務", excluded: "旗津區，不納入卡車路線", todayStock: "今天的車數（06:00 起，虛線 = 鐘響）",
-          addFav: "☆ 加入我的站", rmFav: "★ 移出我的站", nav: "導航", aboutSum: "方法與數據",
-          aboutBody: "<div><b>資料</b> 紀錄器每 10 分鐘抓官方 API，中山周邊 5 km 內 309 站，自 10/1 起。</div><div><b>缺車機率</b> 在臺大 10 個月資料上訓練的 LightGBM 模型，只用庫存與時間特徵，直接用於中山（zero-shot）；臺大測試 AUC 0.93，中山 0.93。</div><div><b>下課後的預估</b> 用規劃器的生滅鏈，從現在的車數往前推到下課後 20 分，算預計剩幾台、沒車與沒位子的機率；借還速率由紀錄器資料以最大概似估計。</div><div><b>卡車路線</b> 生滅鏈算每站未來 {h} 分預期借不到車的人次，路線搜尋（貪婪插入、模擬退火、2-opt）選停靠與載量，每台車 {q} 台、時速 {s} km/h、每站停 {st} 分。臺大真實騎乘重播：1／3／6 台車分別少 13%／30%／45% 借不到車的人次。</div><div><b>限制</b> 車程用直線距離 × 1.3 估，旗津的站排除；模型未用中山資料微調；「我的站」只存在這台裝置的瀏覽器裡。</div><div>程式與資料：<a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" },
-    en: { title: "NSYSU YouBike: live stockout prediction and rebalancing", titleShort: "NSYSU YouBike live", live: "Live", replay: "Replay", loading: "Loading…", liveAt: "Live · snapshot {t}", ago: " ({m} min ago)", replayAt: "Replay {d} · {t}",
-          stale: "No new data for now; showing the {t} snapshot", stalebig: "The logger has not reported for {m} min; this is the last snapshot.", min: "min", toBell: "until the {b} bell", noBellToday: "No bells today",
-          offday: "Off-day: campus stations are not drained by class ends", dayOver: "Classes are over for today", bellTime: "now {t}",
-          tabRider: "Find a bike", tabRiderSub: "where bikes remain after class", tabOps: "Dispatch", tabOpsSub: "truck route before the bell",
-          tip: "Tap a station on the map to see whether it will be empty after the bell; open a station and press ☆ to keep the ones you use at the top.", search: "Search stations, e.g. Library, Sizihwan", noMatch: "No matching station",
-          originCampus: "From: NSYSU campus", originMe: "From: my location", originPick: "From: point on the map", geo: "Use my location", geoFail: "Location unavailable; pick a point on the map", pick: "Pick on map", picking: "Tap the map to set the starting point", campus: "Back to campus",
-          pickK: "Suggested", pickNearest: "the nearest station has bikes", pickFar: "closer stations may be empty", pickNone: "Every station within 2 km may be empty; look for a green station further out on the map", pickD: "{m} min walk · {b} bikes now",
-          fav: "My stations", favEmpty: "No stations saved yet. Open a station and press ☆.", near: "Nearby stations", nearSub: "by walking time", walk: "{m} min walk", walkFar: "{k} km",
-          vGood: "Bikes available", vLow: "May run low", vEmpty: "Likely empty", vVery: "Very likely empty", vEmptyNow: "Empty now", vFull: "No dock to return", vNone: "No data", vOos: "Out of service",
-          within30: "next 30 min", docksNow: "{d} docks", afterBell: "≈{b} at {at}",
-          bellBox: "At {at} ({a} min after the {t} bell): {b} bikes expected, {p}% chance of none", bellBoxFull: "Returning: {p}% chance of no free dock", bellNone: "No further bell today, so no after-bell estimate",
-          kpi: "Right now", empty: "Empty stations (of {n} reporting)", risk: "Stations with P(empty in 30 min) ≥ 0.5", unmet: "Expected unmet rentals, next {h} min", saved: "Avoided by the suggested route",
-          plan: "Truck route before the next bell", riskH: "Highest stockout risk", unmetH: "Largest expected shortfall, next 90 min", modeU: "shortfall", copy: "Copy route", copied: "Copied",
-          pickN: "Pick up {n}", drop: "Drop off {n}", now: "now {b} / {c}", eta: "+{t} min", onTruck: "{n} on truck", truck: "Truck {k}", stops: "{n} stops", about: "about {t} min, {k} km", avoid: "avoids about {v} unmet rentals",
-          noPlan: "Nothing worth dispatching now: the expected stockouts over the next {h} min are too small to pay for the truck time.", window: "The planner runs 06:00–23:00 only.",
-          campusTag: "campus", gateway: "gateway", legend: "P(empty within {h} min)", legendU: "Expected unmet rentals, next {h} min", legCampus: "campus station (blue ring)", legRing: "outer ring = share of docks with a bike", legRoute: "suggested truck route", legGrey: "grey = out of service or no data", legStar: "★ my station",
-          bikes: "bikes", docks: "docks", p30: "P(empty) 30 min", p60: "P(empty) 60 min", unmetS: "unmet, next 90 min", stale2: "reported {m} min ago", oos: "out of service", excluded: "Qijin district, not served by the truck", todayStock: "Bikes today since 06:00 (dashed = bells)",
-          addFav: "☆ Save station", rmFav: "★ Remove", nav: "Directions", aboutSum: "Method and numbers",
-          aboutBody: "<div><b>Data</b> A logger reads the official API every 10 minutes for the 309 stations within 5 km of NSYSU, since 1 Oct.</div><div><b>Stockout probability</b> A LightGBM model trained on 10 months of NTU data from inventory and time features only, applied to NSYSU without fine-tuning (zero-shot): AUC 0.93 on the NTU test months, 0.93 at NSYSU.</div><div><b>After-bell estimate</b> The planner's birth–death chain rolls the current stock forward to 20 min after the bell, giving the expected bikes left and the chance of no bike or no dock; its rates are fitted to the logger by maximum likelihood.</div><div><b>Truck route</b> The chain prices every station by the unmet rentals expected in the next {h} min; a route search (greedy insertion, simulated annealing, 2-opt) picks the stops and loads: {q} bikes per truck, {s} km/h, {st} min per stop. In a replay of real NTU trips, 1 / 3 / 6 trucks avoid 13% / 30% / 45% of unmet rentals.</div><div><b>Limits</b> Travel times are straight-line × 1.3; Qijin stations are excluded; the model is not fine-tuned on NSYSU data; saved stations live only in this browser.</div><div>Code and data: <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\">github.com/alexlin8888/nsysu-youbike-log</a></div>" }
+  var FILL = { g: "--ok-fill", y: "--low-fill", o: "--risk-fill", r: "--out-fill", x: "--gone", n: "--r0" };
+  var ICON = {
+    play: "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M4 2.5v11l9-5.5z\" fill=\"currentColor\"/></svg>",
+    pause: "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z\" fill=\"currentColor\"/></svg>",
+    close: "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M2 2l10 10M12 2 2 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
+    star: "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z\" fill=\"FILL\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\"/></svg>",
+    walk: "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"13\" cy=\"4.5\" r=\"1.8\"/><path d=\"m9 21 2.5-6.5L9 12l1.5-4.5 3.5 1 2 3 3 1M11.5 14.5 15 17l1 4\"/></svg>"
   };
-  var lang = "zh", mode = "live", tab = "rider", horizon = 30, live = null, replay = null, replays = {}, replayDays = ["2026-10-28"], replayDay = "2026-10-28", slot = 0, playing = false, playTimer = null, selected = null, fitted = false;
+
+  var lang = "zh", mode = "live", tab = "rider", horizon = 30;
+  var live = null, replay = null, replays = {}, replayDays = [], replayDay = null, slot = 0, playing = false, playTimer = null;
+  var selected = null, fitted = false, nearN = 8, pendingSno = null, wantSlot = null, errKind = null, daysKey = "";
   var origin = { kind: "campus", lat: CAMPUS_CENTER[0], lng: CAMPUS_CENTER[1] }, picking = false, favs = [];
-  var map, tiles, glyphLayer, routeLayer, originLayer, markers = {};
-  var css = getComputedStyle(document.documentElement);
+  var map, attrib, glyphLayer, routeLayer, originLayer, markers = {};
+  var sheetState = "half", sheetPx = { peek: 158, half: 320, full: 600 }, drag = null, swallowClick = false, toastTimer = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var root = document.documentElement, shell = $("shell"), panel = $("panel"), scroller = $("scroll");
+  var css = getComputedStyle(root);
   function tok(n) { return css.getPropertyValue(n).trim(); }
-  function t(k, v) { var s = T[lang][k] || k; if (v) Object.keys(v).forEach(function (x) { s = s.split("{" + x + "}").join(v[x]); }); return s; }
-  function ramp(p) { if (p == null) return tok("--muted"); return tok(p < 0.1 ? "--r0" : p < 0.3 ? "--r1" : p < 0.5 ? "--r2" : p < 0.75 ? "--r3" : "--r4"); }
-  function rampU(u) { if (u == null) return tok("--muted"); return tok(u < 0.5 ? "--r0" : u < 2 ? "--r1" : u < 5 ? "--r2" : u < 10 ? "--r3" : "--r4"); }
-  function keyOf() { return horizon === 30 ? "p30" : horizon === 60 ? "p60" : "unmet"; }
-  function colorOf(v, i) { return horizon === 90 ? rampU(v.unmet ? v.unmet[i] : null) : ramp(v[keyOf()][i]); }
+  function t(k, v) { var s = T[lang][k]; if (s == null) s = k; if (v) Object.keys(v).forEach(function (x) { s = s.split("{" + x + "}").join(v[x]); }); return s; }
   function fmt(x, d) { return x == null ? "–" : Number(x).toFixed(d == null ? 0 : d); }
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function hm(m) { return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
+  function mins(s) { return parseInt(s.slice(0, 2), 10) * 60 + parseInt(s.slice(3), 10); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
-  function nameOf(s) { if (lang === "zh") return s.name; return CAMPUS[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || s.name); }
-  function altName(s) { return lang === "zh" ? (CAMPUS[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || "")) : s.name; }
+  function isCampus(s) { return s.group === "campus"; }
+  function nameOf(s) { if (lang === "zh") return s.name; return isCampus(s) && SHORT[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || s.name); }
+  function altName(s) { return lang === "zh" ? (isCampus(s) && SHORT[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || "")) : s.name; }
   function taipeiNow() { var n = new Date(); return new Date(n.getTime() + (n.getTimezoneOffset() + 480) * 60000); }
   function distKm(a, b, c, d) { return Math.hypot((a - c) * 111, (b - d) * 102.5); }
-  function walkMin(km) { return Math.max(1, Math.round(km * 1.25 * 1000 / 80)); }   // straight line × 1.25 at 80 m/min
+  function walkMin(km) { return Math.max(1, Math.round(km * 1.25 * 1000 / 80)); }   // straight line x 1.25 at 80 m/min
   function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function isPhone() { return window.matchMedia("(max-width: 767px)").matches; }
+  function sep() { return lang === "zh" ? "，" : ", "; }
   favs = load("btb-favs", []); if (!Array.isArray(favs)) favs = [];
-  function verdict(p, observed, status, bikes) {
-    if (!observed) return { cls: "n", text: status === 2 ? t("vOos") : t("vNone") };
-    if (bikes === 0) return { cls: "r", text: t("vEmptyNow") };
-    if (p == null) return { cls: "n", text: t("vNone") };
-    return p < 0.25 ? { cls: "g", text: t("vGood") } : p < 0.5 ? { cls: "y", text: t("vLow") } : p < 0.75 ? { cls: "o", text: t("vEmpty") } : { cls: "r", text: t("vVery") };
+
+  // ---------- what a station looks like right now ----------
+  // One vocabulary for the list and the map: bikes now (the number) and the 30-minute outlook (the colour and the words).
+  function outlook(v, i) {
+    var b = v.bikes[i], p = v.p30[i];
+    if (b == null) return { cls: "n", text: v.status && v.status[i] === 2 ? t("sOos") : t("sNone") };
+    if (b === 0) return { cls: "x", text: t("sGone") };
+    if (p == null) return { cls: "n", text: "" };
+    return p < 0.25 ? { cls: "g", text: t("sGood") } : p < 0.5 ? { cls: "y", text: t("sLow") } : p < 0.75 ? { cls: "o", text: t("sEmpty") } : { cls: "r", text: t("sVery") };
   }
-  function chip(vd, extra) { return "<span class=\"chip " + vd.cls + "\">" + vd.text + (extra ? " · " + extra : "") + "</span>"; }
+  function ramp(p) { if (p == null) return tok("--r0"); return tok(p < 0.1 ? "--r0" : p < 0.3 ? "--r1" : p < 0.5 ? "--r2" : p < 0.75 ? "--r3" : "--r4"); }
+  function rampU(u) { if (u == null) return tok("--r0"); return tok(u < 0.5 ? "--r0" : u < 2 ? "--r1" : u < 5 ? "--r2" : u < 10 ? "--r3" : "--r4"); }
+  function keyOf() { return horizon === 30 ? "p30" : horizon === 60 ? "p60" : "unmet"; }
+  function fillOf(v, i) {
+    if (v.bikes[i] == null) return tok("--r0");
+    if (tab === "ops") return horizon === 90 ? rampU(v.unmet ? v.unmet[i] : null) : ramp(v[keyOf()][i]);
+    return tok(FILL[outlook(v, i).cls]);
+  }
+  function inkOn(hex) {
+    var c = hex.replace("#", ""); if (c.length === 3) c = c.replace(/(.)/g, "$1$1");
+    var r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+    return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#10202f" : "#ffffff";
+  }
+  function badge(v, i) { var o = outlook(v, i); return "<span class=\"badge " + o.cls + "\">" + (v.bikes[i] == null ? "–" : v.bikes[i]) + "</span>"; }
   function bellBikes(v, i) { return v.bell && v.bell.bikes && v.bell.bikes[i] != null ? v.bell.bikes[i] : null; }
 
   // ---------- current view: live state or one replay slot, in one shape ----------
@@ -997,55 +1261,133 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
       var sl = replay.slots[slot];
       return { meta: replay, stations: replay.stations, snapshot_at: sl.snapshot_at, t_min: sl.t_min, offday: replay.offday, in_window: true, next_bell: sl.next_bell, bell: sl.bell,
                totals: sl.totals, plans: sl.plans, bikes: sl.bikes, docks: null, status: null, age: null, p30: sl.p30, p60: sl.p60, unmet: sl.unmet,
-               history: { from: replay.slots[0].snapshot_at.slice(11), step: 10, at: function (i) { return replay.slots.slice(0, slot + 1).map(function (x) { return x.bikes[i]; }); } } };
+               history: function (i) { return replay.slots.slice(0, slot + 1).map(function (x) { return [x.t_min, x.bikes[i]]; }); } };
     }
     if (!live) return null;
     return { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell, bell: live.bell,
              totals: live.totals, plans: live.plans, bikes: live.bikes, docks: live.docks, status: live.status, age: live.age, p30: live.p30, p60: live.p60, unmet: live.unmet,
-             history: { from: live.history.from, step: live.history.step, at: function (i) { return live.history.bikes[i]; } } };
+             history: function (i) { var t0 = mins(live.history.from), st = live.history.step; return (live.history.bikes[i] || []).map(function (b, k) { return [t0 + k * st, b]; }); } };
+  }
+
+  // ---------- the sheet (phones) ----------
+  function measureSheet() {
+    var H = document.querySelector(".mapwrap").clientHeight;       // the space between the header and the tab bar
+    sheetPx.full = Math.max(240, H - 10);
+    sheetPx.half = Math.round(Math.min(sheetPx.full, Math.max(240, H * 0.52)));
+    sheetPx.peek = Math.min(sheetPx.half, 164);
+    root.style.setProperty("--sheet-full", sheetPx.full + "px");
+  }
+  function placeSheet(up) {
+    root.style.setProperty("--sheet-y", (sheetPx.full - up) + "px");
+    root.style.setProperty("--sheet-up", up + "px");
+    root.style.setProperty("--sheet-vis", Math.max(60, up - 30) + "px");
+  }
+  function setSheet(state) {
+    sheetState = state; shell.setAttribute("data-sheet", state);
+    if (isPhone()) placeSheet(sheetPx[state]);
+    if (state !== "full") scroller.scrollTop = 0;
+  }
+  function sheetUp() { return isPhone() ? sheetPx[sheetState === "full" ? "half" : sheetState] : 0; }
+  function dragStart(y) { drag = { y0: y, y: y, t: Date.now(), base: sheetPx.full - sheetPx[sheetState], moved: false, vy: 0 }; panel.classList.add("dragging"); }
+  function dragMove(y) {
+    if (!drag) return;
+    var now = Date.now(); drag.vy = (y - drag.y) / Math.max(1, now - drag.t); drag.y = y; drag.t = now;
+    if (Math.abs(y - drag.y0) > 6) drag.moved = true;
+    var ty = Math.min(sheetPx.full - sheetPx.peek + 40, Math.max(0, drag.base + (y - drag.y0)));
+    drag.up = sheetPx.full - ty; placeSheet(drag.up);
+  }
+  function stepSheet() { setSheet(sheetState === "peek" ? "half" : sheetState === "half" ? "full" : "half"); }
+  function dragEnd() {
+    if (!drag) return;
+    var d = drag; drag = null; panel.classList.remove("dragging");
+    if (!d.moved) { setSheet(sheetState); return; }
+    swallowClick = true; setTimeout(function () { swallowClick = false; }, 350);
+    var up = d.up + (-d.vy * 180), best = "peek", gap = Infinity;      // a flick carries the sheet a bit further
+    ["peek", "half", "full"].forEach(function (s) { var g = Math.abs(sheetPx[s] - up); if (g < gap) { gap = g; best = s; } });
+    setSheet(best);
+  }
+  function initSheet() {
+    var grip = $("grip");
+    grip.addEventListener("pointerdown", function (e) { if (!isPhone()) return; grip.setPointerCapture(e.pointerId); dragStart(e.clientY); });
+    grip.addEventListener("pointermove", function (e) { if (drag) dragMove(e.clientY); });
+    grip.addEventListener("pointerup", function () { dragEnd(); });
+    grip.addEventListener("pointercancel", function () { dragEnd(); });
+    grip.addEventListener("click", function () { if (swallowClick) { swallowClick = false; return; } if (isPhone()) stepSheet(); });
+    // Swiping on the content moves the sheet until it is fully open; then it scrolls, and pulling down from the top closes it.
+    var ts = null;
+    scroller.addEventListener("touchstart", function (e) { if (!isPhone() || e.touches.length !== 1) { ts = null; return; } ts = { y: e.touches[0].clientY, x: e.touches[0].clientX, on: false }; }, { passive: true });
+    scroller.addEventListener("touchmove", function (e) {
+      if (!ts) return;
+      var y = e.touches[0].clientY, dy = y - ts.y, dx = e.touches[0].clientX - ts.x;
+      if (!ts.on) {
+        if (Math.abs(dy) < 8 || Math.abs(dx) > Math.abs(dy)) return;
+        if (sheetState === "full" && !(scroller.scrollTop <= 0 && dy > 0)) { ts = null; return; }
+        ts.on = true; dragStart(ts.y);
+      }
+      if (e.cancelable) e.preventDefault();
+      dragMove(y);
+    }, { passive: false });
+    scroller.addEventListener("touchend", function () { if (ts && ts.on) dragEnd(); ts = null; });
+    scroller.addEventListener("touchcancel", function () { if (ts && ts.on) dragEnd(); ts = null; });
+    scroller.addEventListener("wheel", function (e) { if (isPhone() && sheetState !== "full" && e.deltaY > 0) setSheet("full"); }, { passive: true });
+    window.addEventListener("resize", function () { measureSheet(); setSheet(sheetState); if (map) { map.invalidateSize(); attrib.setPosition(isPhone() ? "topright" : "bottomright"); } });
+    measureSheet(); setSheet(sheetState);
+  }
+  function toast(text, ms) {
+    var el = $("toast"); el.textContent = text; el.hidden = false;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, ms || 2600);
   }
 
   // ---------- map ----------
   function initMap() {
-    map = L.map("map", { zoomControl: true, attributionControl: true }).setView([22.633, 120.29], 13);
-    tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>" }).addTo(map);
-    L.control.scale({ imperial: false }).addTo(map);
+    map = L.map("map", { zoomControl: false, attributionControl: false }).setView([22.633, 120.29], 13);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap</a>" }).addTo(map);
+    attrib = L.control.attribution({ prefix: false, position: isPhone() ? "topright" : "bottomright" }).addTo(map);
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+    L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
     glyphLayer = L.layerGroup().addTo(map);
     routeLayer = L.layerGroup().addTo(map);
     originLayer = L.layerGroup().addTo(map);
     map.on("zoomend", function () { var v = view(); if (v) drawStations(v); });
-    map.on("click", function (e) { if (picking) { setOrigin("pick", e.latlng.lat, e.latlng.lng); setPicking(false); } else { select(null); } });
+    map.on("click", function (e) {
+      if (picking) { setOrigin("pick", e.latlng.lat, e.latlng.lng); setPicking(false); return; }
+      if (selected != null) select(null); else if (isPhone() && sheetState !== "peek") setSheet("peek");
+    });
     var mq = window.matchMedia("(prefers-color-scheme: dark)");
     if (mq.addEventListener) mq.addEventListener("change", retheme);
-    new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    new MutationObserver(retheme).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
   }
-  function retheme() { css = getComputedStyle(document.documentElement); render(); }
-  function zscale() { var z = map.getZoom(), ph = window.innerWidth < 860 ? 0.85 : 1; return ph * (z <= 12 ? 0.5 : z <= 13 ? 0.65 : z <= 14 ? 0.82 : 1); }
-  function glyphR(cap) { return (5 + Math.sqrt(cap) * 1.0) * zscale(); }
-  function glyphHtml(s, bikes, color, observed, cap, sel) {
-    var R = glyphR(cap), S = 2 * R + 6, c = S / 2, rr = Math.max(2, R - 3.5), labels = map.getZoom() >= 15;
-    var frac = observed && cap > 0 ? Math.max(0, Math.min(1, bikes / cap)) : 0;
-    var ring = CAMPUS[s.sno] ? tok("--accent") : tok("--line");
-    var inner = observed ? color : tok("--r0");
-    var arc = "";
-    if (frac > 0) {
-      var a = frac * 2 * Math.PI - Math.PI / 2, x = c + R * Math.cos(a), y = c + R * Math.sin(a), big = frac > 0.5 ? 1 : 0;
-      arc = frac >= 0.999 ? "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + tok("--muted") + "\" stroke-width=\"2.5\" stroke-opacity=\"0.85\"/>"
-        : "<path d=\"M " + c + " " + (c - R) + " A " + R + " " + R + " 0 " + big + " 1 " + x.toFixed(2) + " " + y.toFixed(2) + "\" fill=\"none\" stroke=\"" + tok("--muted") + "\" stroke-width=\"2.5\" stroke-opacity=\"0.85\" stroke-linecap=\"round\"/>";
-    }
-    var label = CAMPUS[s.sno] && labels ? "<span class=\"lbl\">" + SHORT[s.sno][lang === "zh" ? 0 : 1] + "</span>" : "";
+  function retheme() { css = getComputedStyle(root); render(); }
+  function glyphR(cap) { var z = map.getZoom(); return z >= 16 ? 8 + Math.sqrt(cap) * 1.1 : z === 15 ? 6.5 + Math.sqrt(cap) * 0.9 : (3 + Math.sqrt(cap) * 0.75) * (z <= 12 ? 0.55 : z <= 13 ? 0.75 : 1); }
+  function glyphHtml(s, v, i, sel) {
+    var big = map.getZoom() >= 15, R = glyphR(s.cap), S = 2 * R + 6, c = S / 2, observed = v.bikes[i] != null, fill = fillOf(v, i);
     var star = favs.indexOf(s.sno) >= 0 && map.getZoom() >= 14 ? "<span class=\"star\">★</span>" : "";
-    return "<div class=\"glyph" + (sel ? " sel" : "") + "\"><svg width=\"" + S + "\" height=\"" + S + "\" viewBox=\"0 0 " + S + " " + S + "\">" +
-      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + ring + "\" stroke-width=\"" + (CAMPUS[s.sno] ? 2.5 : 2) + "\"" + (observed ? "" : " stroke-dasharray=\"3 3\"") + "/>" + arc +
-      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + inner + "\" fill-opacity=\"" + (observed ? 1 : 0.6) + "\"/></svg>" + star + label + "</div>";
+    var open = "<div class=\"glyph" + (sel ? " sel" : "") + "\"><svg width=\"" + S + "\" height=\"" + S + "\" viewBox=\"0 0 " + S + " " + S + "\">";
+    if (!big) {
+      // zoomed out: a dot sized by the station; stations with nothing to report stay small and faint
+      var calm = !observed || (tab === "ops" && fill === tok("--r0")), r = calm ? R * 0.8 : R;
+      return open + "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + r.toFixed(1) + "\" fill=\"" + fill + "\" fill-opacity=\"" + (observed ? 1 : 0.6) + "\" stroke=\"" + (isCampus(s) ? tok("--accent") : calm ? tok("--line-2") : tok("--surface")) + "\" stroke-width=\"" + (isCampus(s) ? 2 : 1.2) + "\"" + (observed ? "" : " stroke-dasharray=\"2 2\"") + "/></svg>" + star + "</div>";
+    }
+    var rr = R - 3.5, frac = observed && s.cap > 0 ? Math.max(0, Math.min(1, v.bikes[i] / s.cap)) : 0, arc = "";
+    if (frac > 0) {
+      var a = frac * 2 * Math.PI - Math.PI / 2, x = c + R * Math.cos(a), y = c + R * Math.sin(a);
+      arc = frac >= 0.999 ? "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + tok("--ink-3") + "\" stroke-width=\"2.5\"/>"
+        : "<path d=\"M " + c + " " + (c - R) + " A " + R + " " + R + " 0 " + (frac > 0.5 ? 1 : 0) + " 1 " + x.toFixed(2) + " " + y.toFixed(2) + "\" fill=\"none\" stroke=\"" + tok("--ink-3") + "\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>";
+    }
+    var num = observed ? "<text x=\"" + c + "\" y=\"" + c + "\" dy=\"0.36em\" text-anchor=\"middle\" font-size=\"" + Math.min(14, Math.max(10, rr * 1.05)).toFixed(1) + "\" fill=\"" + inkOn(fill) + "\">" + v.bikes[i] + "</text>" : "";
+    var label = isCampus(s) && SHORT[s.sno] ? "<span class=\"lbl\">" + SHORT[s.sno][lang === "zh" ? 0 : 1] + "</span>" : "";
+    return open + "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + (rr + 1.5) + "\" fill=\"" + tok("--surface") + "\"/>" +
+      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + (isCampus(s) ? tok("--accent") : tok("--line-2")) + "\" stroke-width=\"" + (isCampus(s) ? 2.5 : 1.5) + "\"" + (observed ? "" : " stroke-dasharray=\"3 3\"") + "/>" + arc +
+      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + fill + "\" fill-opacity=\"" + (observed ? 1 : 0.7) + "\"/>" + num + "</svg>" + star + label + "</div>";
   }
   function drawStations(v) {
     glyphLayer.clearLayers(); markers = {};
-    if (!fitted) { fitted = true; if (tab === "rider") map.setView(CAMPUS_CENTER, 15); else fitArea(v); }
+    if (!fitted) { fitted = true; if (tab === "ops") fitArea(v); else fitCampus(v, false); }
     v.stations.forEach(function (s, i) {
-      var observed = v.bikes[i] != null, cap = s.cap, R = glyphR(cap), S = 2 * R + 6;
-      var m = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: glyphHtml(s, v.bikes[i], colorOf(v, i), observed, cap, selected === i), iconSize: [S, S], iconAnchor: [S / 2, S / 2] }),
-        zIndexOffset: CAMPUS[s.sno] ? 500 : (selected === i ? 800 : 0), keyboard: false });
+      var S = 2 * glyphR(s.cap) + 6;
+      var m = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: glyphHtml(s, v, i, selected === i), iconSize: [S, S], iconAnchor: [S / 2, S / 2] }),
+        zIndexOffset: selected === i ? 800 : (isCampus(s) ? 500 : 0), keyboard: false });
       m.on("click", function (e) { L.DomEvent.stopPropagation(e); if (picking) { setOrigin("pick", s.lat, s.lng); setPicking(false); } select(i); });
       m.addTo(glyphLayer); markers[i] = m;
     });
@@ -1055,36 +1397,108 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
     if (tab !== "ops") return;
     (v.plans || []).forEach(function (pl) {
       var pts = pl.stops.map(function (st) { var s = v.stations[st.i]; return [s.lat, s.lng]; });
-      if (pts.length > 1) { L.polyline(pts, { color: tok("--panel"), weight: 7, opacity: 0.9 }).addTo(routeLayer); L.polyline(pts, { color: tok("--route"), weight: 3.5, opacity: 1, className: "route-line" }).addTo(routeLayer); }
-      pl.stops.forEach(function (st, i) {
+      if (pts.length > 1) { L.polyline(pts, { color: tok("--surface"), weight: 8, opacity: 0.92, interactive: false }).addTo(routeLayer); L.polyline(pts, { color: tok("--accent"), weight: 4.5, opacity: 1, className: "route-line", interactive: false }).addTo(routeLayer); }
+      pl.stops.forEach(function (st, k) {
         var s = v.stations[st.i];
-        L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: "<div class=\"stopicon\">" + (i + 1) + "</div>", iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000, keyboard: false })
+        L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: "<div class=\"stopicon\">" + (k + 1) + "</div>", iconSize: [24, 24], iconAnchor: [12, 34] }), zIndexOffset: 1000, keyboard: false })
           .on("click", function (e) { L.DomEvent.stopPropagation(e); select(st.i); }).addTo(routeLayer);
       });
     });
   }
   function drawOrigin() {
     originLayer.clearLayers();
-    if (tab !== "rider" || origin.kind === "campus") return;
+    if (origin.kind === "campus") return;
     L.marker([origin.lat, origin.lng], { icon: L.divIcon({ className: "", html: "<div class=\"originicon\"></div>", iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 900, keyboard: false, interactive: false }).addTo(originLayer);
   }
-  function focus(s) { map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15)); }
-  function fitArea(v) { var near = v.stations.filter(function (s) { return distKm(s.lat, s.lng, CAMPUS_CENTER[0], CAMPUS_CENTER[1]) <= 2.6; });
-    map.fitBounds(L.latLngBounds(near.map(function (s) { return [s.lat, s.lng]; })), { padding: [24, 24] }); }
+  // Centre a point in the part of the map that the sheet leaves visible.
+  function viewTo(lat, lng, zoom, animate) {
+    var z = zoom == null ? map.getZoom() : zoom, off = sheetUp() / 2;
+    if (!off) { map.setView([lat, lng], z, { animate: animate !== false }); return; }
+    var p = map.project([lat, lng], z); p.y += off; map.setView(map.unproject(p, z), z, { animate: animate !== false });
+  }
+  function fitCampus(v, animate) {
+    var c = v.stations.filter(isCampus), mid = function (k) { var a = c.map(function (s) { return s[k]; }).sort(function (x, y) { return x - y; }); return a.length ? (a[Math.floor((a.length - 1) / 2)] + a[Math.ceil((a.length - 1) / 2)]) / 2 : null; };
+    if (!c.length) viewTo(CAMPUS_CENTER[0], CAMPUS_CENTER[1], 16, animate); else viewTo(mid("lat"), mid("lng"), 16, animate);
+  }
+  function focusStation(s) { viewTo(s.lat, s.lng, Math.max(map.getZoom(), 16)); }
+  function fitArea(v) {
+    var near = v.stations.filter(function (s) { return distKm(s.lat, s.lng, CAMPUS_CENTER[0], CAMPUS_CENTER[1]) <= 2.6; });
+    map.fitBounds(L.latLngBounds(near.map(function (s) { return [s.lat, s.lng]; })), { paddingTopLeft: [24, 24], paddingBottomRight: [24, 24 + sheetUp()] });
+  }
 
-  // ---------- rider tab ----------
-  function setOrigin(kind, lat, lng) { origin = { kind: kind, lat: lat, lng: lng }; var v = view(); if (v) { renderRider(v); drawOrigin(); } }
-  function setPicking(on) { picking = on; document.getElementById("btnPick").setAttribute("aria-pressed", on ? "true" : "false"); document.getElementById("pickhint").hidden = !on; document.getElementById("map").classList.toggle("picking", on); }
+  // ---------- the bell board ----------
+  function untilText(m, long) { return m >= 100 ? t(long ? "bellInH" : "inHour", { h: Math.floor(m / 60), m: m % 60 }) : t(long ? "bellIn" : "inMin", { m: m }); }
+  function renderBell(v) {
+    var m = v.t_min, nb = v.next_bell, off = !!v.offday;
+    if (mode === "live") {
+      var n = taipeiNow(); m = n.getHours() * 60 + n.getMinutes(); nb = null;
+      if (n.getDay() === 0 || n.getDay() === 6) off = true;
+      if (!off) v.meta.bells.forEach(function (b) { var bm = mins(b); if (!nb && bm > m) nb = { time: b, minutes: bm - m }; });
+    }
+    var at = $("boardAt"), left = $("boardLeft"), note = $("boardNote"), lbl = $("boardLbl"), ml = $("miniLbl"), mleft = $("miniLeft");
+    at.className = "at"; mleft.className = "left";
+    if (off) {
+      lbl.textContent = t("nowIs", { t: hm(m) }); at.textContent = t("offdayBig"); at.classList.add("calm"); left.textContent = ""; note.textContent = t("offdayNote");
+      ml.textContent = t("offdayNote"); mleft.textContent = t("offdayBig"); mleft.classList.add("calm");
+    } else if (!nb) {
+      var last = v.meta.bells[v.meta.bells.length - 1];
+      lbl.textContent = t("nowIs", { t: hm(m) }); at.textContent = t("overBig"); at.classList.add("calm"); left.textContent = ""; note.textContent = t("overNote", { t: last });
+      ml.textContent = t("overNote", { t: last }); mleft.textContent = t("overBig"); mleft.classList.add("calm");
+    } else {
+      lbl.textContent = t("bellNext"); at.textContent = nb.time; left.textContent = untilText(nb.minutes, true); note.textContent = t("nowIs", { t: hm(m) });
+      ml.textContent = t("bellNext") + " " + nb.time; mleft.textContent = untilText(nb.minutes, false);
+    }
+    var lo = 6 * 60, hi = 23 * 60, h = "<div class=\"axis\"></div>", nbm = nb ? mins(nb.time) : null;
+    var x = function (mm) { return (100 * (mm - lo) / (hi - lo)).toFixed(2) + "%"; };
+    [6, 9, 12, 15, 18, 21].forEach(function (hh) { if (nbm != null && Math.abs(nbm - hh * 60) < 75) return; h += "<span class=\"hr\" style=\"left:" + x(hh * 60) + "\">" + pad(hh) + "</span>"; });
+    v.meta.bells.forEach(function (b) {
+      var bm = mins(b); if (bm < lo || bm > hi) return;
+      var major = v.meta.major_bells.indexOf(b) >= 0, isNext = !off && nb && nb.time === b;
+      h += "<span class=\"tick" + (major ? " major" : "") + (isNext ? " next" : (bm <= m || off ? " past" : "")) + "\" style=\"left:" + x(bm) + "\"></span>";
+      if (isNext) h += "<span class=\"hr next\" style=\"left:" + x(bm) + "\">" + b + "</span>";
+    });
+    if (m >= lo && m <= hi) h += "<span class=\"now\" style=\"left:" + x(m) + "\"></span>";
+    $("ruler").innerHTML = h;
+  }
+
+  // ---------- find a bike ----------
+  function setOrigin(kind, lat, lng) { origin = { kind: kind, lat: lat, lng: lng }; nearN = 8; var v = view(); if (v) { renderRider(v); drawOrigin(); } }
+  function setPicking(on) {
+    picking = on; $("hint").hidden = !on; $("hint").textContent = t("picking"); $("map").classList.toggle("picking", on); syncOrigin();
+    if (isPhone()) setSheet(on ? "peek" : "half");
+  }
+  function syncOrigin() {
+    $("oCampus").setAttribute("aria-pressed", !picking && origin.kind === "campus" ? "true" : "false");
+    $("oMe").setAttribute("aria-pressed", !picking && origin.kind === "me" ? "true" : "false");
+    $("oPick").setAttribute("aria-pressed", picking || origin.kind === "pick" ? "true" : "false");
+    $("fab").setAttribute("aria-pressed", origin.kind === "me" ? "true" : "false");
+  }
+  function locate() {
+    var fab = $("fab"), fail = function () { fab.classList.remove("busy"); toast(t("geoFail"), 4000); };
+    if (!navigator.geolocation) { fail(); return; }
+    fab.classList.add("busy"); if (picking) setPicking(false);
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      fab.classList.remove("busy");
+      var lat = pos.coords.latitude, lng = pos.coords.longitude, v = view();
+      var nearest = v ? Math.min.apply(null, v.stations.map(function (s) { return distKm(s.lat, s.lng, lat, lng); })) : 0;
+      if (nearest > 5) { toast(t("tooFar"), 4500); return; }
+      setOrigin("me", lat, lng); viewTo(lat, lng, Math.max(map.getZoom(), 16));
+    }, fail, { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true });
+  }
+  function walkCell(km) { return km > 3 ? "<span class=\"walk\">" + t("walkKm", { k: km.toFixed(1) }) + "<small>" + t("farK") + "</small></span>" : "<span class=\"walk\">" + t("walkMin", { m: walkMin(km) }) + "<small>" + t("walkK") + "</small></span>"; }
+  function subLine(v, i) {
+    var o = outlook(v, i), eb = bellBikes(v, i), h = "";
+    if (o.text) h += "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
+    if (v.bikes[i] != null && v.docks && v.docks[i] === 0) h += "<span class=\"state o\">" + t("noDock") + "</span>";
+    else if (v.bikes[i] != null && v.docks && v.docks[i] != null) h += "<span>" + t("ret", { d: v.docks[i] }) + "</span>";
+    if (eb != null) h += "<span>" + t("afterBell", { at: v.bell.at, b: Math.round(eb) }) + "</span>";
+    return h;
+  }
   function stationRow(v, i) {
-    var s = v.stations[i], observed = v.bikes[i] != null, vd = verdict(v.p30[i], observed, v.status && v.status[i], v.bikes[i]);
-    var li = document.createElement("li"); li.className = "srow" + (selected === i ? " sel" : ""); li.tabIndex = 0;
+    var s = v.stations[i], li = document.createElement("li"); li.className = "row" + (selected === i ? " sel" : ""); li.tabIndex = 0;
     var km = distKm(s.lat, s.lng, origin.lat, origin.lng);
-    var right = km > 3 ? t("walkFar", { k: km.toFixed(1) }) : t("walk", { m: walkMin(km) });
-    var eb = bellBikes(v, i);
-    var after = eb != null ? "<span>" + t("afterBell", { at: v.bell.at, b: "<b>" + Math.round(eb) + "</b>" }) + "</span>" : "";
-    li.innerHTML = "<span class=\"nm\">" + esc(nameOf(s)) + "<span class=\"en\">" + esc(altName(s)) + "</span></span><span class=\"walk\">" + right + "</span>" +
-      "<span class=\"st\">" + chip(vd, observed && v.bikes[i] !== 0 ? t("within30") : null) + (observed && v.docks && v.docks[i] === 0 ? chip({ cls: "o", text: t("vFull") }) : "") + (observed ? "<span><b>" + v.bikes[i] + "</b> / " + s.cap + (v.docks && v.docks[i] != null ? " · " + t("docksNow", { d: v.docks[i] }) : "") + "</span>" : "") + after + "</span>";
-    var go = function () { select(i); focus(s); };
+    li.innerHTML = badge(v, i) + "<span><span class=\"nm\">" + esc(nameOf(s)) + (favs.indexOf(s.sno) >= 0 ? "<span class=\"star\" aria-hidden=\"true\">★</span>" : "") + "</span><span class=\"sub\">" + subLine(v, i) + "</span></span>" + walkCell(km);
+    var go = function () { select(i); focusStation(s); };
     li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
     return li;
   }
@@ -1100,96 +1514,118 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
     return null;
   }
   function renderRider(v) {
-    document.getElementById("tabRiderT").textContent = t("tabRider"); document.getElementById("tabRiderSub").textContent = t("tabRiderSub");
-    document.getElementById("tabOpsT").textContent = t("tabOps"); document.getElementById("tabOpsSub").textContent = t("tabOpsSub");
-    document.getElementById("q").placeholder = t("search");
-    document.getElementById("originLbl").textContent = origin.kind === "campus" ? t("originCampus") : origin.kind === "me" ? t("originMe") : t("originPick");
-    document.getElementById("btnGeoT").textContent = t("geo"); document.getElementById("btnPickT").textContent = t("pick"); document.getElementById("btnCampusT").textContent = t("campus");
-    document.getElementById("btnCampus").hidden = origin.kind === "campus";
-    document.getElementById("pickhint").textContent = t("picking");
-    document.getElementById("hFav").textContent = t("fav"); document.getElementById("hNear").textContent = t("near"); document.getElementById("hNearSub").textContent = t("nearSub");
-    var tip = document.getElementById("tip"); tip.hidden = !!load("btb-tip-seen", false); document.getElementById("tipText").textContent = t("tip");
+    $("q").placeholder = t("search"); $("q").setAttribute("aria-label", t("search"));
+    $("originK").textContent = t("originK"); $("oCampus").textContent = t("oCampus"); $("oMe").textContent = t("oMe"); $("oPick").textContent = t("oPick"); syncOrigin();
+    $("hFav").textContent = t("fav"); $("hNear").textContent = t("near"); $("hNearSub").textContent = t("nearSub");
     var idx = {}; v.stations.forEach(function (s, i) { idx[s.sno] = i; });
-    var fl = document.getElementById("favs"); fl.innerHTML = "";
+    var fl = $("favs"); fl.innerHTML = "";
     var fi = favs.map(function (sno) { return idx[sno]; }).filter(function (i) { return i != null; });
-    if (!fi.length) fl.innerHTML = "<li class=\"empty-note\">" + t("favEmpty") + "</li>";
+    $("favSec").hidden = !fi.length;
     fi.forEach(function (i) { fl.appendChild(stationRow(v, i)); });
-    document.getElementById("hFavSub").textContent = fi.length ? String(fi.length) : "";
+    $("hFavSub").textContent = fi.length ? String(fi.length) : "";
     var order = v.stations.map(function (s, i) { return [distKm(s.lat, s.lng, origin.lat, origin.lng), i]; }).sort(function (a, b) { return a[0] - b[0]; });
-    var nl = document.getElementById("near"); nl.innerHTML = "";
-    order.slice(0, 8).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
-    var pk = document.getElementById("best"), best = bestPick(v, order);
+    var nl = $("near"); nl.innerHTML = "";
+    order.slice(0, nearN).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
+    $("more").textContent = nearN > 8 ? t("less") : t("more");
+    var pk = $("best"), best = bestPick(v, order);
     pk.hidden = false; pk.onclick = null;
-    if (!best) { pk.className = "best none"; pk.innerHTML = "<div class=\"k\">" + t("pickK") + "</div><div class=\"d\">" + t("pickNone") + "</div>"; }
+    if (!best) { pk.className = "best none"; pk.disabled = true; pk.innerHTML = "<span><span class=\"why\">" + t("bestNoneK") + "</span><span class=\"sub\">" + t("bestNone") + "</span></span>"; }
     else {
-      var s = v.stations[best.i], eb = bellBikes(v, best.i);
-      pk.className = "best"; pk.tabIndex = 0;
-      pk.innerHTML = "<div class=\"k\">" + t("pickK") + " · " + (best.nearest ? t("pickNearest") : t("pickFar")) + "</div><div class=\"nm\">" + esc(nameOf(s)) + "</div>" +
-        "<div class=\"d\">" + t("pickD", { m: walkMin(best.km), b: "<b>" + v.bikes[best.i] + "</b>" }) + (eb != null ? " · " + t("afterBell", { at: v.bell.at, b: "<b>" + Math.round(eb) + "</b>" }) : "") + "</div>";
-      var go = function () { select(best.i); focus(s); };
-      pk.onclick = go; pk.onkeydown = function (e) { if (e.key === "Enter") go(); };
+      var s = v.stations[best.i];
+      pk.className = "best"; pk.disabled = false;
+      pk.innerHTML = badge(v, best.i) + "<span><span class=\"why\">" + t("bestK") + sep() + (best.nearest ? t("bestNearest") : t("bestFar")) + "</span><span class=\"nm\">" + esc(nameOf(s)) + "</span><span class=\"sub\">" + subLine(v, best.i) + "</span></span>" + walkCell(best.km);
+      pk.onclick = function () { select(best.i); focusStation(s); };
     }
   }
   function searchStations(q) {
-    var v = view(), box = document.getElementById("qres"); if (!v || !q.trim()) { box.hidden = true; return; }
+    var v = view(), box = $("qres"); if (!v || !q.trim()) { box.hidden = true; return; }
     var ql = q.trim().toLowerCase(), hits = [];
     v.stations.forEach(function (s, i) { if (hits.length >= 8) return; var hay = (s.name + " " + (s.name_en || "") + " " + (SHORT[s.sno] ? SHORT[s.sno].join(" ") : "")).toLowerCase(); if (hay.indexOf(ql) >= 0) hits.push(i); });
-    box.innerHTML = hits.length ? hits.map(function (i) { var s = v.stations[i]; return "<button type=\"button\" data-i=\"" + i + "\"><span>" + esc(nameOf(s)) + "<span class=\"en\"> " + esc(altName(s)) + "</span></span><span class=\"en\">" + (v.bikes[i] != null ? v.bikes[i] + " / " + s.cap : "–") + "</span></button>"; }).join("") : "<div class=\"none\">" + t("noMatch") + "</div>";
+    box.innerHTML = hits.length ? hits.map(function (i) { var s = v.stations[i]; return "<button type=\"button\" data-i=\"" + i + "\"><span>" + esc(nameOf(s)) + "<span class=\"alt\">" + esc(altName(s)) + "</span></span>" + badge(v, i) + "</button>"; }).join("") : "<div class=\"none\">" + t("noMatch") + "</div>";
     box.hidden = false;
-    Array.prototype.forEach.call(box.querySelectorAll("button"), function (b) { b.addEventListener("click", function () { var i = parseInt(b.getAttribute("data-i"), 10); box.hidden = true; document.getElementById("q").value = ""; select(i); focus(v.stations[i]); }); });
+    Array.prototype.forEach.call(box.querySelectorAll("button"), function (b) { b.addEventListener("click", function () { var i = parseInt(b.getAttribute("data-i"), 10); box.hidden = true; $("q").value = ""; $("q").blur(); select(i); focusStation(v.stations[i]); }); });
   }
 
-  // ---------- shared panel pieces ----------
-  function renderBell(v) {
-    var m = v.t_min, nb = v.next_bell, big = document.getElementById("bellBig"), lbl = document.getElementById("bellLbl");
-    if (mode === "live") { var n = taipeiNow(); m = n.getHours() * 60 + n.getMinutes(); var dow = n.getDay(); if (dow === 0 || dow === 6 || v.offday) nb = null;
-      else { nb = null; v.meta.bells.forEach(function (b) { var bm = parseInt(b.slice(0, 2), 10) * 60 + parseInt(b.slice(3), 10); if (!nb && bm > m) nb = { time: b, minutes: bm - m }; }); } }
-    if (v.offday) { big.textContent = "—"; lbl.textContent = t("noBellToday") + " · " + t("offday"); }
-    else if (!nb) { big.textContent = "—"; lbl.textContent = t("dayOver"); }
-    else { big.innerHTML = nb.minutes + "<small>" + t("min") + "</small>"; lbl.textContent = t("toBell", { b: nb.time }) + " · " + t("bellTime", { t: hm(m) }); }
-    var strip = document.getElementById("strip"), lo = 6 * 60, hi = 23 * 60, h = "";
-    var x = function (mm) { return (100 * (mm - lo) / (hi - lo)).toFixed(2) + "%"; };
-    h += "<div class=\"axis\"></div>";
-    [6, 9, 12, 15, 18, 21].forEach(function (hh) { if (nb) { var nbm = parseInt(nb.time.slice(0, 2), 10) * 60 + parseInt(nb.time.slice(3), 10); if (Math.abs(nbm - hh * 60) < 70) return; } h += "<span class=\"hlabel\" style=\"left:" + x(hh * 60) + "\">" + pad(hh) + "</span>"; });
-    v.meta.bells.forEach(function (b) { var bm = parseInt(b.slice(0, 2), 10) * 60 + parseInt(b.slice(3), 10); if (bm < lo || bm > hi) return;
-      var major = v.meta.major_bells.indexOf(b) >= 0, isNext = nb && nb.time === b;
-      h += "<span class=\"tick" + (major ? " major" : "") + (isNext ? " next" : "") + "\" style=\"left:" + x(bm) + "\"></span>";
-      if (isNext) h += "<span class=\"tlabel next\" style=\"left:" + x(bm) + "\">" + b + "</span>"; });
-    if (m >= lo && m <= hi) h += "<span class=\"now\" style=\"left:" + x(m) + "\"></span>";
-    strip.innerHTML = h;
+  // ---------- station card ----------
+  function sparkline(v, i) {
+    var s = v.stations[i], hist = v.history(i);
+    var W = 380, H = 88, padL = 24, padR = 8, padT = 8, padB = 18, n = hist.length, lo = 6 * 60, hi = 23 * 60;
+    var X = function (mm) { return padL + (W - padL - padR) * (mm - lo) / (hi - lo); }, Y = function (b) { return padT + (H - padT - padB) * (1 - b / Math.max(s.cap, 1)); };
+    var d = "", area = "", last = null, lastT = null, firstT = null;
+    for (var k = 0; k < n; k++) { var b = hist[k][1], mm = hist[k][0]; if (b == null || mm < lo || mm > hi) continue; d += (last == null ? "M" : "L") + X(mm).toFixed(1) + " " + Y(Math.min(b, s.cap)).toFixed(1) + " "; if (firstT == null) firstT = mm; last = b; lastT = mm; }
+    if (d) area = d + "L" + X(lastT).toFixed(1) + " " + Y(0).toFixed(1) + " L" + X(firstT).toFixed(1) + " " + Y(0).toFixed(1) + " Z";
+    var bells = ""; v.meta.bells.forEach(function (bb) { var bm = mins(bb); if (bm < lo || bm > hi) return;
+      bells += "<line x1=\"" + X(bm).toFixed(1) + "\" x2=\"" + X(bm).toFixed(1) + "\" y1=\"" + padT + "\" y2=\"" + (H - padB) + "\" stroke=\"" + tok(v.meta.major_bells.indexOf(bb) >= 0 ? "--ink-3" : "--line-2") + "\" stroke-width=\"1\" stroke-dasharray=\"2 3\"/>"; });
+    var txt = function (xx, yy, anchor, s2) { return "<text x=\"" + xx + "\" y=\"" + yy + "\" font-size=\"10.5\" fill=\"" + tok("--ink-3") + "\" text-anchor=\"" + anchor + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + s2 + "</text>"; };
+    var axis = ""; [6, 12, 18, 23].forEach(function (hh) { axis += txt(X(hh * 60).toFixed(1), H - 4, "middle", pad(hh)); });
+    axis += txt(padL - 5, padT + 4, "end", s.cap) + txt(padL - 5, H - padB + 3, "end", "0");
+    var dot = last != null ? "<circle cx=\"" + X(lastT).toFixed(1) + "\" cy=\"" + Y(Math.min(last, s.cap)).toFixed(1) + "\" r=\"4\" fill=\"" + tok("--accent") + "\" stroke=\"" + tok("--surface-2") + "\" stroke-width=\"2\"/>" : "";
+    return "<svg viewBox=\"0 0 " + W + " " + H + "\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><line x1=\"" + padL + "\" x2=\"" + (W - padR) + "\" y1=\"" + (H - padB) + "\" y2=\"" + (H - padB) + "\" stroke=\"" + tok("--line-2") + "\"/>" +
+      "<line x1=\"" + padL + "\" x2=\"" + (W - padR) + "\" y1=\"" + padT + "\" y2=\"" + padT + "\" stroke=\"" + tok("--line-2") + "\" stroke-dasharray=\"1 3\"/>" + bells +
+      (area ? "<path d=\"" + area + "\" fill=\"" + tok("--accent") + "\" fill-opacity=\"0.13\"/>" : "") + (d ? "<path d=\"" + d + "\" fill=\"none\" stroke=\"" + tok("--accent") + "\" stroke-width=\"2\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>" : "") + dot + axis + "</svg>";
   }
+  function renderCard(v) {
+    var wrap = $("cardWrap");
+    if (selected == null) { wrap.hidden = true; return; }
+    var i = selected, s = v.stations[i], observed = v.bikes[i] != null, o = outlook(v, i), isFav = favs.indexOf(s.sno) >= 0, eb = bellBikes(v, i);
+    var foot = [];
+    if (v.age && v.age[i] != null && v.age[i] > 20) foot.push(t("stale2", { m: v.age[i] }));
+    if (s.excluded) foot.push(t("excluded"));
+    var after = "";
+    if (observed && eb != null) {
+      after = "<div class=\"after\"><div class=\"when\"><b>" + v.bell.at + "</b>" + t("afterWhen", { t: v.bell.bell, a: v.bell.after_min }) + "</div><div class=\"est\">" + t("afterEst", { b: Math.round(eb) }).replace(/^(\S+)\s*(.*)$/, "$1<small>$2</small>") + "</div>" +
+        "<div class=\"odds\"><span>" + t("afterEmpty", { p: "<b>" + Math.round(100 * v.bell.p_empty[i]) + "</b>" }) + "</span>" + (v.bell.p_full[i] >= 0.2 ? "<span>" + t("afterFull", { p: "<b>" + Math.round(100 * v.bell.p_full[i]) + "</b>" }) + "</span>" : "") + "</div></div>";
+    } else if (observed && !v.offday && !v.next_bell) after = "<div class=\"after plain\">" + t("afterNone") + "</div>";
+    var pct = function (p) { return p == null ? "–" : Math.round(100 * p) + "<small>%</small>"; };
+    var third = v.docks && v.docks[i] != null ? "<div class=\"fact\"><div class=\"v\">" + v.docks[i] + "</div><div class=\"k\">" + t("fDocks") + "</div></div>" : "<div class=\"fact\"><div class=\"v\">" + pct(v.p60[i]) + "</div><div class=\"k\">" + t("fP60") + "</div></div>";
+    $("card").innerHTML = "<div class=\"hd\">" + badge(v, i) + "<div><div class=\"nm\">" + esc(nameOf(s)) + "</div><div class=\"alt\">" + esc(altName(s)) + "</div></div><button class=\"x\" id=\"cardX\" type=\"button\" aria-label=\"" + t("close") + "\">" + ICON.close + "</button></div>" +
+      "<div class=\"says\">" + (o.text ? "<span class=\"state " + o.cls + "\">" + o.text + "</span>" : "") + (observed && v.docks && v.docks[i] === 0 ? "<span class=\"state o\">" + t("noDock") + "</span>" : "") +
+      (isCampus(s) ? "<span class=\"tag\">" + t("inCampus") + "</span>" : (s.group === "gateway" ? "<span class=\"tag\">" + t("nearCampus") + "</span>" : "")) + (isFav ? "<span class=\"tag\">★ " + t("fav") + "</span>" : "") + "</div>" +
+      "<div class=\"facts\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + "<small>/ " + s.cap + "</small>" : "–") + "</div><div class=\"k\">" + t("fBikes") + "</div></div>" + third +
+      "<div class=\"fact\"><div class=\"v\">" + pct(v.p30[i]) + "</div><div class=\"k\">" + t("fP30") + "</div></div></div>" + after +
+      "<div class=\"chart\"><div class=\"cap\">" + t("chartCap") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(lang === "zh" ? "；" : "; ") + "</div>" : "") +
+      "<div class=\"actions\"><button class=\"btn\" id=\"favBtn\" type=\"button\" aria-pressed=\"" + (isFav ? "true" : "false") + "\">" + ICON.star.replace("FILL", isFav ? "currentColor" : "none") + (isFav ? t("rmFav") : t("addFav")) + "</button>" +
+      "<a class=\"btn primary\" href=\"https://www.google.com/maps/dir/?api=1&destination=" + s.lat + "," + s.lng + "&travelmode=walking\" target=\"_blank\" rel=\"noopener\">" + ICON.walk + t("nav") + "</a></div>";
+    $("cardX").addEventListener("click", function () { select(null); });
+    $("favBtn").addEventListener("click", function () { var k = favs.indexOf(s.sno); if (k >= 0) { favs.splice(k, 1); toast(t("favRemoved")); } else { favs.unshift(s.sno); toast(t("favAdded")); } store("btb-favs", favs); render(); });
+    wrap.hidden = false;
+  }
+
+  // ---------- dispatch ----------
   function renderKpis(v) {
-    var tt = v.totals;
-    document.getElementById("hKpi").textContent = t("kpi");
-    document.getElementById("tEmpty").textContent = fmt(tt.empty_now); document.getElementById("kEmpty").textContent = t("empty", { n: tt.observed });
-    document.getElementById("tRisk").textContent = fmt(tt.p30_over_half); document.getElementById("kRisk").textContent = t("risk");
-    document.getElementById("tUnmet").textContent = v.in_window ? fmt(tt.expected_unmet) : "–"; document.getElementById("kUnmet").textContent = t("unmet", { h: v.meta.horizon_min });
-    var saved = document.getElementById("tSaved");
-    saved.innerHTML = v.in_window && tt.expected_unmet ? fmt(tt.plan_value) + "<small> · " + Math.round(100 * tt.plan_value / tt.expected_unmet) + "%</small>" : "–";
-    document.getElementById("kSaved").textContent = t("saved");
+    var tt = v.totals, unit = function (k) { return "<small>" + t(k) + "</small>"; };
+    $("hKpi").innerHTML = "<span>" + t("kpi") + "</span><span class=\"sub\">" + t("kpiSub", { n: tt.observed }) + "</span>";
+    $("tEmpty").innerHTML = fmt(tt.empty_now) + unit("uSta"); $("kEmpty").textContent = t("kEmpty");
+    $("tRisk").innerHTML = fmt(tt.p30_over_half) + unit("uSta"); $("kRisk").textContent = t("kRisk");
+    $("tUnmet").innerHTML = v.in_window ? fmt(tt.expected_unmet) + unit("uRide") : "–"; $("kUnmet").textContent = t("kUnmet", { h: v.meta.horizon_min });
+    $("tSaved").innerHTML = v.in_window ? fmt(tt.plan_value) + unit("uRide") + (tt.plan_value > 0 && tt.expected_unmet ? "<small>" + Math.round(100 * tt.plan_value / tt.expected_unmet) + "%</small>" : "") : "–";
+    $("kSaved").textContent = t("kSaved");
+  }
+  function actText(st) { return st.d > 0 ? t("dropN", { n: st.d }) : t("pickN", { n: -st.d }); }
+  function copyText(text, done) {
+    var fallback = function () { var ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
   }
   function renderPlans(v) {
-    document.getElementById("hPlan").textContent = t("plan");
-    var el = document.getElementById("plans"); el.innerHTML = "";
-    var cb = document.getElementById("copyAll"); cb.hidden = !(v.in_window && v.plans && v.plans.length); cb.textContent = t("copy");
+    $("hPlan").textContent = t("plan");
+    var el = $("plans"); el.innerHTML = "";
+    var cb = $("copyAll"); cb.hidden = !(v.in_window && v.plans && v.plans.length); cb.textContent = t("copy");
     cb.onclick = function () {
-      var text = v.snapshot_at + "\n" + v.plans.map(function (pl) { return t("truck", { k: pl.truck }) + "\n" + pl.stops.map(function (st, i) { var ss = v.stations[st.i]; return (i + 1) + ". " + (st.d > 0 ? t("drop", { n: st.d }) : t("pickN", { n: -st.d })) + " " + nameOf(ss) + " (" + t("now", { b: v.bikes[st.i], c: ss.cap }) + ", " + t("eta", { t: fmt(st.eta) }) + ")"; }).join("\n"); }).join("\n");
-      var done = function () { cb.textContent = t("copied"); setTimeout(function () { cb.textContent = t("copy"); }, 1500); };
-      var fallback = function (tx) { var ta = document.createElement("textarea"); ta.value = tx; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); };
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { fallback(text); done(); }); else { fallback(text); done(); }
+      var text = v.snapshot_at + "\n" + v.plans.map(function (pl) { return t("truck", { k: pl.truck }) + "\n" + pl.stops.map(function (st, k) { var ss = v.stations[st.i]; return (k + 1) + ". " + actText(st) + " " + nameOf(ss) + " (" + t("nowAt", { b: v.bikes[st.i], c: ss.cap }) + sep() + fmt(st.eta) + " " + t("eta") + ")"; }).join("\n"); }).join("\n");
+      copyText(text, function () { cb.textContent = t("copied"); setTimeout(function () { cb.textContent = t("copy"); }, 1600); });
     };
-    if (!v.in_window) { el.innerHTML = "<div class=\"empty-note\">" + t("window") + "</div>"; return; }
-    if (!v.plans || !v.plans.length) { el.innerHTML = "<div class=\"empty-note\">" + t("noPlan", { h: v.meta.horizon_min }) + "</div>"; return; }
+    if (!v.in_window) { el.innerHTML = "<div class=\"empty\">" + t("offWindow") + "</div>"; return; }
+    if (!v.plans || !v.plans.length) { var worst = Math.max.apply(null, (v.unmet || [0]).map(function (x) { return x || 0; })); el.innerHTML = "<div class=\"empty\">" + t("noPlan", { m: Math.max(1, Math.round(worst)) }) + "</div>"; return; }
     v.plans.forEach(function (pl) {
       var box = document.createElement("div");
-      box.innerHTML = "<div class=\"truck-sum\"><b>" + t("truck", { k: pl.truck }) + "</b><span>" + t("stops", { n: pl.stops.length }) + "</span><span>" + t("about", { t: fmt(pl.minutes), k: fmt(pl.km, 1) }) + "</span><span>" + t("avoid", { v: fmt(pl.value) }) + "</span></div>";
+      box.innerHTML = "<p class=\"trip\"><b>" + t("truck", { k: pl.truck }) + "</b><span>" + t("nStops", { n: pl.stops.length }) + "</span><span>" + t("tripLen", { t: fmt(pl.minutes), k: fmt(pl.km, 1) }) + "</span><span>" + t("tripGain", { v: fmt(pl.value) }) + "</span></p>";
       var ol = document.createElement("ol"); ol.className = "stops";
-      pl.stops.forEach(function (st, i) {
+      pl.stops.forEach(function (st, k) {
         var s = v.stations[st.i], li = document.createElement("li"); li.className = "stop"; li.tabIndex = 0;
-        li.innerHTML = "<span class=\"n\">" + (i + 1) + "</span><span><div><span class=\"act " + (st.d > 0 ? "drop" : "pick") + "\">" + (st.d > 0 ? t("drop", { n: st.d }) : t("pickN", { n: -st.d })) + "</span> <span class=\"nm\">" + esc(nameOf(s)) + "</span></div>" +
-          "<div class=\"meta\">" + t("now", { b: v.bikes[st.i], c: s.cap }) + " · " + t("onTruck", { n: st.load }) + "</div><div class=\"loadbar\"><i style=\"width:" + Math.round(100 * st.load / v.meta.settings.Q) + "%\"></i></div></span>" +
-          "<span class=\"eta\">" + t("eta", { t: fmt(st.eta) }) + "</span>";
-        var go = function () { select(st.i); focus(s); };
+        li.innerHTML = "<span class=\"n\">" + (k + 1) + "</span><span><div><span class=\"act\">" + actText(st) + "</span> <span class=\"nm\">" + esc(nameOf(s)) + "</span></div>" +
+          "<div class=\"meta\">" + t("nowAt", { b: v.bikes[st.i], c: s.cap }) + sep() + t("onTruck", { n: st.load }) + "</div><div class=\"load\"><i style=\"width:" + Math.round(100 * st.load / v.meta.settings.Q) + "%\"></i></div></span>" +
+          "<span class=\"eta\"><b>" + fmt(st.eta) + "</b> " + t("eta") + "</span>";
+        var go = function () { select(st.i); focusStation(s); };
         li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
         ol.appendChild(li);
       });
@@ -1200,181 +1636,191 @@ h2 .copy:hover { color: var(--fg); border-color: var(--fg2); }
     var key = keyOf(), arr = key === "unmet" ? (v.unmet || []) : v[key], idx = [];
     v.stations.forEach(function (s, i) { if (arr[i] != null) idx.push(i); });
     idx.sort(function (a, b) { return arr[b] - arr[a]; });
-    document.getElementById("hRisk").textContent = key === "unmet" ? t("unmetH") : t("riskH");
-    var ol = document.getElementById("risk"); ol.innerHTML = "";
+    $("hRisk").textContent = key === "unmet" ? t("unmetH") : t("riskH");
+    $("h30").textContent = t("h30"); $("h60").textContent = t("h60"); $("hU").textContent = t("hU");
+    var ol = $("risk"); ol.innerHTML = "";
     var top = key === "unmet" ? Math.max(1, arr[idx[0]] || 1) : 1;
     idx.slice(0, 10).forEach(function (i) {
       var s = v.stations[i], li = document.createElement("li"); li.tabIndex = 0; if (selected === i) li.className = "sel";
-      var tag = CAMPUS[s.sno] ? "<span class=\"tag\">" + t("campusTag") + "</span>" : (GATEWAY[s.sno] ? "<span class=\"tag gw\">" + t("gateway") + "</span>" : "");
-      li.innerHTML = "<span class=\"nm\">" + esc(nameOf(s)) + tag + "</span><span class=\"bk\">" + v.bikes[i] + " / " + s.cap + "</span><span class=\"bar\"><i style=\"width:" + Math.round(100 * arr[i] / top) + "%\"></i></span><span class=\"pv\">" + (key === "unmet" ? arr[i].toFixed(1) : arr[i].toFixed(2)) + "</span>";
-      var go = function () { select(i); focus(s); };
+      var tag = isCampus(s) ? "<span class=\"tag in\">" + t("inCampus") + "</span>" : "";
+      li.innerHTML = "<span class=\"nm\">" + esc(nameOf(s)) + tag + "</span><span class=\"bk\">" + v.bikes[i] + " / " + s.cap + "</span><span class=\"bar\"><i style=\"width:" + Math.round(100 * arr[i] / top) + "%\"></i></span><span class=\"pv\">" + (key === "unmet" ? arr[i].toFixed(1) : Math.round(100 * arr[i]) + "%") + "</span>";
+      var go = function () { select(i); focusStation(s); };
       li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
       ol.appendChild(li);
     });
   }
-  function sparkline(v, i) {
-    var s = v.stations[i], hist = v.history.at(i), from = v.history.from, step = v.history.step;
-    var W = 380, H = 86, padL = 26, padR = 8, padT = 8, padB = 18, n = hist.length;
-    var fromMin = parseInt(from.slice(0, 2), 10) * 60 + parseInt(from.slice(3), 10), lo = 6 * 60, hi = 23 * 60;
-    var X = function (mm) { return padL + (W - padL - padR) * (mm - lo) / (hi - lo); }, Y = function (b) { return padT + (H - padT - padB) * (1 - b / Math.max(s.cap, 1)); };
-    var d = "", area = "", last = null, lastT = null;
-    for (var k = 0; k < n; k++) { var b = hist[k]; if (b == null) continue; var mm = fromMin + k * step; var cmd = (last == null ? "M" : "L"); d += cmd + X(mm).toFixed(1) + " " + Y(b).toFixed(1) + " "; last = b; lastT = mm; }
-    if (d) { var first = d.indexOf("M"); area = d + "L" + X(lastT).toFixed(1) + " " + Y(0).toFixed(1) + " L" + d.slice(first + 1).split(" ")[0] + " " + Y(0).toFixed(1) + " Z"; }
-    var bells = ""; v.meta.bells.forEach(function (bb) { var bm = parseInt(bb.slice(0, 2), 10) * 60 + parseInt(bb.slice(3), 10); if (bm < lo || bm > hi) return;
-      var major = v.meta.major_bells.indexOf(bb) >= 0; bells += "<line x1=\"" + X(bm).toFixed(1) + "\" x2=\"" + X(bm).toFixed(1) + "\" y1=\"" + padT + "\" y2=\"" + (H - padB) + "\" stroke=\"" + tok(major ? "--fg2" : "--line2") + "\" stroke-width=\"1\" stroke-dasharray=\"2 3\"/>"; });
-    var axis = ""; [6, 12, 18, 23].forEach(function (hh) { axis += "<text x=\"" + X(hh * 60).toFixed(1) + "\" y=\"" + (H - 4) + "\" font-size=\"9\" fill=\"" + tok("--muted") + "\" text-anchor=\"middle\" font-family=\"IBM Plex Mono, monospace\">" + pad(hh) + "</text>"; });
-    axis += "<text x=\"" + (padL - 4) + "\" y=\"" + (padT + 4) + "\" font-size=\"9\" fill=\"" + tok("--muted") + "\" text-anchor=\"end\" font-family=\"IBM Plex Mono, monospace\">" + s.cap + "</text>";
-    axis += "<text x=\"" + (padL - 4) + "\" y=\"" + (H - padB + 3) + "\" font-size=\"9\" fill=\"" + tok("--muted") + "\" text-anchor=\"end\" font-family=\"IBM Plex Mono, monospace\">0</text>";
-    var dot = last != null ? "<circle cx=\"" + X(lastT).toFixed(1) + "\" cy=\"" + Y(last).toFixed(1) + "\" r=\"3.5\" fill=\"" + tok("--accent") + "\" stroke=\"" + tok("--panel") + "\" stroke-width=\"1.5\"/>" : "";
-    return "<svg viewBox=\"0 0 " + W + " " + H + "\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><line x1=\"" + padL + "\" x2=\"" + (W - padR) + "\" y1=\"" + (H - padB) + "\" y2=\"" + (H - padB) + "\" stroke=\"" + tok("--line2") + "\"/>" +
-      "<line x1=\"" + padL + "\" x2=\"" + (W - padR) + "\" y1=\"" + padT + "\" y2=\"" + padT + "\" stroke=\"" + tok("--line") + "\" stroke-dasharray=\"1 3\"/>" + bells +
-      (area ? "<path d=\"" + area + "\" fill=\"" + tok("--accent") + "\" fill-opacity=\"0.12\"/>" : "") + (d ? "<path d=\"" + d + "\" fill=\"none\" stroke=\"" + tok("--accent") + "\" stroke-width=\"2\" stroke-linejoin=\"round\"/>" : "") + dot + axis + "</svg>";
-  }
-  function renderCard(v) {
-    var wrap = document.getElementById("cardWrap");
-    if (selected == null) { wrap.hidden = true; return; }
-    var i = selected, s = v.stations[i], observed = v.bikes[i] != null, vd = verdict(v.p30[i], observed, v.status && v.status[i], v.bikes[i]);
-    var foot = [];
-    if (!observed) foot.push(v.status && v.status[i] === 2 ? t("oos") : t("legGrey"));
-    if (v.age && v.age[i] != null && v.age[i] > 20) foot.push(t("stale2", { m: v.age[i] }));
-    if (s.excluded) foot.push(t("excluded"));
-    var bellbox = "", eb = bellBikes(v, i);
-    if (observed && eb != null) {
-      bellbox = "<div class=\"bellbox\"><span>" + t("bellBox", { at: v.bell.at, t: v.bell.bell, a: v.bell.after_min, b: "<b>" + Math.round(eb) + "</b>", p: "<b>" + Math.round(100 * v.bell.p_empty[i]) + "</b>" }) + "</span>" +
-        (v.bell.p_full[i] >= 0.2 ? "<span>" + t("bellBoxFull", { p: "<b>" + Math.round(100 * v.bell.p_full[i]) + "</b>" }) + "</span>" : "") + "</div>";
-    } else if (observed && !v.offday && !v.next_bell) { bellbox = "<div class=\"bellbox\"><span>" + t("bellNone") + "</span></div>"; }
-    var isFav = favs.indexOf(s.sno) >= 0;
-    document.getElementById("card").innerHTML = "<div class=\"hd\"><div><div class=\"nm\">" + esc(nameOf(s)) + (CAMPUS[s.sno] ? " <span style=\"color:var(--accent);font-size:12px\">" + t("campusTag") + "</span>" : "") + "</div><div class=\"en\">" + esc(altName(s)) + "</div></div><button class=\"x\" id=\"cardX\" aria-label=\"close\">×</button></div>" +
-      "<div class=\"verdict\">" + chip(vd, observed && v.bikes[i] !== 0 ? t("within30") : null) + (observed && v.docks && v.docks[i] === 0 ? chip({ cls: "o", text: t("vFull") }) : "") + (isFav ? "<span class=\"chip n\">★ " + t("fav") + "</span>" : "") + "</div>" +
-      "<div class=\"facts\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + " <span style=\"font-size:12px;color:var(--fg2)\">/ " + s.cap + "</span>" : "–") + "</div><div class=\"k\">" + t("bikes") + "</div></div>" +
-      (v.docks && v.docks[i] != null ? "<div class=\"fact\"><div class=\"v\">" + v.docks[i] + "</div><div class=\"k\">" + t("docks") + "</div></div>" : "<div class=\"fact\"><div class=\"v\">" + (v.p60[i] == null ? "–" : Math.round(100 * v.p60[i]) + "<span style=\"font-size:12px;color:var(--fg2)\">%</span>") + "</div><div class=\"k\">" + t("p60") + "</div></div>") +
-      "<div class=\"fact\"><div class=\"v\">" + (v.p30[i] == null ? "–" : Math.round(100 * v.p30[i]) + "<span style=\"font-size:12px;color:var(--fg2)\">%</span>") + "</div><div class=\"k\">" + t("p30") + "</div></div></div>" + bellbox +
-      "<div class=\"spark\"><div class=\"foot\" style=\"margin:0 0 4px\">" + t("todayStock") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(" · ") + "</div>" : "") +
-      "<div class=\"actions\"><button class=\"btn small\" id=\"favBtn\" type=\"button\">" + (isFav ? t("rmFav") : t("addFav")) + "</button><a class=\"btn small\" href=\"https://www.google.com/maps/dir/?api=1&destination=" + s.lat + "," + s.lng + "&travelmode=walking\" target=\"_blank\" rel=\"noopener\">" + t("nav") + " ↗</a>" +
-      (v.unmet && v.unmet[i] != null && tab === "ops" ? "<span class=\"chip n\">" + t("unmetS") + " " + fmt(v.unmet[i], 1) + "</span>" : "") + "</div>";
-    document.getElementById("cardX").addEventListener("click", function () { select(null); });
-    document.getElementById("favBtn").addEventListener("click", function () { var k = favs.indexOf(s.sno); if (k >= 0) favs.splice(k, 1); else favs.unshift(s.sno); store("btb-favs", favs); render(); });
-    wrap.hidden = false;
+
+  // ---------- about, legend, status ----------
+  function renderAbout(v) {
+    var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
+    $("aboutWhat").innerHTML = t("aboutWhat");
+    $("aboutKeyH").textContent = t("keyH");
+    var sw = function (cls, n) { return "<span class=\"sw\"><span class=\"badge " + cls + "\">" + n + "</span></span>"; };
+    $("aboutKey").innerHTML = "<li>" + sw("g", 12) + "<span>" + t("keyGood") + "</span></li><li>" + sw("y", 6) + "<span>" + t("keyLow") + "</span></li><li>" + sw("o", 3) + "<span>" + t("keyEmpty") + "</span></li><li>" + sw("r", 1) + "<span>" + t("keyVery") + "</span></li>" +
+      "<li>" + sw("x", 0) + "<span>" + t("keyGone") + "</span></li><li>" + sw("n", "–") + "<span>" + t("keyNone") + "</span></li>" +
+      "<li><span class=\"sw\"><svg width=\"30\" height=\"30\" viewBox=\"0 0 30 30\" aria-hidden=\"true\"><circle cx=\"15\" cy=\"15\" r=\"12\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"2.5\"/><path d=\"M15 3 A12 12 0 0 1 25.4 21\" fill=\"none\" stroke=\"var(--ink-3)\" stroke-width=\"2.5\" stroke-linecap=\"round\"/><circle cx=\"15\" cy=\"15\" r=\"8\" fill=\"var(--ok-fill)\"/></svg></span><span>" + t("keyRing") + "</span></li>" +
+      "<li><span class=\"sw\"><span class=\"ln\"></span></span><span>" + t("keyRoute") + "</span></li>";
+    $("aboutHow").innerHTML = t("aboutHow", { n: v ? v.stations.length : 309, h: v ? v.meta.horizon_min : 90, q: s.Q, s: Math.round(s.speed_kmh), st: Math.round(s.stop_min) });
+    $("langK").textContent = t("langK"); $("credit").innerHTML = t("credit");
   }
   function renderLegend(v) {
-    var ends = horizon === 90 ? "<span>0</span><span>5</span><span>10+</span>" : "<span>0</span><span>0.5</span><span>1</span>";
-    document.getElementById("legend").innerHTML = "<div>" + (horizon === 90 ? t("legendU", { h: v.meta.horizon_min }) : t("legend", { h: horizon })) + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\">" + ends + "</div>" +
-      "<div class=\"row\">" + t("legRing") + "</div><div class=\"row\">" + t("legCampus") + "</div>" + (tab === "ops" ? "<div class=\"row\"><span class=\"ln\"></span>" + t("legRoute") + "</div>" : "<div class=\"row\">" + t("legStar") + "</div>") + "<div class=\"row\">" + t("legGrey") + "</div>";
+    var el = $("legend");
+    if (tab === "ops") {
+      var ends = horizon === 90 ? "<span>0</span><span>5</span><span>10+</span>" : "<span>0%</span><span>50%</span><span>100%</span>";
+      el.innerHTML = "<div class=\"ttl\">" + (horizon === 90 ? t("legU", { h: v.meta.horizon_min }) : t("legP", { h: horizon })) + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\">" + ends + "</div>" +
+        "<div class=\"it\"><span class=\"ln\"></span>" + t("legRoute") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
+      return;
+    }
+    var it = function (c, k) { return "<div class=\"it\"><span class=\"sw\" style=\"background:var(" + c + ")\"></span>" + t(k) + "</div>"; };
+    el.innerHTML = "<div class=\"ttl\">" + t("legOutlook") + "</div>" + it("--ok-fill", "lGood") + it("--low-fill", "lLow") + it("--risk-fill", "lEmpty") + it("--out-fill", "lVery") + it("--gone", "lGone") +
+      "<div class=\"it gap\">" + t("legNum") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
   }
+  function dayLabel(d) {
+    var y = parseInt(d.slice(0, 4), 10), mo = parseInt(d.slice(5, 7), 10), da = parseInt(d.slice(8, 10), 10), wd = T[lang].weekdays[new Date(Date.UTC(y, mo - 1, da)).getUTCDay()];
+    return lang === "zh" ? mo + "/" + da + "（" + wd + "）" : wd + " " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][mo - 1] + " " + da;
+  }
+  function showErr(kind, text) { var el = $("err"); errKind = kind; el.hidden = !kind; el.textContent = text || ""; }
   function renderStatus(v) {
-    var st = document.getElementById("status"), tx = document.getElementById("statusText");
+    var st = $("status"), tx = $("statusText");
     st.className = "status";
-    if (mode === "replay") { st.classList.add("replay"); tx.textContent = t("replayAt", { d: replay.date, t: v.snapshot_at.slice(11) }); return; }
+    if (mode === "replay") { st.classList.add("replay"); tx.textContent = t("replayAt", { d: dayLabel(replay.date), t: v.snapshot_at.slice(11) }); if (errKind === "old") showErr(null); return; }
     var n = taipeiNow(), snap = v.snapshot_at, agoMin = Math.max(0, Math.round((n - new Date(snap.replace(" ", "T") + ":00")) / 60000));
     if (agoMin > 25) st.classList.add("stale");
-    tx.textContent = t("liveAt", { t: snap.slice(11) }) + t("ago", { m: agoMin });
-    var el = document.getElementById("err");
-    if (agoMin > 60) { el.hidden = false; el.textContent = t("stalebig", { m: agoMin }); } else if (el.textContent.indexOf("HTTP") < 0) { el.hidden = true; }
+    tx.textContent = t("liveAt", { t: snap.slice(11) }) + sep() + (agoMin < 1 ? t("justNow") : agoMin < 90 ? t("ago", { m: agoMin }) : t("agoH", { h: Math.round(agoMin / 60) }));
+    if (agoMin > 60) { if (!errKind || errKind === "old") showErr("old", t("stalebig", { m: agoMin })); } else if (errKind === "old") showErr(null);
   }
   function renderChrome() {
-    document.getElementById("title").textContent = t("title"); document.getElementById("titleShort").textContent = t("titleShort"); document.title = lang === "zh" ? "Beat the Bell 中山即時調度" : "Beat the Bell NSYSU Live";
-    document.getElementById("mLive").textContent = t("live"); document.getElementById("mReplay").textContent = t("replay"); fillDays();
-    document.getElementById("aboutSum").textContent = t("aboutSum");
-    document.getElementById("h30").textContent = "30 " + t("min"); document.getElementById("h60").textContent = "60 " + t("min"); document.getElementById("hU").textContent = t("modeU");
-    document.getElementById("tabRiderT").textContent = t("tabRider"); document.getElementById("tabRiderSub").textContent = t("tabRiderSub");
-    document.getElementById("tabOpsT").textContent = t("tabOps"); document.getElementById("tabOpsSub").textContent = t("tabOpsSub");
-    var v = view(); var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
-    document.getElementById("aboutBody").innerHTML = t("aboutBody", { h: v ? v.meta.horizon_min : 90, q: s.Q, s: s.speed_kmh, st: s.stop_min });
+    document.title = t("docTitle"); $("where").textContent = t("where");
+    $("mLive").textContent = t("live"); $("mReplay").textContent = t("replay"); $("modeSeg").setAttribute("aria-label", t("modeLabel"));
+    $("tabRiderT").textContent = t("tabRider"); $("tabOpsT").textContent = t("tabOps"); $("tabAboutT").textContent = t("tabAbout");
+    $("grip").setAttribute("aria-label", t("gripLabel")); $("fab").setAttribute("aria-label", t("fabLabel")); $("fab").title = t("fabLabel");
+    $("slider").setAttribute("aria-label", t("sliderLabel")); $("replayDay").setAttribute("aria-label", t("dayLabel")); $("horizonSeg").setAttribute("aria-label", t("horizonLabel"));
+    $("map").setAttribute("aria-label", t("mapLabel")); $("langSeg").setAttribute("aria-label", t("langK"));
+    $("play").innerHTML = playing ? ICON.pause : ICON.play; $("play").setAttribute("aria-label", playing ? t("pauseLabel") : t("playLabel"));
+    if (!live && !replay) $("statusText").textContent = t("loading");
+    fillDays();
   }
   function applyTab() {
-    document.getElementById("tabRider").setAttribute("aria-selected", tab === "rider" ? "true" : "false"); document.getElementById("tabOps").setAttribute("aria-selected", tab === "ops" ? "true" : "false");
-    document.getElementById("paneRider").hidden = tab !== "rider"; document.getElementById("paneOps").hidden = tab !== "ops";
+    shell.setAttribute("data-tab", tab);
+    [["rider", "tabRider", "paneRider"], ["ops", "tabOps", "paneOps"], ["about", "tabAbout", "paneAbout"]].forEach(function (x) {
+      $(x[1]).setAttribute("aria-selected", tab === x[0] ? "true" : "false"); $(x[1]).tabIndex = tab === x[0] ? 0 : -1; $(x[2]).hidden = tab !== x[0]; });
   }
   function setTab(x) {
-    tab = x; store("btb-tab", x); applyTab();
-    if (x !== "rider") { setPicking(false); var v = view(); if (v && map.getZoom() >= 15) fitArea(v); } else setH(30, true);
-    render();
+    var was = tab; tab = x; store("btb-tab", x); applyTab();
+    if (x !== "rider" && picking) setPicking(false);
+    if (x === "ops" && was !== "ops") { var v = view(); if (v && map.getZoom() >= 15 && selected == null) fitArea(v); }
+    if (isPhone()) setSheet(sheetState === "peek" ? "half" : sheetState);
+    scroller.scrollTop = 0; render();
   }
   function render() {
-    var v = view(); renderChrome(); if (!v) return;
+    var v = view(); renderChrome(); renderAbout(v); if (!v) return;
     renderStatus(v); renderBell(v); renderCard(v); renderLegend(v);
-    if (tab === "rider") renderRider(v); else { renderKpis(v); renderPlans(v); renderRisk(v); }
+    if (tab === "rider") renderRider(v); else if (tab === "ops") { renderKpis(v); renderPlans(v); renderRisk(v); }
     drawStations(v); drawRoute(v); drawOrigin();
-    if (mode === "replay") { var sl = document.getElementById("slider"); sl.max = replay.slots.length - 1; sl.value = slot; document.getElementById("sliderT").textContent = replay.slots[slot].snapshot_at.slice(11);
+    if (mode === "replay") {
+      var sl = $("slider"); sl.max = replay.slots.length - 1; sl.value = slot; $("sliderT").textContent = replay.slots[slot].snapshot_at.slice(11);
       var n = replay.slots.length, t0 = replay.slots[0].t_min, t1 = replay.slots[n - 1].t_min, hh = "";
-      replay.bells.forEach(function (b) { var bm = parseInt(b.slice(0, 2), 10) * 60 + parseInt(b.slice(3), 10); if (bm < t0 || bm > t1) return; hh += "<i class=\"" + (replay.major_bells.indexOf(b) >= 0 ? "major" : "") + "\" style=\"left:" + (100 * (bm - t0) / (t1 - t0)).toFixed(2) + "%\"></i>"; });
-      document.getElementById("sticks").innerHTML = hh; }
+      replay.bells.forEach(function (b) { var bm = mins(b); if (bm < t0 || bm > t1 || n < 2) return; hh += "<i class=\"" + (replay.major_bells.indexOf(b) >= 0 ? "major" : "") + "\" style=\"left:" + (100 * slotAt(bm) / (n - 1)).toFixed(2) + "%\"></i>"; });
+      $("marks").innerHTML = hh;
+    }
+    if (pendingSno) { var k = -1; v.stations.forEach(function (s, i) { if (s.sno === pendingSno) k = i; }); pendingSno = null; if (k >= 0) { select(k); focusStation(v.stations[k]); } }
   }
   function select(i) {
     selected = i; var v = view(); if (!v) return;
-    renderCard(v); if (tab === "rider") renderRider(v); else renderRisk(v); drawStations(v);
-    if (i != null && markers[i]) markers[i].setZIndexOffset(800);
-    if (i != null) { try { document.getElementById("cardWrap").scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {} }
+    renderCard(v); if (tab === "rider") renderRider(v); else if (tab === "ops") renderRisk(v);
+    drawStations(v);
+    if (i != null) { if (isPhone()) setSheet("half"); scroller.scrollTop = 0; }
+    try { history.replaceState(null, "", i != null ? "#" + v.stations[i].sno : location.pathname + location.search); } catch (e) {}
   }
 
   // ---------- data ----------
   function loadLive() {
     var url = /claude\.ai$/.test(location.hostname) || location.protocol === "file:" ? "state.json" : "state.json?t=" + Math.floor(Date.now() / 60000);
     return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (s) { live = s; document.getElementById("err").hidden = true; if (mode === "live") render(); })
-      .catch(function (e) { var el = document.getElementById("err"); el.hidden = false; el.textContent = (live ? t("stale", { t: live.snapshot_at.slice(11) }) : e.message); if (live && mode === "live") { render(); document.getElementById("status").classList.add("stale"); } });
+      .then(function (s) { live = s; if (errKind === "load") showErr(null); if (mode === "live") render(); })
+      .catch(function (e) {
+        if (live) { showErr("load", t("stale", { t: live.snapshot_at.slice(11) })); if (mode === "live") { render(); $("status").classList.add("stale"); } }
+        else { showErr("load", t("loadFail", { e: e.message })); $("statusText").textContent = "–"; }
+      });
   }
   function loadReplay(day) {
     if (replays[day]) { replay = replays[day]; return Promise.resolve(replay); }
     return fetch("replay_" + day + ".json").then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(function (s) { replays[day] = s; replay = s; return s; });
   }
-  function dayLabel(d) { var dt = new Date(d + "T12:00:00+08:00"), wd = lang === "zh" ? ["日", "一", "二", "三", "四", "五", "六"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    return lang === "zh" ? (dt.getMonth() + 1) + "/" + dt.getDate() + "（" + wd[dt.getDay()] + "）" : wd[dt.getDay()] + " " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][dt.getMonth()] + " " + dt.getDate(); }
-  function fillDays() { var sel = document.getElementById("replayDay"); sel.innerHTML = replayDays.map(function (d) { return "<option value=\"" + d + "\"" + (d === replayDay ? " selected" : "") + ">" + dayLabel(d) + "</option>"; }).join(""); }
+  function fillDays() {
+    var key = lang + "|" + replayDays.join(",");
+    if (key !== daysKey) { daysKey = key; $("replayDay").innerHTML = replayDays.map(function (d) { return "<option value=\"" + d + "\">" + dayLabel(d) + "</option>"; }).join(""); }
+    if (replayDay) $("replayDay").value = replayDay;
+  }
   function loadDays() {
     return fetch("replays.json", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (j) { if (j.days && j.days.length) { replayDays = j.days; if (replayDays.indexOf(replayDay) < 0) replayDay = replayDays[0]; } }).catch(function () {}).then(fillDays);
+      .then(function (j) { if (j.days && j.days.length) { replayDays = j.days; if (replayDays.indexOf(replayDay) < 0) replayDay = replayDays[0]; } }).catch(function () {}).then(function () { $("mReplay").disabled = !replayDays.length; fillDays(); });
   }
+  function slotAt(tMin) { var i = -1; replay.slots.forEach(function (x, k) { if (i < 0 && x.t_min >= tMin) i = k; }); return i < 0 ? replay.slots.length - 1 : i; }
   function setMode(m) {
-    mode = m; document.getElementById("mLive").setAttribute("aria-pressed", m === "live" ? "true" : "false"); document.getElementById("mReplay").setAttribute("aria-pressed", m === "replay" ? "true" : "false");
-    document.getElementById("replaybar").hidden = m !== "replay"; document.getElementById("replayDay").hidden = m !== "replay"; stopPlay();
-    if (m === "replay") loadReplay(replayDay).then(function () { slot = Math.min(slot || 0, replay.slots.length - 1); if (!slot) { var i = replay.slots.findIndex(function (x) { return x.t_min >= 15 * 60 + 30; }); slot = i < 0 ? 0 : i; } render(); })
-      .catch(function (e) { var el = document.getElementById("err"); el.hidden = false; el.textContent = "replay: " + e.message; });
+    if (m === "replay" && !replayDay) return;
+    mode = m; shell.setAttribute("data-mode", m);
+    $("mLive").setAttribute("aria-pressed", m === "live" ? "true" : "false"); $("mReplay").setAttribute("aria-pressed", m === "replay" ? "true" : "false");
+    $("replaybar").hidden = m !== "replay"; stopPlay();
+    if (m === "replay") loadReplay(replayDay).then(function () { slot = wantSlot != null ? slotAt(wantSlot) : slotAt(15 * 60 + 30); wantSlot = null; if (errKind === "replay") showErr(null); render(); })
+      .catch(function (e) { showErr("replay", t("replayFail", { e: e.message })); mode = "live"; shell.setAttribute("data-mode", "live"); $("replaybar").hidden = true; $("mLive").setAttribute("aria-pressed", "true"); $("mReplay").setAttribute("aria-pressed", "false"); render(); });
     else render();
   }
-  function stopPlay() { playing = false; document.getElementById("play").textContent = "▶"; if (playTimer) { clearInterval(playTimer); playTimer = null; } }
+  function stopPlay() { playing = false; $("play").innerHTML = ICON.play; $("play").setAttribute("aria-label", t("playLabel")); if (playTimer) { clearInterval(playTimer); playTimer = null; } }
   function togglePlay() {
     if (playing) { stopPlay(); return; }
-    playing = true; document.getElementById("play").textContent = "❚❚";
+    playing = true; $("play").innerHTML = ICON.pause; $("play").setAttribute("aria-label", t("pauseLabel"));
     playTimer = setInterval(function () { if (!replay) return; slot = (slot + 1) % replay.slots.length; render(); }, 700);
   }
+  function setLang(l) {
+    lang = l; $("lZh").setAttribute("aria-pressed", l === "zh" ? "true" : "false"); $("lEn").setAttribute("aria-pressed", l === "en" ? "true" : "false");
+    root.lang = l === "zh" ? "zh-Hant" : "en"; store("btb-lang", l); render();
+  }
+  function setH(h) { horizon = h; $("h30").setAttribute("aria-pressed", h === 30 ? "true" : "false"); $("h60").setAttribute("aria-pressed", h === 60 ? "true" : "false"); $("hU").setAttribute("aria-pressed", h === 90 ? "true" : "false"); render(); }
 
   // ---------- events ----------
-  document.getElementById("mLive").addEventListener("click", function () { setMode("live"); });
-  document.getElementById("mReplay").addEventListener("click", function () { setMode("replay"); });
-  document.getElementById("replayDay").addEventListener("change", function (e) { replayDay = e.target.value; stopPlay(); loadReplay(replayDay).then(function () { slot = Math.min(slot, replay.slots.length - 1); render(); }); });
-  document.getElementById("lZh").addEventListener("click", function () { setLang("zh"); });
-  document.getElementById("lEn").addEventListener("click", function () { setLang("en"); });
-  function setLang(l) { lang = l; document.getElementById("lZh").setAttribute("aria-pressed", l === "zh" ? "true" : "false"); document.getElementById("lEn").setAttribute("aria-pressed", l === "en" ? "true" : "false"); document.documentElement.lang = l === "zh" ? "zh-Hant" : "en"; store("btb-lang", l); render(); }
-  document.getElementById("tabRider").addEventListener("click", function () { setTab("rider"); });
-  document.getElementById("tabOps").addEventListener("click", function () { setTab("ops"); });
-  document.getElementById("h30").addEventListener("click", function () { setH(30); });
-  document.getElementById("h60").addEventListener("click", function () { setH(60); });
-  document.getElementById("hU").addEventListener("click", function () { setH(90); });
-  function setH(h, quiet) { horizon = h; document.getElementById("h30").setAttribute("aria-pressed", h === 30 ? "true" : "false"); document.getElementById("h60").setAttribute("aria-pressed", h === 60 ? "true" : "false"); document.getElementById("hU").setAttribute("aria-pressed", h === 90 ? "true" : "false"); if (!quiet) render(); }
-  document.getElementById("play").addEventListener("click", togglePlay);
-  document.getElementById("slider").addEventListener("input", function (e) { stopPlay(); slot = parseInt(e.target.value, 10); render(); });
-  document.getElementById("q").addEventListener("input", function (e) { searchStations(e.target.value); });
-  document.getElementById("q").addEventListener("focus", function (e) { if (e.target.value) searchStations(e.target.value); });
-  document.getElementById("q").addEventListener("keydown", function (e) { if (e.key === "Escape") { document.getElementById("qres").hidden = true; } if (e.key === "Enter") { var b = document.querySelector("#qres button"); if (b) b.click(); } });
-  document.addEventListener("click", function (e) { if (!e.target.closest(".search")) document.getElementById("qres").hidden = true; });
-  document.getElementById("btnGeo").addEventListener("click", function () {
-    var fail = function () { document.getElementById("btnGeoT").textContent = t("geoFail"); setTimeout(function () { document.getElementById("btnGeoT").textContent = t("geo"); }, 3000); };
-    if (!navigator.geolocation) { fail(); return; }
-    navigator.geolocation.getCurrentPosition(function (pos) { setOrigin("me", pos.coords.latitude, pos.coords.longitude); map.setView([pos.coords.latitude, pos.coords.longitude], Math.max(map.getZoom(), 15)); }, fail, { timeout: 8000, maximumAge: 60000 });
+  $("mLive").addEventListener("click", function () { setMode("live"); });
+  $("mReplay").addEventListener("click", function () { setMode("replay"); });
+  $("replayDay").addEventListener("change", function (e) { replayDay = e.target.value; stopPlay(); var keep = replay ? replay.slots[slot].t_min : 15 * 60 + 30; loadReplay(replayDay).then(function () { slot = slotAt(keep); render(); }).catch(function (er) { showErr("replay", t("replayFail", { e: er.message })); }); });
+  $("lZh").addEventListener("click", function () { setLang("zh"); });
+  $("lEn").addEventListener("click", function () { setLang("en"); });
+  $("tabRider").addEventListener("click", function () { setTab("rider"); });
+  $("tabOps").addEventListener("click", function () { setTab("ops"); });
+  $("tabAbout").addEventListener("click", function () { setTab("about"); });
+  $("tabs").addEventListener("keydown", function (e) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    var order = ["rider", "ops", "about"], k = (order.indexOf(tab) + (e.key === "ArrowRight" ? 1 : 2)) % 3; setTab(order[k]); $({ rider: "tabRider", ops: "tabOps", about: "tabAbout" }[order[k]]).focus();
   });
-  document.getElementById("btnPick").addEventListener("click", function () { setPicking(!picking); });
-  document.getElementById("btnCampus").addEventListener("click", function () { setOrigin("campus", CAMPUS_CENTER[0], CAMPUS_CENTER[1]); map.setView(CAMPUS_CENTER, 15); });
-  document.getElementById("tipX").addEventListener("click", function () { store("btb-tip-seen", true); document.getElementById("tip").hidden = true; });
+  $("h30").addEventListener("click", function () { setH(30); });
+  $("h60").addEventListener("click", function () { setH(60); });
+  $("hU").addEventListener("click", function () { setH(90); });
+  $("play").addEventListener("click", togglePlay);
+  $("slider").addEventListener("input", function (e) { stopPlay(); slot = parseInt(e.target.value, 10); render(); });
+  $("q").addEventListener("input", function (e) { searchStations(e.target.value); });
+  $("q").addEventListener("focus", function (e) { if (isPhone()) setSheet("full"); if (e.target.value) searchStations(e.target.value); });
+  $("q").addEventListener("keydown", function (e) { if (e.key === "Escape") { $("qres").hidden = true; e.target.blur(); } if (e.key === "Enter") { var b = document.querySelector("#qres button"); if (b) b.click(); } });
+  document.addEventListener("click", function (e) { if (!e.target.closest(".search")) $("qres").hidden = true; });
+  $("oCampus").addEventListener("click", function () { if (picking) setPicking(false); setOrigin("campus", CAMPUS_CENTER[0], CAMPUS_CENTER[1]); var v = view(); if (v) fitCampus(v); });
+  $("oMe").addEventListener("click", locate);
+  $("fab").addEventListener("click", function () { if (tab !== "rider") setTab("rider"); locate(); });
+  $("oPick").addEventListener("click", function () { setPicking(!picking); });
+  $("more").addEventListener("click", function () { nearN = nearN > 8 ? 8 : 16; var v = view(); if (v) renderRider(v); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (picking) setPicking(false); else if (selected != null) select(null); } });
-  var savedLang = load("btb-lang", null); if (savedLang === "en") { lang = "en"; document.getElementById("lZh").setAttribute("aria-pressed", "false"); document.getElementById("lEn").setAttribute("aria-pressed", "true"); document.documentElement.lang = "en"; }
-  tab = load("btb-tab", "rider") === "ops" ? "ops" : "rider"; applyTab();
 
-  initMap(); renderChrome(); loadLive(); loadDays();
-  setInterval(function () { if (mode === "live") { loadLive(); } }, 60000);
+  // ---------- start ----------
+  var qs = {}; location.search.replace(/^\?/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) qs[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ""); });
+  var savedLang = qs.lang || load("btb-lang", null);
+  if (savedLang === "en") { lang = "en"; $("lZh").setAttribute("aria-pressed", "false"); $("lEn").setAttribute("aria-pressed", "true"); root.lang = "en"; }
+  var savedTab = qs.tab || load("btb-tab", "rider"); tab = savedTab === "ops" || savedTab === "about" ? savedTab : "rider"; applyTab();
+  if (/^#\d{6,}$/.test(location.hash)) pendingSno = location.hash.slice(1);
+  if (/^\d\d:\d\d$/.test(qs.t || "")) wantSlot = mins(qs.t);
+
+  initSheet(); initMap(); renderChrome(); renderAbout(null);
+  loadLive();
+  loadDays().then(function () { if (/^\d{4}-\d\d-\d\d$/.test(qs.replay || "") && replayDays.indexOf(qs.replay) >= 0) { replayDay = qs.replay; fillDays(); setMode("replay"); } });
+  setInterval(function () { if (mode === "live") loadLive(); }, 60000);
   setInterval(function () { var v = view(); if (v && mode === "live") { renderBell(v); renderStatus(v); } }, 15000);
 })();
 </script>
-
 </body>
 </html>

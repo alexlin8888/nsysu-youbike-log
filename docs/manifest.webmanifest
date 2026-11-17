@@ -1,0 +1,29 @@
+{
+  "name": "Beat the Bell｜中山大學 YouBike",
+  "short_name": "Beat the Bell",
+  "description": "中山大學周邊 309 個 YouBike 站，每 10 分鐘更新：現在可借幾台、30 分內會不會沒車、下課後預估剩幾台，以及下課前的卡車調度路線。",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10202f",
+  "theme_color": "#10202f",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
