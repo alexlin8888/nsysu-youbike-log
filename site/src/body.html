@@ -21,7 +21,10 @@
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" id="tabRider" type="button" aria-selected="true" aria-controls="paneRider">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="16.5" r="3.5"/><circle cx="18" cy="16.5" r="3.5"/><path d="M6 16.5 9.5 8.5h5.2L18 16.5M9.5 8.5 12 16.5h6M8 8.5h3M14.7 8.5 14 6h2.4"/></svg>
-        <span id="tabRiderT">找車</span></button>
+        <span id="tabRiderT">借車</span></button>
+      <button role="tab" id="tabDock" type="button" aria-selected="false" aria-controls="paneRider">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20.5V10a7 7 0 0 1 14 0v10.5"/><path d="M12 7.5v9M8.6 13.2l3.4 3.4 3.4-3.4"/></svg>
+        <span id="tabDockT">還車</span></button>
       <button role="tab" id="tabOps" type="button" aria-selected="false" aria-controls="paneOps">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9.5h-11zM13.5 9.5h4.2l3.3 3.5V16h-7.5"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
         <span id="tabOpsT">調度</span></button>
@@ -42,12 +45,22 @@
             <div class="results" id="qres" hidden></div>
           </div>
           <div class="best" id="best" hidden></div>
+          <p class="tip" id="tip" hidden></p>
+          <div class="origin" role="group" id="whenGroup">
+            <span class="k" id="whenK"></span>
+            <span class="opts" id="whenChips"></span>
+          </div>
           <div class="origin" role="group" id="originGroup">
             <span class="k" id="originK"></span>
             <button class="opt" id="oCampus" type="button" aria-pressed="true"></button>
+            <button class="opt" id="oKrt" type="button" aria-pressed="false"></button>
             <button class="opt" id="oMe" type="button" aria-pressed="false"></button>
             <button class="opt" id="oPick" type="button" aria-pressed="false"></button>
           </div>
+          <section class="usual" id="usualSec" hidden>
+            <h2><span id="hUsual"></span><span class="sub" id="hUsualSub"></span></h2>
+            <div class="usualbar" id="usual"></div>
+          </section>
           <section id="favSec">
             <h2><span id="hFav"></span><span class="sub" id="hFavSub"></span></h2>
             <ol class="rows" id="favs"></ol>

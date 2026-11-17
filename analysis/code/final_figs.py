@@ -8,6 +8,8 @@ FINAL_DIR is analysis/results/final. Each figure is drawn when its inputs exist:
   fig_final_forecast.png  forecast/forecast_*.csv     the after-class forecast against its baselines; reliability
   fig_final_planner.png   planner/planner_by_slot.csv what the planner expects and plans at NSYSU, by time of day
   fig_final_rates.png     RATES_DIR/rates*.csv        hourly and 10-minute chain rates at the campus stations
+  fig_final_rider.png     rider/rider_summary.csv     does the advice get a rider a bike or a dock: success against extra walking
+  fig_final_sim.png       sim/sim_summary.csv         simulated trucks at NSYSU: what one to three campus trucks avoid
   fig_architecture_final.png                          the system as deployed
 """
 import sys
@@ -181,7 +183,7 @@ abox(1, 21, 30, 13, "Simulator (2.6)", "real trips, K trucks;\nunmet, empty-min,
 abox(33, 21, 30, 13, "Predictor (2.4)", "GBM + Poisson roll-out,\nP(empty in 30–120 min)", "mod")
 abox(67.5, 21, 31.5, 13, "Transfer (2.5)", "NTU model zero-shot,\n0–4 weeks of local data", "out")
 abox(33, 2, 30, 13, "Planner (2.6)", "route search with\nannealing and 2-opt", "out")
-abox(67.5, 2, 31.5, 13, "Live app (2.8)", "where to borrow now and\nafter class; truck route", "out")
+abox(67.5, 2, 31.5, 13, "Live app (2.8)", "where to borrow, where\nto return; truck route", "out")
 for xx in (16, 48, 83.25):
     aarrow(xx, 78, xx, 72.3); aarrow(xx, 59, xx, 53.3)
 aarrow(48, 40, 48, 34.3); aarrow(16, 40, 16, 34.3); aarrow(31, 46.5, 33, 46.5)
@@ -215,3 +217,45 @@ if f.exists():
     axes[0].tick_params(labelbottom=False)
     title(fig, 0.01, 0.995, "(a) Rental rate, 8 campus stations"); title(fig, 0.01, 0.52, "(b) Return rate")
     save(fig, "fig_final_rates.png", ax=axes[0])
+
+# ======================= does the advice get a rider a bike (a dock)? =======================
+f = FINAL / "rider" / "rider_summary.csv"
+if f.exists():
+    r = pd.read_csv(f)
+    fig = plt.figure(figsize=(W, 1.9))
+    panels = [("leave", "(a) Leaving campus,\n17:00-19:50", "chain0.9"), ("dock", "(b) Returning on\ncampus, 09:00-10:50", "chain0.95"), ("arrive", "(c) Borrowing below\ncampus, 08:30-10:50", "chain0.9")]
+    axes = [fig.add_axes([0.115 + 0.295 * k, 0.2, 0.26, 0.5]) for k in range(3)]
+    for ax, (name, head, used) in zip(axes, panels):
+        g = r[r.scenario == name].set_index("strategy")
+        cs = [c for c in g.index if c.startswith("counts")]; ch = [c for c in g.index if c.startswith("chain")]
+        ax.plot(g.loc[cs, "extra_walk_min"], 100 * g.loc[cs, "success"], color=MUTED, lw=1.0, marker="s", ms=2.6, label="live counts, at least K")
+        ax.plot(g.loc[ch, "extra_walk_min"], 100 * g.loc[ch, "success"], color=BLUE, lw=1.2, marker="o", ms=2.8, label="chance on arrival (chain)")
+        ax.plot([0], [100 * g.loc["nearest", "success"]], marker="D", ms=3.6, lw=0, color=ORANGE, label="nearest station")
+        ax.plot([g.loc[used, "extra_walk_min"]], [100 * g.loc[used, "success"]], marker="o", ms=6.5, mfc="none", mec=BLUE, mew=0.9, lw=0)
+        ax.set_ylim(58, 101); ax.set_yticks([60, 70, 80, 90, 100]); top = float(g.loc[cs + ch, "extra_walk_min"].max()); ax.set_xlim(-0.08 * top - 0.15, top * 1.08)
+        ax.set_xticks([0, 2, 4, 6] if top > 4 else [0, 1, 2, 3] if top > 2.4 else [0, 1, 2]); grid(ax)
+        ax.set_xlabel("extra walk, min", labelpad=2)
+        if ax is not axes[0]:
+            ax.set_yticklabels([])
+        ax.set_title(head, fontsize=6.6, loc="left", pad=3)
+    axes[0].set_ylabel("got one on arrival, %", labelpad=2)
+    axes[0].legend(loc="lower left", bbox_to_anchor=(-0.48, 1.4), ncol=3, frameon=False, handletextpad=0.3, columnspacing=0.9, borderaxespad=0.1, fontsize=6.0)
+    save(fig, "fig_final_rider.png", ax=axes[0])
+
+# ======================= simulated trucks at NSYSU =======================
+f = FINAL / "sim" / "sim_summary.csv"
+if f.exists():
+    m = pd.read_csv(f)
+    fig = plt.figure(figsize=(W, 1.75))
+    ax = fig.add_axes([0.125, 0.2, 0.86, 0.6])
+    series = [("evening", "unmet_campus", "no bike on campus, 17:00-20:00", BLUE, "o"), ("morning", "unmet_gateway", "no bike below campus, 08:00-11:00", ORANGE, "s"),
+              ("morning", "refused_campus", "no dock on campus, 08:00-11:00", AQUA, "^")]
+    for shift, col, lab, colour, mk in series:
+        g = m[(m["shift"] == shift) & (m.policy == "campus")].sort_values("trucks")
+        y = 100 * g[col + "_avoided"].values; lo = 100 * g[col + "_lo"].values; hi = 100 * g[col + "_hi"].values
+        ax.plot(g.trucks, y, color=colour, lw=1.2, marker=mk, ms=3.2, label=lab)
+        ax.vlines(g.trucks, lo, hi, color=colour, lw=0.8)
+    ax.set_xticks([1, 2, 3]); ax.set_xlim(0.7, 3.3); ax.set_ylim(0, 100); ax.set_yticks([0, 25, 50, 75, 100]); grid(ax)
+    ax.set_xlabel("trucks serving the campus corridor", labelpad=2); ax.set_ylabel("failed attempts avoided, %", labelpad=2)
+    ax.legend(loc="lower left", bbox_to_anchor=(-0.13, 1.0), ncol=1, frameon=False, handletextpad=0.4, borderaxespad=0.1, fontsize=6.0, labelspacing=0.25)
+    save(fig, "fig_final_sim.png", ax=ax)

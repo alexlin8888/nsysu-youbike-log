@@ -7,6 +7,9 @@ docs/replay_YYYY-MM-DD.json exists (built with demo_state.py --replay; at most -
 logger loop iteration stays short), removes older replay files and writes docs/replays.json, the list the page
 offers in its replay menu (newest first).
 
+It also writes docs/outlook.json (demo_outlook.py), the usual day around the campus, when a day was added or the
+file is missing.
+
 Days listed in docs/replays_keep.txt (one YYYY-MM-DD per line) are kept however old they are, so that links to a
 replay moment in the report and in the video script keep working.
 """
@@ -46,4 +49,9 @@ except Exception:  # noqa: BLE001 - a missing or broken index is simply rewritte
     unchanged = False
 if not unchanged:   # rewritten only when the list of days changes, so a snapshot without news leaves it alone
     index.write_text(json.dumps({"days": have, "generated_at": datetime.now(TZ).isoformat(timespec="seconds")}), encoding="utf-8")
+# the "usual day" strip of the page: refreshed whenever a day was added, so it follows the semester
+outlook = DOCS / "outlook.json"
+if made or not outlook.exists():
+    r = subprocess.run([sys.executable, str(Path(__file__).parent / "demo_outlook.py"), str(DATA), str(outlook)], capture_output=True, text=True)
+    print(r.stdout.strip().splitlines()[-1] if r.stdout.strip() else r.stderr.strip()[-300:])
 print("replays:", have)

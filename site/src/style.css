@@ -167,10 +167,6 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .pick .sub { font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; column-gap: 10px; }
 .pick .walk { text-align: right; white-space: nowrap; font: 600 20px/1.1 var(--font-num); }
 .pick .walk small { display: block; font: 400 11.5px/1.3 var(--font-ui); color: var(--ink-2); }
-.pick.later { background: var(--board); color: var(--board-ink); }
-.pick.later .why { color: var(--bell); }
-.pick.later .sub, .pick.later .walk small { color: var(--board-mute); }
-.badge.b { background: var(--board-2); color: var(--bell); }
 .pick.none { background: var(--surface-2); cursor: default; grid-template-columns: minmax(0, 1fr); }
 .pick.none .why { color: var(--ink-2); }
 .pick.none .sub { font-size: 13.5px; color: var(--ink); }
@@ -199,14 +195,6 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .card .fact .v small { font: 500 13px var(--font-num); color: var(--ink-2); margin-left: 2px; }
 .card .fact .k { font-size: 12px; color: var(--ink-2); margin-top: 2px; line-height: 1.3; }
 /* the after-class forecast borrows the board's look */
-.after { margin-top: 12px; background: var(--board); color: var(--board-ink); border-radius: 12px; padding: 11px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
-.after .when { font-size: 12.5px; color: var(--board-mute); line-height: 1.35; }
-.after .when b { font: 600 17px/1.2 var(--font-num); color: var(--board-ink); display: block; }
-.after .est { font: 600 26px/1 var(--font-num); color: var(--bell); text-align: right; white-space: nowrap; }
-.after .est small { font: 500 13px var(--font-ui); margin-left: 3px; }
-.after .odds { grid-column: 1 / -1; font-size: 12.5px; color: var(--board-mute); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--board-line); display: flex; flex-wrap: wrap; column-gap: 14px; }
-.after .odds b { color: var(--board-ink); font: 600 13.5px var(--font-num); }
-.after.plain { display: block; font-size: 13px; color: var(--board-mute); }
 .card .chart { margin-top: 12px; }
 .card .chart .cap { font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
 .card .chart svg { width: 100%; height: 88px; display: block; }
@@ -321,6 +309,23 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 /* ---------- short windows (a phone held sideways): keep the board to one line ---------- */
 @media (max-height: 520px) and (min-width: 768px) { .ruler { display: none; } .board { padding-top: 10px; padding-bottom: 10px; } .board .at { font-size: 28px; } .tabs { margin-top: 8px; } }
 
+/* ---------- borrow and return: when, the tip, the usual day, the next 90 minutes ---------- */
+.origin .opts { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.tip { margin: -8px 2px 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.pick.weak { background: var(--low-soft); }
+.pick.weak .why { color: var(--low); }
+.usualbar svg { display: block; width: 100%; height: auto; }
+.card .facts.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ahead { margin-top: 12px; }
+.ahead .cap { font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+.ahead .cells { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.ahead .cell { border-radius: 10px; padding: 7px 4px 6px; text-align: center; background: var(--surface-2); }
+.ahead .cell b { display: block; font: 600 20px/1.1 var(--font-num); font-variant-numeric: tabular-nums; }
+.ahead .cell span { font: 500 11.5px/1.3 var(--font-num); color: var(--ink-2); }
+.ahead .cell.g { background: var(--ok-soft); } .ahead .cell.g b { color: var(--ok); }
+.ahead .cell.y { background: var(--low-soft); } .ahead .cell.y b { color: var(--low); }
+.ahead .cell.r { background: var(--out-soft); } .ahead .cell.r b { color: var(--out); }
+
 /* ---------- phone: map first, sheet over it, tabs at the bottom ---------- */
 @media (max-width: 767px) {
   :root { --pad: 16px; --top-h: 58px; }
@@ -332,6 +337,7 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
   .mini .lbl { font-size: 12px; color: var(--board-mute); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mini .left { font: 600 24px/1.1 var(--font-num); color: var(--bell); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .mini .left small { font: 500 13px var(--font-ui); margin-left: 3px; }
+  .mini .left small.bt { font: 500 12.5px var(--font-ui); color: var(--board-mute); margin: 0 8px 0 0; }
   .mini .left.calm { color: var(--board-ink); font-size: 18px; font-family: var(--font-ui); line-height: 1.35; }
   .top .seg { background: var(--board-2); }
   .top .seg button { color: var(--board-mute); padding: 5px 11px; min-height: 32px; }

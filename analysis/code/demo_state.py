@@ -6,10 +6,12 @@ Usage: python demo_state.py DATA_DIR RESULTS_DIR OUT_JSON [--trucks K] [--horizo
 Runs after every logger snapshot (see .github/workflows/logger.yml). For the latest 10-minute slot it
   1. builds the inventory-only features of features.py from the last hour of snapshots and scores
      P(empty within 30 min) and P(empty within 60 min) with the NTU models (zero-shot, Sec. 2.5);
-  2. prices every station with the birth-death chain of the planner using the NSYSU rates of
-     nsysu_rates.py (expected unmet rentals over the horizon without any truck);
+  2. runs the birth-death chain of the planner forward with the NSYSU rates of nsysu_rates.py: for every station the
+     chance of a bike, the chance of a free dock and the expected bikes 10 .. 90 minutes ahead ("ahead", one
+     character per value), and the expected unmet rentals over the horizon without any truck;
   3. plans one route per truck with the route search of route_planner.py (Sec. 2.6.3), the same
-     settings as the NTU replay (H = 90 min, beta = 0.25, up to 6 stops, Q = 20).
+     settings as the NTU replay (H = 90 min, beta = 0.25, up to 6 stops, Q = 20); the truck may pick up anywhere
+     but delivers only to the 19 stations between campus and the metro.
 Writes OUT_JSON for the demo page (docs/index.html): the stations with their probabilities, today's stock
 history since 06:00, the plan and the totals. --at scores a past slot; --replay writes every slot of one day
 (06:00-22:50) in a compact form so the page can scrub through the day.
@@ -45,8 +47,6 @@ BELLS, MAJ = _bell_minutes(NSYSU_BELLS, MAJORS)
 BELL_MIN = sorted(int(b[:2]) * 60 + int(b[3:]) for b in NSYSU_BELLS)
 WINDOW = (6 * 60, 23 * 60)        # the predictor and the planner cover 06:00-23:00
 DAY_START = 6 * 60                # history shown on the page starts here
-BELL_AFTER = 20                   # the rider's question: bikes left 20 min after the bell, when the class has reached the station
-BELL_MAX_AHEAD = 240              # answer it for any bell up to 4 h ahead (the chain has kernels for every hour of the day)
 
 t0 = time.time()
 st = load_stations(DATA)
@@ -61,8 +61,12 @@ DIST_KM = 6371 * np.hypot((lng[:, None] - lng[None, :]) * p_ * math.cos(lat.mean
 TRAVEL_MIN = DIST_KM / SPEED_KMH * 60
 EXCLUDED = (st.district == "旗津區").values      # a truck reaches Qijin only through the harbour tunnel; straight-line times do not model it
 GROUPS = np.where(st.sno.isin(CAMPUS), "campus", np.where(st.sno.isin(GATEWAY), "gateway", "other"))
-M30 = lgb.Booster(model_file=str(RESULTS / "model" / "lgb_inv_30.txt"))
-M60 = lgb.Booster(model_file=str(RESULTS / "model" / "lgb_inv_60.txt"))
+CORRIDOR = (st.sno.isin(CAMPUS) | st.sno.isin(GATEWAY)).values      # the 19 stations between campus and the metro: the truck delivers only here
+TUNED = (RESULTS / "model" / "lgb_inv_30_nsysu.txt").exists() and (RESULTS / "model" / "lgb_inv_60_nsysu.txt").exists()   # nsysu_finetune.py
+M30 = lgb.Booster(model_file=str(RESULTS / "model" / ("lgb_inv_30_nsysu.txt" if TUNED else "lgb_inv_30.txt")))
+M60 = lgb.Booster(model_file=str(RESULTS / "model" / ("lgb_inv_60_nsysu.txt" if TUNED else "lgb_inv_60.txt")))
+AHEAD_STEPS = 9                   # the page asks "will there be a bike / a dock when I get there": answer for 10 .. 90 minutes ahead
+A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"   # one character per value: probabilities in 64ths, counts as they are
 rates = pd.read_csv(RESULTS / "nsysu" / "rates" / "rates.csv", dtype={"sno": str})
 prior = pd.read_csv(RESULTS / "nsysu" / "rates" / "rates_prior.csv")
 _values = {}
@@ -128,19 +132,22 @@ def compute(df, ts, trucks=K, with_history=True):
     in_window = WINDOW[0] <= t_min < WINDOW[1]
     plans, unmet = [], np.zeros(N)
     nxt = [b for b in BELL_MIN if b > t_min]
-    bell = None
+    ahead = None
     if in_window:
         values = chain_values(offday)
-        if not offday and nxt and nxt[0] + BELL_AFTER - t_min <= BELL_MAX_AHEAD:   # stock expected BELL_AFTER min after the next bell, no truck
-            at = nxt[0] + BELL_AFTER
-            eb, pe, pf = values.forecast(t_min, bikes, (at - t_min) // STEP)
-            bell = {"bell": f"{nxt[0] // 60:02d}:{nxt[0] % 60:02d}", "at": f"{at // 60:02d}:{at % 60:02d}", "after_min": BELL_AFTER,
-                    "bikes": [round(float(x), 1) if o else None for x, o in zip(eb, observed)],
-                    "p_empty": [round(float(x), 3) if o else None for x, o in zip(pe, observed)],
-                    "p_full": [round(float(x), 3) if o else None for x, o in zip(pf, observed)]}
+        # the chain run forward without a truck: chance of a bike, chance of a free dock and expected bikes after 1..AHEAD_STEPS steps
+        P = np.zeros((N, values.C + 1), np.float32); P[np.arange(N), np.clip(bikes, 0, CAP)] = 1.0
+        lev = np.arange(values.C + 1)[None, :]
+        pb, pk, eb = [], [], []
+        for k in range(AHEAD_STEPS):
+            P = values._fwd(t_min + STEP * k, P)
+            pb.append(1 - P[:, 0]); pk.append(1 - P[np.arange(N), CAP]); eb.append((P * lev).sum(1))
+        code = lambda cols, top: ["".join(A64[min(63, int(c[i] * top + 0.5))] for c in cols) if observed[i] else "" for i in range(N)]
+        ahead = {"step": STEP, "bike": code(pb, 63), "dock": code(pk, 63), "bikes": code(eb, 1)}
         planner = RoutePlanner(TRAVEL_MIN, Q, STOP_MIN, 1.0, HORIZON, beta=BETA, max_stops=STOPS, iters=ITERS)
         B = values.benefit(t_min, bikes)
         unmet = values.last_unmet.astype(float)
+        B[~CORRIDOR, :, Q + 1:] = 0.0                               # one truck for the campus: it may pick up anywhere but delivers only to the corridor
         rng = np.random.default_rng(int(ts_last.timestamp()) // 600)
         claimed = ~observed | EXCLUDED
         for k in range(trucks):
@@ -165,13 +172,14 @@ def compute(df, ts, trucks=K, with_history=True):
     totals = {"observed": int(observed.sum()), "bikes": int(bikes[observed].sum()), "empty_now": int((bikes[observed] == 0).sum()),
               "p30_over_half": int((p30[observed] >= 0.5).sum()),
               "expected_unmet": round(float(unmet[observed].sum()), 1) if in_window else None,
+              "unmet_corridor": round(float(unmet[observed & CORRIDOR].sum()), 1) if in_window else None,
               "plan_value": round(sum(p["value"] for p in plans), 1) if plans else 0.0}
     out = {"snapshot_at": ts_last.strftime("%Y-%m-%d %H:%M"), "t_min": int(t_min), "offday": offday, "in_semester": in_sem, "in_window": in_window,
            "next_bell": next_bell, "totals": totals, "plans": plans,
            "bikes": [int(b) if o else None for b, o in zip(bikes, observed)], "docks": [int(x) if o else None for x, o in zip(docks, observed)],
            "status": [None if np.isnan(x) else int(x) for x in status], "age": [None if np.isnan(x) else int(x) for x in age],
            "p30": [round(float(x), 3) if o else None for x, o in zip(p30, observed)], "p60": [round(float(x), 3) if o else None for x, o in zip(p60, observed)],
-           "unmet": [round(float(x), 2) if (o and in_window) else None for x, o in zip(unmet, observed)], "bell": bell}
+           "unmet": [round(float(x), 2) if (o and in_window) else None for x, o in zip(unmet, observed)], "ahead": ahead}
     if with_history:
         grid = pd.date_range(date + pd.Timedelta(minutes=DAY_START), ts_last, freq="10min")
         h = wb.reindex(grid)
@@ -187,7 +195,8 @@ def station_list():
 
 META = {"horizon_min": HORIZON, "bells": NSYSU_BELLS, "major_bells": MAJORS, "window": ["06:00", "23:00"],
         "settings": {"Q": Q, "speed_kmh": SPEED_KMH, "stop_min": STOP_MIN, "per_bike_min": PER_BIKE_MIN, "beta": BETA, "max_stops": STOPS, "iters": ITERS,
-                     "predictor": "NTU inventory-only LightGBM, zero-shot", "rates": "chain MLE on the logger, hourly for every station and per 10-minute slot for the campus corridor (nsysu_rates.py)",
+                     "predictor": "NTU inventory-only LightGBM, " + ("fine-tuned on the NSYSU logger (nsysu_finetune.py)" if TUNED else "zero-shot"),
+                     "scope": "the truck delivers only to the 19 stations between campus and the metro", "rates": "chain MLE on the logger, hourly for every station and per 10-minute slot for the campus corridor (nsysu_rates.py)",
                      "excluded": "Qijin district (harbour tunnel detour)"}}
 
 if __name__ == "__main__":
@@ -203,7 +212,7 @@ if __name__ == "__main__":
             s = compute(df, ts, with_history=False)
             if s["snapshot_at"] != ts.strftime("%Y-%m-%d %H:%M"):
                 continue                                  # no snapshot for this slot
-            slots.append({k: s[k] for k in ("snapshot_at", "t_min", "next_bell", "totals", "plans", "bikes", "p30", "p60", "unmet", "bell")})
+            slots.append({k: s[k] for k in ("snapshot_at", "t_min", "next_bell", "totals", "plans", "bikes", "docks", "p30", "p60", "unmet", "ahead")})
             print(f"{s['snapshot_at']} unmet {s['totals']['expected_unmet']} plan {s['totals']['plan_value']}", flush=True)
         dstr = day.strftime("%Y-%m-%d")
         replay = dict(META, generated_at=datetime.now(TZ).isoformat(timespec="seconds"), date=REPLAY, trucks=K,

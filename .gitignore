@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+# large intermediates, rebuilt by analysis/code/final_avail.py and final_rider.py
+analysis/results/final/avail/avail_oof.npz
+analysis/results/final/rider/rider_cases.csv

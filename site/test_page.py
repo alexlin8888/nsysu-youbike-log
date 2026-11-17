@@ -3,13 +3,14 @@
 
 Usage: python3 site/test_page.py [BASE_URL]        default http://127.0.0.1:8770/index.html
 
-Serve docs/ first (python3 -m http.server 8770 --directory docs). Every check runs at several window sizes;
+Serve docs/ first (python3 -m http.server 8770 --directory docs). Every check runs at six window sizes;
 checks of the sheet run on phone sizes only. The data files are the real ones in docs/, except where a check
 needs a particular situation (fresh data, stale data, a day off, a failed download) and rewrites state.json on
 the fly. Prints one line per check and exits non-zero if any failed.
 """
 import asyncio
 import json
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -20,7 +21,9 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8770/index.html"
 TZ = timezone(timedelta(hours=8))
 SIZES = {"desktop 1440x900": (1440, 900, False), "laptop 1280x720": (1280, 720, False), "tablet 820x1180": (820, 1180, True),
          "phone 390x844": (390, 844, True), "phone 430x932": (430, 932, True), "phone 360x640": (360, 640, True)}
-REPLAY_DAY = None           # filled in from replays.json: the newest class day with a truck plan around 16:00
+if os.environ.get("BTB_SIZES"):                 # e.g. BTB_SIZES="phone 390" runs one size while editing
+    SIZES = {k: v for k, v in SIZES.items() if any(k.startswith(x.strip()) for x in os.environ["BTB_SIZES"].split(","))}
+REPLAY_DAY = None           # filled in from replays.json: the newest class day with a truck plan at 16:00
 results = []
 
 
@@ -131,9 +134,12 @@ async def check_rider(browser, size):
         href = await page.get_attribute("#card a.btn", "href"); target = await page.get_attribute("#card a.btn", "target")
         record(size, "walking directions link is well formed", bool(re.match(r"https://www\.google\.com/maps/dir/\?api=1&destination=22\.\d+,120\.\d+&travelmode=walking$", href or "")) and target == "_blank", href or "")
         facts = await page.locator("#card .fact .v").all_inner_texts()
-        record(size, "card shows bikes, docks and the 30-minute chance", len(facts) == 3 and all(re.search(r"\d|–", f) for f in facts), " | ".join(f.replace("\n", "") for f in facts))
-        chart = await page.locator("#card .chart svg path").count()
-        record(size, "card draws today's stock", chart >= 1, f"{chart} paths")
+        says = (await page.locator("#card .says").inner_text()).replace("\n", " ")
+        record(size, "card shows bikes, docks and the answer on arrival", len(facts) == 2 and all(re.search(r"\d|–", f) for f in facts) and bool(re.search(r"你到的時候|現在沒車", says)), " | ".join(f.replace("\n", "") for f in facts) + " | " + says[:50])
+        cells = await page.evaluate("Array.from(document.querySelectorAll('#card .ahead .cell')).map(c => c.querySelector('b').textContent + '@' + c.querySelector('span').textContent)")
+        record(size, "card lists the next 90 minutes in five steps", len(cells) == 5 and all(re.fullmatch(r"\d+@\d\d:\d\d", c) for c in cells), " ".join(cells))
+        chart = await page.locator("#card .chart svg path").count(); dashed = await page.locator("#card .chart svg path[stroke-dasharray]").count()
+        record(size, "card draws today's stock and the forecast", chart >= 3 and dashed == 1, f"{chart} paths, {dashed} dashed")
         box = await page.locator("#card").bounding_box()
         record(size, "card fits the panel width", box["x"] >= 0 and box["x"] + box["width"] <= SIZES[size][0] + 1, str(box))
         # favourite on, visible in the list, survives a reload, favourite off
@@ -152,6 +158,85 @@ async def check_rider(browser, size):
         await page.locator("#near .row").nth(1).click(); await page.wait_for_timeout(300)
         await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
         record(size, "Escape closes the card", await page.get_attribute("#cardWrap", "hidden") is not None)
+    await ctx.close()
+
+
+async def check_when(browser, size):
+    """Borrow tab: leaving now or after a class end, the leave-by tip, the usual day, the metro as a start."""
+    ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:00")
+    await page.wait_for_timeout(1200)
+    await open_sheet(page, size)
+    chips = await page.locator("#whenChips .opt").all_inner_texts()
+    pressed = await page.locator("#whenChips .opt[aria-pressed=true]").all_inner_texts()
+    record(size, "borrow: leave now or after the next class end", chips[:1] == ["現在"] and "17:00 下課" in chips and pressed == ["現在"] and await page.inner_text("#whenK") == "幾點走", " / ".join(chips))
+    why0 = await page.locator("#best .why").inner_text()
+    colours0 = await page.evaluate("Array.from(document.querySelectorAll('#near .badge')).map(b => b.className).join(' ')")
+    await page.locator("#whenChips .opt", has_text="17:00 下課").click(); await page.wait_for_timeout(350)
+    why1 = await page.locator("#best .why").inner_text()
+    colours1 = await page.evaluate("Array.from(document.querySelectorAll('#near .badge')).map(b => b.className).join(' ')")
+    pressed = await page.locator("#whenChips .opt[aria-pressed=true]").all_inner_texts()
+    record(size, "choosing the class end re-reads every station for that time", why0 == "現在去這站借" and why1 == "17:00 下課後去這站借" and pressed == ["17:00 下課"] and colours0 != colours1, f"{why0} -> {why1}")
+    name = await page.locator("#best button.pick .nm").inner_text()
+    box = await page.locator("#best button.pick").bounding_box()
+    record(size, "the suggestion fits its column", box is not None and box["x"] >= 0 and box["x"] + box["width"] <= SIZES[size][0] + 0.5, f"x {box['x']:.0f}, width {box['width']:.0f}")
+    await page.locator("#best button.pick").click(); await page.wait_for_timeout(500)
+    record(size, "the after-class suggestion opens its station", await page.locator("#card .nm").inner_text() == name, name)
+    await ctx.close()
+    # 16:40 on a class day: the page says until when the short walk still works, or which closer station to skip
+    ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:40")
+    await page.wait_for_timeout(1200)
+    await open_sheet(page, size)
+    tip = await page.inner_text("#tip") if await page.get_attribute("#tip", "hidden") is None else ""
+    record(size, "a line under the suggestion says how long it holds or what it skips", bool(re.search(r"\d\d:\d\d 前出發|接下來一小時|比較近|機會最大", tip)), tip)
+    sub = await page.locator("#near .row .sub").first.inner_text()
+    record(size, "each row says when its answer changes", bool(re.search(r"\d\d:\d\d", " ".join(await page.locator("#near .row .sub").all_inner_texts()))), sub.replace("\n", " "))
+    usual = await page.get_attribute("#usualSec", "hidden") is None
+    bars = await page.locator("#usual svg rect").count(); head = (await page.inner_text("#usualSec h2")).replace("\n", " ")
+    record(size, "the usual day on campus is drawn in half hours", usual and bars == 34 and "校內平常幾點難借" in head and bool(re.search(r"\d\d:\d\d 到 \d\d:\d\d", head)), f"{bars} bars | {head}")
+    first = await page.locator("#near .row .nm").first.inner_text()
+    await page.click("#oKrt"); await page.wait_for_timeout(500)
+    await open_sheet(page, size)
+    first2 = await page.locator("#near .row .nm").first.inner_text(); head2 = (await page.inner_text("#usualSec h2")).replace("\n", " ")
+    record(size, "the metro station can be the start", await page.get_attribute("#oKrt", "aria-pressed") == "true" and "哈瑪星" in first2 and first2 != first and "這一帶平常幾點難借" in head2, f"{first} -> {first2} | {head2}")
+    await ctx.close()
+
+
+async def check_dock(browser, size):
+    """Return tab: where to return on arrival, by destination and arrival time."""
+    ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=09:00")
+    await page.wait_for_timeout(1200)
+    await page.click("#tabDock"); await page.wait_for_timeout(450)
+    await open_sheet(page, size)
+    chips = await page.locator("#whenChips .opt").all_inner_texts()
+    pressed = await page.locator("#whenChips .opt[aria-pressed=true]").all_inner_texts()
+    labels = [await page.inner_text(i) for i in ("#originK", "#whenK")]
+    record(size, "return: asks where to and when", await page.get_attribute("#tabDock", "aria-selected") == "true" and await page.get_attribute("#paneRider", "hidden") is None and labels == ["到哪裡", "幾點到"] and chips == ["現在", "10 分後", "20 分後", "30 分後"] and pressed == ["10 分後"], f"{labels} {chips} {pressed}")
+    why = await page.locator("#best .why").inner_text(); sub = (await page.locator("#best .pick .sub").inner_text()).replace("\n", " ")
+    cls = await page.locator("#best .pick .badge").get_attribute("class")
+    record(size, "return: one station is suggested, with its free docks", why == "騎到這站還" and "空位" in sub and " x" not in cls and " r" not in cls, f"{sub} [{cls}]")
+    hard = await page.locator("#near .badge.x, #near .badge.r, #near .badge.y").count()
+    rows = await page.locator("#near .row").count(); lab = await page.locator("#near .row .walk small").first.inner_text()
+    record(size, "return: the list is ordered from the destination and marks the stations filling up", rows == 8 and lab == "到目的地" and hard >= 1, f"{rows} rows, {hard} filling up, '{lab}'")
+    counts = await page.evaluate("Array.from(document.querySelectorAll('#near .row')).slice(0, 3).map(r => r.querySelector('.badge').textContent + ' ' + r.querySelector('.nm').textContent)")
+    await page.locator("#near .row").first.click(); await page.wait_for_timeout(450)
+    free = (await page.locator("#card .fact .v").nth(1).inner_text()).strip(); says = (await page.locator("#card .says").inner_text()).replace("\n", " ")
+    cap = await page.locator("#card .ahead .cap").inner_text()
+    record(size, "return: the number on a row is its free docks, and the card forecasts docks", counts[0].split(" ")[0] == free and "預估空位" in cap and bool(re.search(r"位子|停滿", says)), f"{counts[0]} | card {free} | {says[:40]}")
+    await page.click("#cardX"); await page.wait_for_timeout(200)
+    colours0 = await page.evaluate("Array.from(document.querySelectorAll('#near .row')).map(r => r.querySelector('.sub').textContent).join('|')")
+    await page.locator("#whenChips .opt", has_text="30 分後").click(); await page.wait_for_timeout(350)
+    pressed = await page.locator("#whenChips .opt[aria-pressed=true]").all_inner_texts()
+    record(size, "return: the arrival time can be moved", pressed == ["30 分後"], str(pressed))
+    head = (await page.inner_text("#usualSec h2")).replace("\n", " ") if await page.get_attribute("#usualSec", "hidden") is None else ""
+    record(size, "return: the usual day shows when campus docks are full", "校內平常幾點難還" in head and await page.locator("#usual svg rect").count() == 34, head)
+    if not is_phone(size) and SIZES[size][0] >= 1100:
+        record(size, "legend follows the return tab", "你騎到的時候" in await page.inner_text("#legend"), (await page.inner_text("#legend")).replace("\n", " ")[:50])
+    # the borrow tab keeps its own start and time
+    await page.click("#oKrt"); await page.wait_for_timeout(400)
+    await page.click("#tabRider"); await page.wait_for_timeout(400)
+    await open_sheet(page, size)
+    record(size, "borrow and return keep separate places and times", await page.get_attribute("#oCampus", "aria-pressed") == "true" and await page.locator("#whenChips .opt[aria-pressed=true]").all_inner_texts() == ["現在"] and await page.inner_text("#originK") == "從哪裡")
+    record(size, "return tab runs without script errors", not page.errors, "; ".join(page.errors[:3]))
     await ctx.close()
 
 
@@ -220,9 +305,13 @@ async def check_ops(browser, size):
     await open_sheet(page, size)
     stats = [await page.inner_text(i) for i in ("#tEmpty", "#tRisk", "#tUnmet", "#tSaved")]
     record(size, "dispatch tab shows its four numbers", all(re.search(r"\d|–", s) for s in stats) and await page.get_attribute("#paneRider", "hidden") is not None, " | ".join(s.replace("\n", " ") for s in stats))
+    scope = (await page.inner_text("#hKpi")).replace("\n", " ")
+    record(size, "dispatch numbers are for the stations around campus", "校園這一帶" in scope and "19 站" in scope, scope)
     rows = await page.locator("#risk li").count()
     vals = [float(v.strip("%")) for v in await page.locator("#risk .pv").all_inner_texts()]
     record(size, "risk list: ten stations, highest first", rows == 10 and vals == sorted(vals, reverse=True), str(vals))
+    outside = await page.evaluate("Array.from(document.querySelectorAll('#risk .nm')).map(e => e.textContent).filter(n => !/中山大學|哈瑪星|鼓山|哨船|濱海|西子灣|船渠|新濱/.test(n))")
+    record(size, "risk list stays within the stations around campus", not outside, str(outside))
     await page.click("#hU"); await page.wait_for_timeout(300)
     h_u = await page.inner_text("#hRisk"); vals_u = [float(v) for v in await page.locator("#risk .pv").all_inner_texts()]
     await page.click("#h60"); await page.wait_for_timeout(300)
@@ -274,22 +363,13 @@ async def check_replay(browser, size):
         await page.locator("#plans .stop").first.click(); await page.wait_for_timeout(500)
         record(size, "a stop opens its station", await page.locator("#card .nm").inner_text() == name, name)
     await ctx.close()
-    # the rider tab an hour before the 17:00 class end: where to borrow now, and where after class
-    ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:00")
+    # a truck trip is judged against the campus corridor, so the share it removes is a readable number
+    ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:00&tab=ops")
     await page.wait_for_timeout(1200)
     await open_sheet(page, size)
-    rows = await page.locator("#best .pick").count()
-    later = page.locator("#best .pick.later")
-    text = (await page.locator("#best").inner_text()).replace("\n", " ")
-    ok = rows >= 1 and "現在借" in text and "下課後借" in text and (await later.count() == 1 or "都去這站" in text)
-    record(size, "before a class end the suggestion covers now and after class", ok, text[:120])
-    if await later.count():
-        name = await later.locator(".nm").inner_text()
-        box = await later.bounding_box()
-        vw = SIZES[size][0]
-        record(size, "the after-class row fits its column", box is not None and box["x"] >= 0 and box["x"] + box["width"] <= vw + 0.5, f"x {box['x']:.0f}, width {box['width']:.0f}")
-        await later.click(); await page.wait_for_timeout(500)
-        record(size, "the after-class row opens its station", await page.locator("#card .nm").inner_text() == name, name)
+    unmet = float(re.search(r"[\d.]+", await page.inner_text("#tUnmet")).group()); saved = await page.inner_text("#tSaved")
+    pct = re.search(r"(\d+)%", saved)
+    record(size, "the trip's gain is shown against the corridor's shortfall", unmet > 0 and pct is not None and 1 <= int(pct.group(1)) <= 100, f"shortfall {unmet:.0f}, trip {saved.replace(chr(10), ' ')}")
     await ctx.close()
 
 
@@ -297,22 +377,27 @@ async def check_about_lang(browser, size):
     ctx, page = await new_page(browser, size, state_patch=fresh)
     await page.click("#tabAbout"); await page.wait_for_timeout(400)
     await open_sheet(page, size)
-    record(size, "about tab explains the colours and the numbers", await page.locator("#aboutKey li").count() == 8 and "LightGBM" in await page.inner_text("#aboutHow"))
+    record(size, "about tab explains the colours and the numbers", await page.locator("#aboutKey li").count() == 7 and "LightGBM" in await page.inner_text("#aboutHow") and "93%" in await page.inner_text("#aboutWhat"))
     await page.click("#lEn"); await page.wait_for_timeout(400)
-    en = [await page.inner_text(i) for i in ("#tabRiderT", "#tabOpsT", "#tabAboutT", "#mLive")]
-    await page.click("#tabRider"); await page.wait_for_timeout(300)
-    leftover = await page.evaluate("Array.from(document.querySelectorAll('#paneRider *, .tabs *, .top *')).filter(e => e.children.length === 0 && /[\\u4e00-\\u9fff]/.test(e.textContent)).map(e => e.textContent.trim()).filter(Boolean).slice(0, 6)")
-    record(size, "English: tabs, header and the rider list are translated", en == ["Find a bike", "Dispatch", "About", "Live"] and not leftover, f"{en} leftover {leftover}")
+    en = [await page.inner_text(i) for i in ("#tabRiderT", "#tabDockT", "#tabOpsT", "#tabAboutT", "#mLive")]
+    leftover = []
+    for tab_id in ("#tabRider", "#tabDock"):
+        await page.click(tab_id); await page.wait_for_timeout(300)
+        leftover += await page.evaluate("Array.from(document.querySelectorAll('#paneRider *, .tabs *, .top *, #legend *')).filter(e => e.children.length === 0 && /[\\u4e00-\\u9fff]/.test(e.textContent)).map(e => e.textContent.trim()).filter(Boolean).slice(0, 6)")
+    record(size, "English: tabs, header, borrow and return lists are translated", en == ["Borrow", "Return", "Dispatch", "About", "Live"] and not leftover, f"{en} leftover {leftover}")
     await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
-    record(size, "language choice is remembered", await page.inner_text("#tabRiderT") == "Find a bike" and await page.evaluate("document.documentElement.lang") == "en")
+    record(size, "language choice is remembered", await page.inner_text("#tabRiderT") == "Borrow" and await page.evaluate("document.documentElement.lang") == "en")
     await page.click("#tabAbout"); await page.wait_for_timeout(300); await open_sheet(page, size)
     await page.click("#lZh"); await page.wait_for_timeout(300)
-    record(size, "back to Chinese", await page.inner_text("#tabRiderT") == "找車")
+    record(size, "back to Chinese", await page.inner_text("#tabRiderT") == "借車")
     over = await page.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
     record(size, "English text does not widen the page", over[0] <= over[1], str(over))
     await ctx.close()
     ctx, page = await new_page(browser, size, query="?tab=ops&lang=en")
     record(size, "links can set the tab and the language", await page.get_attribute("#tabOps", "aria-selected") == "true" and await page.inner_text("#tabOpsT") == "Dispatch")
+    await ctx.close()
+    ctx, page = await new_page(browser, size, state_patch=fresh, query="?tab=dock")
+    record(size, "a link can open the return tab", await page.get_attribute("#tabDock", "aria-selected") == "true" and await page.inner_text("#originK") == "到哪裡")
     await ctx.close()
     ctx, page = await new_page(browser, size, state_patch=fresh, query="#501209069")
     await page.wait_for_timeout(600)
@@ -334,12 +419,22 @@ async def check_states(browser, size):
     await ctx.close()
 
     def dayoff(data):
-        fresh(data); data["offday"] = 1; data["next_bell"] = None; data["bell"] = None
+        fresh(data); data["offday"] = 1; data["next_bell"] = None
     ctx, page = await new_page(browser, size, state_patch=dayoff)
     board = await page.inner_text("#mini" if is_phone(size) else "#board")
     await open_sheet(page, size)
     rows = await page.locator("#near .row").count()
-    record(size, "a day off: board says so, list still works without an after-class estimate", "今天沒課" in board and rows == 8 and "預估剩" not in await page.inner_text("#near"), board.replace("\n", " "))
+    chips = await page.locator("#whenChips .opt").all_inner_texts()
+    record(size, "a day off: board says so, the list works and no class end is offered", "今天沒課" in board and rows == 8 and chips == ["現在"], board.replace("\n", " ") + " | " + "/".join(chips))
+    await ctx.close()
+
+    def no_forecast(data):                         # a snapshot written by the logger before it learned the forecast block
+        fresh(data); data.pop("ahead", None)
+    ctx, page = await new_page(browser, size, state_patch=no_forecast)
+    await open_sheet(page, size)
+    rows = await page.locator("#near .row").count(); picks = await page.locator("#best .pick").count()
+    await page.locator("#near .row").first.click(); await page.wait_for_timeout(400)
+    record(size, "a snapshot without the forecast still lists stations and opens a card", rows == 8 and picks == 1 and await page.locator("#card .fact").count() == 2 and await page.locator("#card .ahead").count() == 0 and not page.errors, "; ".join(page.errors[:2]))
     await ctx.close()
 
     def night(data):
@@ -360,9 +455,11 @@ async def check_keyboard_a11y(browser, size):
     unnamed = await page.evaluate("""Array.from(document.querySelectorAll('button, a, input, select')).filter(e => e.offsetParent !== null && !(e.textContent.trim() || e.getAttribute('aria-label') || e.getAttribute('title') || e.getAttribute('placeholder'))).map(e => e.id || e.className)""")
     record(size, "every control has a name for screen readers", not unnamed, str(unnamed))
     await page.focus("#tabRider"); await page.keyboard.press("ArrowRight"); await page.wait_for_timeout(250)
+    dock = await page.get_attribute("#tabDock", "aria-selected")
+    await page.keyboard.press("ArrowRight"); await page.wait_for_timeout(250)
     ops = await page.get_attribute("#tabOps", "aria-selected")
-    await page.keyboard.press("ArrowLeft"); await page.wait_for_timeout(250)
-    record(size, "arrow keys move between tabs", ops == "true" and await page.get_attribute("#tabRider", "aria-selected") == "true")
+    await page.keyboard.press("ArrowLeft"); await page.wait_for_timeout(200); await page.keyboard.press("ArrowLeft"); await page.wait_for_timeout(250)
+    record(size, "arrow keys move between the four tabs", dock == "true" and ops == "true" and await page.get_attribute("#tabRider", "aria-selected") == "true")
     await open_sheet(page, size)
     await page.locator("#near .row").first.focus(); await page.keyboard.press("Enter"); await page.wait_for_timeout(400)
     record(size, "Enter on a focused row opens the station", await page.get_attribute("#cardWrap", "hidden") is None)
@@ -419,7 +516,7 @@ async def check_sheet(browser, size):
 async def check_assets(browser, size):
     ctx, page = await new_page(browser, size)
     base = BASE.rsplit("/", 1)[0] + "/"
-    out = await page.evaluate("""async (base) => { const r = {}; for (const f of ['manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'vendor/leaflet.js', 'replays.json']) { const x = await fetch(base + f); r[f] = x.status; } const m = await (await fetch(base + 'manifest.webmanifest')).json(); r.name = m.short_name; r.icons = m.icons.length; r.display = m.display; return r; }""", base)
+    out = await page.evaluate("""async (base) => { const r = {}; for (const f of ['manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'vendor/leaflet.js', 'replays.json', 'outlook.json']) { const x = await fetch(base + f); r[f] = x.status; } const m = await (await fetch(base + 'manifest.webmanifest')).json(); r.name = m.short_name; r.icons = m.icons.length; r.display = m.display; return r; }""", base)
     record(size, "manifest, icons and the map library are served", all(v == 200 for k, v in out.items() if isinstance(v, int) and k != "icons") and out["display"] == "standalone" and out["icons"] == 3, json.dumps(out))
     head = await page.evaluate("[document.querySelector('link[rel=manifest]') !== null, document.querySelector('meta[name=theme-color]').content, document.querySelector('meta[name=viewport]').content, document.title]")
     record(size, "page declares its manifest, theme colour and viewport", head[0] and head[1] == "#10202f" and "viewport-fit=cover" in head[2], str(head))
@@ -436,7 +533,7 @@ async def main():
         await ctx.close()
         print("replay day used for the plan checks:", REPLAY_DAY, flush=True)
         for size in SIZES:
-            for check in (check_load, check_rider, check_search, check_origin, check_ops, check_replay, check_about_lang, check_states, check_keyboard_a11y):
+            for check in (check_load, check_rider, check_when, check_dock, check_search, check_origin, check_ops, check_replay, check_about_lang, check_states, check_keyboard_a11y):
                 try:
                     await check(browser, size)
                 except Exception as exc:  # noqa: BLE001 - a crashed check is a failed check
@@ -447,9 +544,9 @@ async def main():
                 except Exception as exc:  # noqa: BLE001
                     record(size, "check_sheet crashed", False, str(exc).splitlines()[0][:200])
         try:
-            await check_assets(browser, "desktop 1440x900")
+            await check_assets(browser, next(iter(SIZES)))
         except Exception as exc:  # noqa: BLE001
-            record("desktop 1440x900", "check_assets crashed", False, str(exc).splitlines()[0][:200])
+            record(next(iter(SIZES)), "check_assets crashed", False, str(exc).splitlines()[0][:200])
         await browser.close()
     failed = [r for r in results if not r[2]]
     print(f"\n{len(results) - len(failed)} passed, {len(failed)} failed")

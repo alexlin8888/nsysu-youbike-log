@@ -1,6 +1,6 @@
 """Rental and return rates at NSYSU from the logger alone (no trip records exist in Kaohsiung).
 
-Usage: python nsysu_rates.py DATA_DIR OUT_DIR [--holdout N] [--workers W] [--until YYYY-MM-DD] [--slots] [--slot-prior H] [--tune-slots]
+Usage: python nsysu_rates.py DATA_DIR OUT_DIR [--holdout N] [--workers W] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--slots] [--slot-prior H] [--tune-slots]
 
 For every station, day type (teaching day / off-day) and hour of day, the 10-minute transitions
 s -> s' of the logged stock are fitted by maximum likelihood to the birth-death chain of the planner
@@ -20,7 +20,7 @@ days, one pair of rates per 10-minute slot of the day instead of per hour. An ho
 not spread evenly: most of it falls in the 20 minutes after the bell, which an hourly rate averages away. Each
 slot is fitted like an hourly cell, with that station's hourly rates as the prior (weight --slot-prior hours,
 default 0.5). --tune-slots prints the held-out likelihood for several prior weights (last five teaching days of
-the fitting window). --until restricts the fit to days up to that date.
+the fitting window). --until and --since restrict the fit to days up to, or from, a date.
 """
 import json
 import sys
@@ -42,6 +42,7 @@ ARG = lambda name, default, cast: cast(sys.argv[sys.argv.index(name) + 1]) if na
 HOLDOUT = ARG("--holdout", 0, int)
 WORKERS = ARG("--workers", 2, int)
 UNTIL = ARG("--until", None, str)
+SINCE = ARG("--since", None, str)
 SLOTS, TUNE_SLOTS = "--slots" in sys.argv, "--tune-slots" in sys.argv
 SLOT_PRIOR = ARG("--slot-prior", 0.5, float)     # hours of pseudo-exposure at the station's hourly rate
 SLOT_MIN_N = 5                                   # transitions a slot needs before it gets its own rate
@@ -176,6 +177,8 @@ if __name__ == "__main__":
     df = df[df.sno.isin(cap)]
     if UNTIL:
         df = df[df.date <= UNTIL]
+    if SINCE:
+        df = df[df.date >= SINCE]
     days = sorted(df.date.unique())
     t = transitions(df, cap)
     print(f"{len(days)} days {days[0]}..{days[-1]}, {len(t)} transitions, {t.sno.nunique()} stations", flush=True)

@@ -17,7 +17,11 @@
   var lang = "zh", mode = "live", tab = "rider", horizon = 30;
   var live = null, replay = null, replays = {}, replayDays = [], replayDay = null, slot = 0, playing = false, playTimer = null;
   var selected = null, fitted = false, nearN = 8, pendingSno = null, wantSlot = null, errKind = null, daysKey = "";
-  var origin = { kind: "campus", lat: CAMPUS_CENTER[0], lng: CAMPUS_CENTER[1] }, picking = false, favs = [];
+  var origin = { kind: "campus", lat: CAMPUS_CENTER[0], lng: CAMPUS_CENTER[1] }, dest = { kind: "campus", lat: CAMPUS_CENTER[0], lng: CAMPUS_CENTER[1] }, picking = false, favs = [];
+  var when = { rider: { kind: "now" }, dock: { kind: "plus", min: 10 } }, usual = null;      // when the rider leaves (borrow) or rides in (return)
+  var KRT = "501209023";                                                                      // the metro station at the foot of the campus (Exit 2), a preset place
+  var A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";               // state.json packs a chance or a count into one character
+  var SURE = { bike: 57, dock: 60 }, MAYBE = { bike: 38, dock: 45 };                          // in 64ths: 0.9 and 0.6 for a bike, 0.95 and 0.7 for a dock
   var map, attrib, glyphLayer, routeLayer, originLayer, markers = {};
   var sheetState = "half", sheetPx = { peek: 158, half: 320, full: 600 }, drag = null, swallowClick = false, toastTimer = null;
 
@@ -43,14 +47,40 @@
   function sep() { return lang === "zh" ? "，" : ", "; }
   favs = load("btb-favs", []); if (!Array.isArray(favs)) favs = [];
 
-  // ---------- what a station looks like right now ----------
-  // One vocabulary for the list and the map: bikes now (the number) and the 30-minute outlook (the colour and the words).
-  function outlook(v, i) {
-    var b = v.bikes[i], p = v.p30[i];
-    if (b == null) return { cls: "n", text: v.status && v.status[i] === 2 ? t("sOos") : t("sNone") };
-    if (b === 0) return { cls: "x", text: t("sGone") };
-    if (p == null) return { cls: "n", text: "" };
-    return p < 0.25 ? { cls: "g", text: t("sGood") } : p < 0.5 ? { cls: "y", text: t("sLow") } : p < 0.75 ? { cls: "o", text: t("sEmpty") } : { cls: "r", text: t("sVery") };
+  // ---------- will there be a bike (a free dock) when the rider gets there ----------
+  // One vocabulary for the list and the map: the number is the count right now, the colour and the words are the
+  // answer at the minute of arrival, from the chain forecast in state.json ("ahead").
+  function need() { return tab === "dock" ? "dock" : "bike"; }
+  function point() { return tab === "dock" ? dest : origin; }
+  function have(v, i, kind) { return kind === "bike" ? v.bikes[i] : (v.docks ? v.docks[i] : null); }
+  function nowMin(v) { if (mode !== "live") return v.t_min; var n = taipeiNow(), m = n.getHours() * 60 + n.getMinutes(); return m >= v.t_min && m - v.t_min <= 30 ? m : v.t_min; }
+  function leaveMin(v) { var w = when[tab === "dock" ? "dock" : "rider"], n = nowMin(v); return w.kind === "bell" ? Math.max(n, w.time + 5) : w.kind === "plus" ? n + w.min : n; }
+  function arriveMin(v, i) { var s = v.stations[i], p = point(); return leaveMin(v) + (need() === "bike" ? walkMin(distKm(s.lat, s.lng, p.lat, p.lng)) : 0); }
+  function aheadOf(v, i, key) { return v.ahead && v.ahead[key] && v.ahead[key][i] ? v.ahead[key][i] : ""; }
+  function stepAt(v, a, at) { return Math.max(1, Math.min(a.length, Math.ceil((at - v.t_min) / 10))); }
+  // chance in 64ths that station i has a bike (dock) at minute `at`; without a forecast, a guess from the count now
+  function chanceAt(v, i, kind, at) {
+    var h = have(v, i, kind); if (v.bikes[i] == null || h == null) return null;
+    var a = aheadOf(v, i, kind); if (!a) return h >= 3 ? 63 : h >= 1 ? 40 : 0;
+    return A64.indexOf(a.charAt(stepAt(v, a, at) - 1));
+  }
+  function expectAt(v, i, at) { var a = aheadOf(v, i, "bikes"); return a ? A64.indexOf(a.charAt(stepAt(v, a, at) - 1)) : null; }
+  function verdict(v, i, kind, at) {
+    if (v.bikes[i] == null) return { cls: "n", text: v.status && v.status[i] === 2 ? t("sOos") : t("sNone") };
+    var c = chanceAt(v, i, kind, at), h = have(v, i, kind), bike = kind === "bike";
+    if (c == null) return { cls: "n", text: "" };
+    if (c >= SURE[kind]) return { cls: "g", text: t(bike ? "cBikeYes" : "cDockYes") };
+    if (c >= MAYBE[kind]) return { cls: "y", text: t(bike ? "cBikeMaybe" : "cDockMaybe") };
+    return h === 0 ? { cls: "x", text: t(bike ? "sGone" : "sFullNow") } : { cls: "r", text: t(bike ? "cBikeNo" : "cDockNo") };
+  }
+  function look(v, i) { return verdict(v, i, need(), arriveMin(v, i)); }
+  // when the answer changes: "likely out by 17:20", or for an empty station "a bike likely back by 18:10"
+  function turnText(v, i, kind) {
+    var a = aheadOf(v, i, kind), h = have(v, i, kind), bike = kind === "bike", k; if (!a || h == null) return "";
+    var end = hm((v.t_min + 10 * a.length) % 1440), at = function (n) { return hm((v.t_min + 10 * (n + 1)) % 1440); };
+    if (h > 0) { for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) < 32) return t(bike ? "tGone" : "tFull", { t: at(k) }); return t(bike ? "tKeep" : "tFree", { t: end }); }
+    for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) >= 32) return t(bike ? "tBack" : "tOpen", { t: at(k) });
+    return t(bike ? "tNoBack" : "tNoOpen", { t: end });
   }
   function ramp(p) { if (p == null) return tok("--r0"); return tok(p < 0.1 ? "--r0" : p < 0.3 ? "--r1" : p < 0.5 ? "--r2" : p < 0.75 ? "--r3" : "--r4"); }
   function rampU(u) { if (u == null) return tok("--r0"); return tok(u < 0.5 ? "--r0" : u < 2 ? "--r1" : u < 5 ? "--r2" : u < 10 ? "--r3" : "--r4"); }
@@ -58,26 +88,26 @@
   function fillOf(v, i) {
     if (v.bikes[i] == null) return tok("--r0");
     if (tab === "ops") return horizon === 90 ? rampU(v.unmet ? v.unmet[i] : null) : ramp(v[keyOf()][i]);
-    return tok(FILL[outlook(v, i).cls]);
+    return tok(FILL[look(v, i).cls]);
   }
   function inkOn(hex) {
     var c = hex.replace("#", ""); if (c.length === 3) c = c.replace(/(.)/g, "$1$1");
     var r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
     return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#10202f" : "#ffffff";
   }
-  function badge(v, i) { var o = outlook(v, i); return "<span class=\"badge " + o.cls + "\">" + (v.bikes[i] == null ? "–" : v.bikes[i]) + "</span>"; }
-  function bellBikes(v, i) { return v.bell && v.bell.bikes && v.bell.bikes[i] != null ? v.bell.bikes[i] : null; }
+  function countOf(v, i) { var h = have(v, i, need()); return v.bikes[i] == null || h == null ? "–" : h; }
+  function badge(v, i) { return "<span class=\"badge " + look(v, i).cls + "\">" + countOf(v, i) + "</span>"; }
 
   // ---------- current view: live state or one replay slot, in one shape ----------
   function view() {
     if (mode === "replay" && replay) {
       var sl = replay.slots[slot];
-      return { meta: replay, stations: replay.stations, snapshot_at: sl.snapshot_at, t_min: sl.t_min, offday: replay.offday, in_window: true, next_bell: sl.next_bell, bell: sl.bell,
-               totals: sl.totals, plans: sl.plans, bikes: sl.bikes, docks: null, status: null, age: null, p30: sl.p30, p60: sl.p60, unmet: sl.unmet,
+      return { meta: replay, stations: replay.stations, snapshot_at: sl.snapshot_at, t_min: sl.t_min, offday: replay.offday, in_window: true, next_bell: sl.next_bell, ahead: sl.ahead || null,
+               totals: sl.totals, plans: sl.plans, bikes: sl.bikes, docks: sl.docks || null, status: null, age: null, p30: sl.p30, p60: sl.p60, unmet: sl.unmet,
                history: function (i) { return replay.slots.slice(0, slot + 1).map(function (x) { return [x.t_min, x.bikes[i]]; }); } };
     }
     if (!live) return null;
-    return { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell, bell: live.bell,
+    return { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell, ahead: live.ahead || null,
              totals: live.totals, plans: live.plans, bikes: live.bikes, docks: live.docks, status: live.status, age: live.age, p30: live.p30, p60: live.p60, unmet: live.unmet,
              history: function (i) { var t0 = mins(live.history.from), st = live.history.step; return (live.history.bikes[i] || []).map(function (b, k) { return [t0 + k * st, b]; }); } };
   }
@@ -188,7 +218,7 @@
       arc = frac >= 0.999 ? "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + tok("--ink-3") + "\" stroke-width=\"2.5\"/>"
         : "<path d=\"M " + c + " " + (c - R) + " A " + R + " " + R + " 0 " + (frac > 0.5 ? 1 : 0) + " 1 " + x.toFixed(2) + " " + y.toFixed(2) + "\" fill=\"none\" stroke=\"" + tok("--ink-3") + "\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>";
     }
-    var num = observed ? "<text x=\"" + c + "\" y=\"" + c + "\" dy=\"0.36em\" text-anchor=\"middle\" font-size=\"" + Math.min(14, Math.max(10, rr * 1.05)).toFixed(1) + "\" fill=\"" + inkOn(fill) + "\">" + v.bikes[i] + "</text>" : "";
+    var num = observed ? "<text x=\"" + c + "\" y=\"" + c + "\" dy=\"0.36em\" text-anchor=\"middle\" font-size=\"" + Math.min(14, Math.max(10, rr * 1.05)).toFixed(1) + "\" fill=\"" + inkOn(fill) + "\">" + (tab === "dock" ? countOf(v, i) : v.bikes[i]) + "</text>" : "";
     var label = isCampus(s) && SHORT[s.sno] ? "<span class=\"lbl\">" + SHORT[s.sno][lang === "zh" ? 0 : 1] + "</span>" : "";
     return open + "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + (rr + 1.5) + "\" fill=\"" + tok("--surface") + "\"/>" +
       "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + (isCampus(s) ? tok("--accent") : tok("--line-2")) + "\" stroke-width=\"" + (isCampus(s) ? 2.5 : 1.5) + "\"" + (observed ? "" : " stroke-dasharray=\"3 3\"") + "/>" + arc +
@@ -241,8 +271,9 @@
   }
   function drawOrigin() {
     originLayer.clearLayers();
-    if (origin.kind === "campus") return;
-    L.marker([origin.lat, origin.lng], { icon: L.divIcon({ className: "", html: "<div class=\"originicon\"></div>", iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 900, keyboard: false, interactive: false }).addTo(originLayer);
+    var p = point();
+    if (p.kind === "campus" || tab === "ops" || tab === "about") return;
+    L.marker([p.lat, p.lng], { icon: L.divIcon({ className: "", html: "<div class=\"originicon\"></div>", iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 900, keyboard: false, interactive: false }).addTo(originLayer);
   }
   // Centre a point in the part of the map that the sheet leaves visible.
   function viewTo(lat, lng, zoom, animate) {
@@ -262,6 +293,15 @@
 
   // ---------- the bell board ----------
   function untilText(m, long) { return m >= 100 ? t(long ? "bellInH" : "inHour", { h: Math.floor(m / 60), m: m % 60 }) : t(long ? "bellIn" : "inMin", { m: m }); }
+  // how the eight campus stations look for someone on campus right now: mostly sure, running low, or nearly out
+  function campusStatus(v) {
+    if (!v.ahead || !v.in_window) return "";
+    var kind = need(), n = 0, sure = 0, at = nowMin(v) + 3;
+    v.stations.forEach(function (s, i) { if (!isCampus(s) || v.bikes[i] == null) return; var c = chanceAt(v, i, kind, at); if (c == null) return; n++; if (c >= SURE[kind]) sure++; });
+    if (n < 4) return "";
+    var k = sure >= 0.6 * n ? "Ok" : sure >= 0.3 * n ? "Low" : "Out";
+    return t((kind === "bike" ? "stBike" : "stDock") + k);
+  }
   function renderBell(v) {
     var m = v.t_min, nb = v.next_bell, off = !!v.offday;
     if (mode === "live") {
@@ -271,16 +311,17 @@
     }
     var at = $("boardAt"), left = $("boardLeft"), note = $("boardNote"), lbl = $("boardLbl"), ml = $("miniLbl"), mleft = $("miniLeft");
     at.className = "at"; mleft.className = "left";
+    var st = campusStatus(v);
     if (off) {
-      lbl.textContent = t("nowIs", { t: hm(m) }); at.textContent = t("offdayBig"); at.classList.add("calm"); left.textContent = ""; note.textContent = t("offdayNote");
-      ml.textContent = t("offdayNote"); mleft.textContent = t("offdayBig"); mleft.classList.add("calm");
+      lbl.textContent = t("nowIs", { t: hm(m) }); at.textContent = t("offdayBig"); at.classList.add("calm"); left.textContent = ""; note.textContent = st || t("offdayNote");
+      ml.textContent = st || t("offdayNote"); mleft.textContent = t("offdayBig"); mleft.classList.add("calm");
     } else if (!nb) {
       var last = v.meta.bells[v.meta.bells.length - 1];
-      lbl.textContent = t("nowIs", { t: hm(m) }); at.textContent = t("overBig"); at.classList.add("calm"); left.textContent = ""; note.textContent = t("overNote", { t: last });
-      ml.textContent = t("overNote", { t: last }); mleft.textContent = t("overBig"); mleft.classList.add("calm");
+      lbl.textContent = t("nowIs", { t: hm(m) }); at.textContent = t("overBig"); at.classList.add("calm"); left.textContent = ""; note.textContent = st || t("overNote", { t: last });
+      ml.textContent = st || t("overNote", { t: last }); mleft.textContent = t("overBig"); mleft.classList.add("calm");
     } else {
-      lbl.textContent = t("bellNext"); at.textContent = nb.time; left.textContent = untilText(nb.minutes, true); note.textContent = t("nowIs", { t: hm(m) });
-      ml.textContent = t("bellNext") + " " + nb.time; mleft.textContent = untilText(nb.minutes, false);
+      lbl.textContent = t("bellNext"); at.textContent = nb.time; left.textContent = untilText(nb.minutes, true); note.textContent = st || t("nowIs", { t: hm(m) });
+      ml.textContent = st || (t("bellNext") + " " + nb.time); mleft.innerHTML = (st ? "<small class=\"bt\">" + t("wBell", { t: nb.time }) + "</small>" : "") + untilText(nb.minutes, false);
     }
     var lo = 6 * 60, hi = 23 * 60, h = "<div class=\"axis\"></div>", nbm = nb ? mins(nb.time) : null;
     var x = function (mm) { return (100 * (mm - lo) / (hi - lo)).toFixed(2) + "%"; };
@@ -295,17 +336,19 @@
     $("ruler").innerHTML = h;
   }
 
-  // ---------- find a bike ----------
-  function setOrigin(kind, lat, lng) { origin = { kind: kind, lat: lat, lng: lng }; nearN = 8; var v = view(); if (v) { renderRider(v); drawOrigin(); } }
+  // ---------- borrow and return ----------
+  function setOrigin(kind, lat, lng) { var p = point(); p.kind = kind; p.lat = lat; p.lng = lng; nearN = 8; if (view()) render(); }
   function setPicking(on) {
-    picking = on; $("hint").hidden = !on; $("hint").textContent = t("picking"); $("map").classList.toggle("picking", on); syncOrigin();
+    picking = on; $("hint").hidden = !on; $("hint").textContent = t(tab === "dock" ? "pickingDest" : "picking"); $("map").classList.toggle("picking", on); syncOrigin();
     if (isPhone()) setSheet(on ? "peek" : "half");
   }
   function syncOrigin() {
-    $("oCampus").setAttribute("aria-pressed", !picking && origin.kind === "campus" ? "true" : "false");
-    $("oMe").setAttribute("aria-pressed", !picking && origin.kind === "me" ? "true" : "false");
-    $("oPick").setAttribute("aria-pressed", picking || origin.kind === "pick" ? "true" : "false");
-    $("fab").setAttribute("aria-pressed", origin.kind === "me" ? "true" : "false");
+    var k = point().kind;
+    $("oCampus").setAttribute("aria-pressed", !picking && k === "campus" ? "true" : "false");
+    $("oKrt").setAttribute("aria-pressed", !picking && k === "krt" ? "true" : "false");
+    $("oMe").setAttribute("aria-pressed", !picking && k === "me" ? "true" : "false");
+    $("oPick").setAttribute("aria-pressed", picking || k === "pick" ? "true" : "false");
+    $("fab").setAttribute("aria-pressed", k === "me" ? "true" : "false");
   }
   function locate() {
     var fab = $("fab"), fail = function () { fab.classList.remove("busy"); toast(t("geoFail"), 4000); };
@@ -319,77 +362,112 @@
       setOrigin("me", lat, lng); viewTo(lat, lng, Math.max(map.getZoom(), 16));
     }, fail, { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true });
   }
-  function walkCell(km) { return km > 3 ? "<span class=\"walk\">" + t("walkKm", { k: km.toFixed(1) }) + "<small>" + t("farK") + "</small></span>" : "<span class=\"walk\">" + t("walkMin", { m: walkMin(km) }) + "<small>" + t("walkK") + "</small></span>"; }
-  function subLine(v, i, nowOnly) {
-    var o = outlook(v, i), eb = nowOnly ? null : bellBikes(v, i), h = "";
+  function walkCell(km, label) { return km > 3 ? "<span class=\"walk\">" + t("walkKm", { k: km.toFixed(1) }) + "<small>" + t("farK") + "</small></span>" : "<span class=\"walk\">" + t("walkMin", { m: walkMin(km) }) + "<small>" + t(label || "walkK") + "</small></span>"; }
+  function shortName(s) { return isCampus(s) && SHORT[s.sno] ? SHORT[s.sno][lang === "zh" ? 0 : 1] : nameOf(s); }
+  function subLine(v, i) {
+    var o = look(v, i), turn = v.bikes[i] == null ? "" : turnText(v, i, need()), h = "";
     if (o.text) h += "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
-    if (v.bikes[i] != null && v.docks && v.docks[i] === 0) h += "<span class=\"state o\">" + t("noDock") + "</span>";
-    else if (v.bikes[i] != null && v.docks && v.docks[i] != null) h += "<span>" + t("ret", { d: v.docks[i] }) + "</span>";
-    if (eb != null) h += "<span>" + t("afterBell", { at: v.bell.at, b: Math.round(eb) }) + "</span>";
+    if (turn) h += "<span>" + turn + "</span>";
     return h;
   }
   function stationRow(v, i) {
-    var s = v.stations[i], li = document.createElement("li"); li.className = "row" + (selected === i ? " sel" : ""); li.tabIndex = 0;
-    var km = distKm(s.lat, s.lng, origin.lat, origin.lng);
-    li.innerHTML = badge(v, i) + "<span><span class=\"nm\">" + esc(nameOf(s)) + (favs.indexOf(s.sno) >= 0 ? "<span class=\"star\" aria-hidden=\"true\">★</span>" : "") + "</span><span class=\"sub\">" + subLine(v, i) + "</span></span>" + walkCell(km);
+    var s = v.stations[i], p = point(), li = document.createElement("li"); li.className = "row" + (selected === i ? " sel" : ""); li.tabIndex = 0;
+    var km = distKm(s.lat, s.lng, p.lat, p.lng);
+    li.innerHTML = badge(v, i) + "<span><span class=\"nm\">" + esc(nameOf(s)) + (favs.indexOf(s.sno) >= 0 ? "<span class=\"star\" aria-hidden=\"true\">★</span>" : "") + "</span><span class=\"sub\">" + subLine(v, i) + "</span></span>" + walkCell(km, tab === "dock" ? "walkDest" : "walkK");
     var go = function () { select(i); focusStation(s); };
     li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
     return li;
   }
-  // Two questions a rider has: where is a bike now, and where will one be when my class ends?
-  function pickNow(v, order) {
-    for (var k = 0; k < order.length; k++) {
-      var i = order[k][1], km = order[k][0];
-      if (km > 2) break;
-      if (v.bikes[i] == null || v.bikes[i] < 2) continue;
-      if (v.p30[i] != null && v.p30[i] >= 0.5) continue;
-      return { i: i, km: km, nearest: k === 0 };
+  function ordered(v) { var p = point(); return v.stations.map(function (s, i) { return [distKm(s.lat, s.lng, p.lat, p.lng), i]; }).sort(function (a, b) { return a[0] - b[0]; }); }
+  // The rule checked against the logger (analysis/code/final_rider.py): the nearest station that should still have what
+  // the rider needs at the minute of arrival; if none is sure, the best chance in reach. A bike is needed after the walk
+  // to the station, a dock when the ride ends.
+  function pick(v, ord, kind, leave) {
+    var reach = kind === "bike" ? 2 : 0.6, best = null, skipped = null;
+    for (var k = 0; k < ord.length; k++) {
+      var km = ord[k][0], i = ord[k][1]; if (km > reach) break;
+      var c = chanceAt(v, i, kind, leave + (kind === "bike" ? walkMin(km) : 0)); if (c == null) continue;
+      if (c >= SURE[kind]) return { i: i, km: km, sure: true, skipped: skipped };
+      if (skipped == null && c < MAYBE[kind]) skipped = i;
+      if (!best || c > best.c) best = { i: i, km: km, sure: false, c: c, skipped: null };
     }
-    return null;
+    return best;
   }
-  function pickAfter(v, order) {
-    if (!v.bell || !v.bell.bikes) return null;
-    var weak = null;
-    for (var k = 0; k < order.length; k++) {
-      var i = order[k][1], km = order[k][0];
-      if (km > 2) break;
-      var eb = bellBikes(v, i), pe = v.bell.p_empty[i];
-      if (v.bikes[i] == null || eb == null || pe == null) continue;
-      if (eb >= 2 && pe < 0.3) return { i: i, km: km, sure: true };
-      if (km <= 1.5 && (!weak || pe < weak.pe)) weak = { i: i, km: km, sure: false, pe: pe };
+  // "Leave before 16:55 and a bike is 1 min away. Later it is 9 min." The walk to a sure station, for departures in the next hour.
+  function leaveTip(v, ord) {
+    if (!v.ahead) return "";
+    var n = nowMin(v), first = pick(v, ord, "bike", n); if (!first || !first.sure) return "";
+    var a = walkMin(first.km), last = 0, later = null;
+    for (var d = 10; d <= 60; d += 10) { var p = pick(v, ord, "bike", n + d); if (p && p.sure && walkMin(p.km) <= a + 2) last = d; else { later = p; break; } }
+    if (last >= 60) return t("tipCalm", { a: a });
+    var by = hm(Math.floor((n + last + 5) / 5) * 5);
+    return later && later.sure ? t("tipSoon", { t: by, a: a, b: walkMin(later.km) }) : t("tipLast", { t: by, a: a });
+  }
+  function renderWhen(v) {
+    var el = $("whenChips"), dock = tab === "dock", key = dock ? "dock" : "rider", w = when[key], n = nowMin(v), opts = [];
+    if (dock) [0, 10, 20, 30].forEach(function (m) { opts.push(m ? { kind: "plus", min: m, label: t("wPlus", { m: m }) } : { kind: "now", label: t("wNow") }); });
+    else {
+      opts.push({ kind: "now", label: t("wNow") });
+      if (!v.offday) v.meta.bells.forEach(function (b) { var bm = mins(b); if (bm > n && bm - n <= 70 && opts.length < 3) opts.push({ kind: "bell", time: bm, label: t("wBell", { t: b }) }); });
     }
-    return weak;
+    var same = function (o) { return o.kind === w.kind && (o.kind === "now" || (o.kind === "bell" ? o.time === w.time : o.min === w.min)); };
+    if (!opts.some(same)) { when[key] = { kind: "now" }; w = when[key]; }      // the chosen class end has passed
+    $("whenK").textContent = t(dock ? "whenDockK" : "whenBikeK");
+    el.innerHTML = "";
+    opts.forEach(function (o) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "opt"; b.textContent = o.label; b.setAttribute("aria-pressed", same(o) ? "true" : "false");
+      b.addEventListener("click", function () { when[key] = o.kind === "now" ? { kind: "now" } : o.kind === "bell" ? { kind: "bell", time: o.time } : { kind: "plus", min: o.min }; render(); });
+      el.appendChild(b);
+    });
   }
-  function afterBadge(v, i) { return "<span class=\"badge b\">" + Math.round(bellBikes(v, i)) + "</span>"; }
-  function afterLine(v, i) { return "<span>" + t("afterSub", { at: v.bell.at, b: Math.round(bellBikes(v, i)), p: Math.round(100 * v.bell.p_empty[i]) }) + "</span>"; }
+  function renderBest(v, ord) {
+    var pk = $("best"), tip = $("tip"), kind = need(), dock = kind === "dock", w = when[dock ? "dock" : "rider"], leave = leaveMin(v), p = pick(v, ord, kind, leave);
+    pk.hidden = false; pk.innerHTML = ""; tip.hidden = true;
+    if (!p) { pk.innerHTML = "<div class=\"pick none\"><span><span class=\"sub\">" + t(dock ? "noneDock" : "noneBike") + "</span></span></div>"; return; }
+    var s = v.stations[p.i], at = leave + (dock ? 0 : walkMin(p.km)), o = verdict(v, p.i, kind, at), eb = expectAt(v, p.i, at);
+    var why = dock ? t("bestDock") : w.kind === "bell" ? t("bestBikeBell", { t: hm(w.time) }) : t("bestBikeNow");
+    var sub = "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
+    if (dock) sub += "<span>" + t("docksNow", { d: v.docks && v.docks[p.i] != null ? v.docks[p.i] : "–" }) + "</span>";
+    else sub += "<span>" + (eb != null && p.sure ? t("expect", { b: eb }) : t("bikesNow", { b: v.bikes[p.i] })) + "</span>";
+    var el = document.createElement("button"); el.type = "button"; el.className = "pick" + (p.sure ? "" : " weak");
+    el.innerHTML = badge(v, p.i) + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(s)) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(p.km, dock ? "walkDest" : "walkK");
+    el.addEventListener("click", function () { select(p.i); focusStation(s); });
+    pk.appendChild(el);
+    var note = !p.sure ? t(dock ? "weakDock" : "weakBike") : p.skipped != null ? t(dock ? "skipDock" : "skipBike", { n: shortName(v.stations[p.skipped]) }) : (!dock && w.kind === "now" ? leaveTip(v, ord) : "");
+    if (note) { tip.textContent = note; tip.hidden = false; }
+  }
+  // The usual day around the starting point (docs/outlook.json): when is it hard to borrow, or to return?
+  function renderUsual(v) {
+    var sec = $("usualSec"), p = point(), bike = need() === "bike", grp = null, dmin = 9;
+    v.stations.forEach(function (s) { if (s.group === "other") return; var d = distKm(s.lat, s.lng, p.lat, p.lng); if (d < dmin) { dmin = d; grp = s.group; } });
+    var day = usual ? usual[v.offday ? "off" : "teaching"] : null, arr = day && grp && dmin <= 0.6 && day[grp] ? day[grp][bike ? "no_bike" : "no_dock"] : null;
+    if (!arr) { sec.hidden = true; return; }
+    sec.hidden = false;
+    var a = -1, b = -1; arr.forEach(function (x, k) { if (x >= 0.25) { if (a < 0) a = k; b = k; } });
+    $("hUsual").textContent = t("usual" + (bike ? "Bike" : "Dock") + (grp === "campus" ? "Campus" : "Gate"));
+    $("hUsualSub").textContent = t(v.offday ? "usualOff" : "usualTeach") + sep() + (a < 0 ? t("usualEasy") : t("usualPeak", { a: hm(360 + 30 * a), b: hm(360 + 30 * (b + 1)) }));
+    var W = 340, H = 56, bw = W / arr.length, m = nowMin(v), h = "";
+    arr.forEach(function (x, k) { var hh = Math.max(2, Math.min(1, x / 0.6) * 38); h += "<rect x=\"" + (k * bw + 1).toFixed(1) + "\" y=\"" + (40 - hh).toFixed(1) + "\" width=\"" + (bw - 2).toFixed(1) + "\" height=\"" + hh.toFixed(1) + "\" rx=\"2\" fill=\"" + tok(x >= 0.4 ? "--out-fill" : x >= 0.2 ? "--low-fill" : "--line-2") + "\"/>"; });
+    [6, 9, 12, 15, 18, 21].forEach(function (hr) { h += "<text x=\"" + ((hr * 60 - 360) / 30 * bw + 1).toFixed(1) + "\" y=\"53\" font-size=\"10.5\" fill=\"" + tok("--ink-3") + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + pad(hr) + "</text>"; });
+    if (m >= 360 && m <= 1380) { var x = ((m - 360) / 30 * bw).toFixed(1); h += "<line x1=\"" + x + "\" x2=\"" + x + "\" y1=\"0\" y2=\"42\" stroke=\"" + tok("--accent") + "\" stroke-width=\"2\"/>"; }
+    $("usual").innerHTML = "<svg viewBox=\"0 0 " + W + " " + H + "\" aria-hidden=\"true\">" + h + "</svg>";
+  }
   function renderRider(v) {
+    var dock = tab === "dock";
     $("q").placeholder = t("search"); $("q").setAttribute("aria-label", t("search"));
-    $("originK").textContent = t("originK"); $("oCampus").textContent = t("oCampus"); $("oMe").textContent = t("oMe"); $("oPick").textContent = t("oPick"); syncOrigin();
-    $("hFav").textContent = t("fav"); $("hNear").textContent = t("near"); $("hNearSub").textContent = t("nearSub");
+    $("originK").textContent = t(dock ? "destK" : "originK"); $("oCampus").textContent = t("oCampus"); $("oKrt").textContent = t("oKrt"); $("oMe").textContent = t("oMe"); $("oPick").textContent = t("oPick"); syncOrigin();
+    renderWhen(v);
+    $("hFav").textContent = t("fav"); $("hNear").textContent = t("near"); $("hNearSub").textContent = t(dock ? "nearDock" : "nearBike");
     var idx = {}; v.stations.forEach(function (s, i) { idx[s.sno] = i; });
     var fl = $("favs"); fl.innerHTML = "";
     var fi = favs.map(function (sno) { return idx[sno]; }).filter(function (i) { return i != null; });
     $("favSec").hidden = !fi.length;
     fi.forEach(function (i) { fl.appendChild(stationRow(v, i)); });
     $("hFavSub").textContent = fi.length ? String(fi.length) : "";
-    var order = v.stations.map(function (s, i) { return [distKm(s.lat, s.lng, origin.lat, origin.lng), i]; }).sort(function (a, b) { return a[0] - b[0]; });
-    var nl = $("near"); nl.innerHTML = "";
-    order.slice(0, nearN).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
+    var ord = ordered(v), nl = $("near"); nl.innerHTML = "";
+    ord.slice(0, nearN).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
     $("more").textContent = nearN > 8 ? t("less") : t("more");
-    var pk = $("best"), now = pickNow(v, order), after = pickAfter(v, order), bt = v.bell ? v.bell.bell : "";
-    pk.hidden = false; pk.innerHTML = "";
-    var add = function (cls, i, html) {
-      var el = document.createElement(i == null ? "div" : "button"); el.className = "pick" + (cls ? " " + cls : ""); el.innerHTML = html;
-      if (i != null) { el.type = "button"; el.addEventListener("click", function () { select(i); focusStation(v.stations[i]); }); }
-      pk.appendChild(el);
-    };
-    var row = function (lead, why, i, sub, km) { return lead + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(v.stations[i])) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(km); };
-    if (now && after && after.sure && now.i === after.i) add("", now.i, row(badge(v, now.i), t("bestBoth", { t: bt }), now.i, subLine(v, now.i), now.km));
-    else {
-      if (now) add("", now.i, row(badge(v, now.i), t("bestNowK") + (now.nearest ? "" : sep() + t("bestNowFar")), now.i, subLine(v, now.i, true), now.km));
-      else add("none", null, "<span><span class=\"why\">" + t("bestNoneK") + "</span><span class=\"sub\">" + t("bestNone") + "</span></span>");
-      if (after) add("later", after.i, row(afterBadge(v, after.i), t("bestAfterK", { t: bt }) + (after.sure ? "" : sep() + t("bestAfterWeak")), after.i, afterLine(v, after.i), after.km));
-    }
+    renderBest(v, ord); renderUsual(v);
   }
   function searchStations(q) {
     var v = view(), box = $("qres"); if (!v || !q.trim()) { box.hidden = true; return; }
@@ -413,30 +491,36 @@
     var txt = function (xx, yy, anchor, s2) { return "<text x=\"" + xx + "\" y=\"" + yy + "\" font-size=\"10.5\" fill=\"" + tok("--ink-3") + "\" text-anchor=\"" + anchor + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + s2 + "</text>"; };
     var axis = ""; [6, 12, 18, 23].forEach(function (hh) { axis += txt(X(hh * 60).toFixed(1), H - 4, "middle", pad(hh)); });
     axis += txt(padL - 5, padT + 4, "end", s.cap) + txt(padL - 5, H - padB + 3, "end", "0");
+    var fc = "", eb = aheadOf(v, i, "bikes");            // the chain's expected bikes for the next 90 minutes, dashed
+    if (eb && last != null) { fc = "M" + X(lastT).toFixed(1) + " " + Y(Math.min(last, s.cap)).toFixed(1) + " "; for (var q = 0; q < eb.length; q++) { var fm = lastT + 10 * (q + 1); if (fm > hi) break; fc += "L" + X(fm).toFixed(1) + " " + Y(Math.min(A64.indexOf(eb.charAt(q)), s.cap)).toFixed(1) + " "; } }
     var dot = last != null ? "<circle cx=\"" + X(lastT).toFixed(1) + "\" cy=\"" + Y(Math.min(last, s.cap)).toFixed(1) + "\" r=\"4\" fill=\"" + tok("--accent") + "\" stroke=\"" + tok("--surface-2") + "\" stroke-width=\"2\"/>" : "";
     return "<svg viewBox=\"0 0 " + W + " " + H + "\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><line x1=\"" + padL + "\" x2=\"" + (W - padR) + "\" y1=\"" + (H - padB) + "\" y2=\"" + (H - padB) + "\" stroke=\"" + tok("--line-2") + "\"/>" +
       "<line x1=\"" + padL + "\" x2=\"" + (W - padR) + "\" y1=\"" + padT + "\" y2=\"" + padT + "\" stroke=\"" + tok("--line-2") + "\" stroke-dasharray=\"1 3\"/>" + bells +
-      (area ? "<path d=\"" + area + "\" fill=\"" + tok("--accent") + "\" fill-opacity=\"0.13\"/>" : "") + (d ? "<path d=\"" + d + "\" fill=\"none\" stroke=\"" + tok("--accent") + "\" stroke-width=\"2\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>" : "") + dot + axis + "</svg>";
+      (area ? "<path d=\"" + area + "\" fill=\"" + tok("--accent") + "\" fill-opacity=\"0.13\"/>" : "") + (d ? "<path d=\"" + d + "\" fill=\"none\" stroke=\"" + tok("--accent") + "\" stroke-width=\"2\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>" : "") +
+      (fc ? "<path d=\"" + fc + "\" fill=\"none\" stroke=\"" + tok("--accent") + "\" stroke-width=\"2\" stroke-dasharray=\"3 4\" stroke-linecap=\"round\" vector-effect=\"non-scaling-stroke\"/>" : "") + dot + axis + "</svg>";
+  }
+  // the next 90 minutes in five cells: expected bikes (or free docks) and the colour of the answer at that time
+  function aheadStrip(v, i, kind) {
+    var a = aheadOf(v, i, kind), eb = aheadOf(v, i, "bikes"), s = v.stations[i], h = ""; if (!a || !eb) return "";
+    for (var k = 0; k < a.length; k += 2) {
+      var c = A64.indexOf(a.charAt(k)), n = A64.indexOf(eb.charAt(k)), val = kind === "bike" ? n : Math.max(0, s.cap - n);
+      h += "<div class=\"cell " + (c >= SURE[kind] ? "g" : c >= MAYBE[kind] ? "y" : "r") + "\"><b>" + val + "</b><span>" + hm((v.t_min + 10 * (k + 1)) % 1440) + "</span></div>";
+    }
+    return "<div class=\"ahead\"><div class=\"cap\">" + t("aheadH") + sep() + t(kind === "bike" ? "aheadBike" : "aheadDock") + "</div><div class=\"cells\">" + h + "</div></div>";
   }
   function renderCard(v) {
     var wrap = $("cardWrap");
     if (selected == null) { wrap.hidden = true; return; }
-    var i = selected, s = v.stations[i], observed = v.bikes[i] != null, o = outlook(v, i), isFav = favs.indexOf(s.sno) >= 0, eb = bellBikes(v, i);
+    var i = selected, s = v.stations[i], observed = v.bikes[i] != null, kind = need(), o = look(v, i), isFav = favs.indexOf(s.sno) >= 0, turn = observed ? turnText(v, i, kind) : "";
     var foot = [];
     if (v.age && v.age[i] != null && v.age[i] > 20) foot.push(t("stale2", { m: v.age[i] }));
     if (s.excluded) foot.push(t("excluded"));
-    var after = "";
-    if (observed && eb != null) {
-      after = "<div class=\"after\"><div class=\"when\"><b>" + v.bell.at + "</b>" + t("afterWhen", { t: v.bell.bell, a: v.bell.after_min }) + "</div><div class=\"est\">" + t("afterEst", { b: Math.round(eb) }).replace(/^(\S+)\s*(.*)$/, "$1<small>$2</small>") + "</div>" +
-        "<div class=\"odds\"><span>" + t("afterEmpty", { p: "<b>" + Math.round(100 * v.bell.p_empty[i]) + "</b>" }) + "</span>" + (v.bell.p_full[i] >= 0.2 ? "<span>" + t("afterFull", { p: "<b>" + Math.round(100 * v.bell.p_full[i]) + "</b>" }) + "</span>" : "") + "</div></div>";
-    } else if (observed && !v.offday && !v.next_bell) after = "<div class=\"after plain\">" + t("afterNone") + "</div>";
-    var pct = function (p) { return p == null ? "–" : Math.round(100 * p) + "<small>%</small>"; };
-    var third = v.docks && v.docks[i] != null ? "<div class=\"fact\"><div class=\"v\">" + v.docks[i] + "</div><div class=\"k\">" + t("fDocks") + "</div></div>" : "<div class=\"fact\"><div class=\"v\">" + pct(v.p60[i]) + "</div><div class=\"k\">" + t("fP60") + "</div></div>";
+    var docks = v.docks && v.docks[i] != null ? v.docks[i] : null;
     $("card").innerHTML = "<div class=\"hd\">" + badge(v, i) + "<div><div class=\"nm\">" + esc(nameOf(s)) + "</div><div class=\"alt\">" + esc(altName(s)) + "</div></div><button class=\"x\" id=\"cardX\" type=\"button\" aria-label=\"" + t("close") + "\">" + ICON.close + "</button></div>" +
-      "<div class=\"says\">" + (o.text ? "<span class=\"state " + o.cls + "\">" + o.text + "</span>" : "") + (observed && v.docks && v.docks[i] === 0 ? "<span class=\"state o\">" + t("noDock") + "</span>" : "") +
+      "<div class=\"says\">" + (o.text ? "<span class=\"state " + o.cls + "\">" + (observed && o.cls !== "x" ? t("fArrive") + sep() : "") + o.text + "</span>" : "") + (turn ? "<span>" + turn + "</span>" : "") +
       (isCampus(s) ? "<span class=\"tag\">" + t("inCampus") + "</span>" : (s.group === "gateway" ? "<span class=\"tag\">" + t("nearCampus") + "</span>" : "")) + (isFav ? "<span class=\"tag\">★ " + t("fav") + "</span>" : "") + "</div>" +
-      "<div class=\"facts\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + "<small>/ " + s.cap + "</small>" : "–") + "</div><div class=\"k\">" + t("fBikes") + "</div></div>" + third +
-      "<div class=\"fact\"><div class=\"v\">" + pct(v.p30[i]) + "</div><div class=\"k\">" + t("fP30") + "</div></div></div>" + after +
+      "<div class=\"facts two\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + "<small>/ " + s.cap + "</small>" : "–") + "</div><div class=\"k\">" + t("fBikes") + "</div></div>" +
+      "<div class=\"fact\"><div class=\"v\">" + (docks != null ? docks : "–") + "</div><div class=\"k\">" + t("fDocks") + "</div></div></div>" + (observed ? aheadStrip(v, i, kind) : "") +
       "<div class=\"chart\"><div class=\"cap\">" + t("chartCap") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(lang === "zh" ? "；" : "; ") + "</div>" : "") +
       "<div class=\"actions\"><button class=\"btn\" id=\"favBtn\" type=\"button\" aria-pressed=\"" + (isFav ? "true" : "false") + "\">" + ICON.star.replace("FILL", isFav ? "currentColor" : "none") + (isFav ? t("rmFav") : t("addFav")) + "</button>" +
       "<a class=\"btn primary\" href=\"https://www.google.com/maps/dir/?api=1&destination=" + s.lat + "," + s.lng + "&travelmode=walking\" target=\"_blank\" rel=\"noopener\">" + ICON.walk + t("nav") + "</a></div>";
@@ -447,14 +531,16 @@
 
   // ---------- dispatch ----------
   function renderKpis(v) {
-    var tt = v.totals, unit = function (k) { return "<small>" + t(k) + "</small>"; };
-    $("hKpi").innerHTML = "<span>" + t("kpi") + "</span><span class=\"sub\">" + t("kpiSub", { n: tt.observed }) + "</span>";
-    $("tEmpty").innerHTML = fmt(tt.empty_now) + unit("uSta"); $("kEmpty").textContent = t("kEmpty");
-    // stations that still have bikes but will probably run out: the ones already empty are counted on the left
-    var soon = 0; v.stations.forEach(function (s, i) { if (v.bikes[i] > 0 && v.p30[i] != null && v.p30[i] >= 0.5) soon++; });
+    // one truck for the campus: the numbers are for the stations between campus and the metro, not the whole district
+    var tt = v.totals, unit = function (k) { return "<small>" + t(k) + "</small>"; }, cor = [], empty = 0, soon = 0, unmet = 0;
+    v.stations.forEach(function (s, i) { if (s.group !== "other") cor.push(i); });
+    cor.forEach(function (i) { if (v.bikes[i] === 0) empty++; else if (v.bikes[i] > 0 && v.p30[i] != null && v.p30[i] >= 0.5) soon++; if (v.unmet && v.unmet[i] != null) unmet += v.unmet[i]; });
+    if (tt.unmet_corridor != null) unmet = tt.unmet_corridor;
+    $("hKpi").innerHTML = "<span>" + t("kpi") + "</span><span class=\"sub\">" + t("kpiSub", { n: cor.length }) + "</span>";
+    $("tEmpty").innerHTML = fmt(empty) + unit("uSta"); $("kEmpty").textContent = t("kEmpty");
     $("tRisk").innerHTML = fmt(soon) + unit("uSta"); $("kRisk").textContent = t("kRisk");
-    $("tUnmet").innerHTML = v.in_window ? fmt(tt.expected_unmet) + unit("uRide") : "–"; $("kUnmet").textContent = t("kUnmet", { h: v.meta.horizon_min });
-    $("tSaved").innerHTML = v.in_window ? fmt(tt.plan_value) + unit("uRide") + (tt.plan_value > 0 && tt.expected_unmet ? "<small>" + Math.round(100 * tt.plan_value / tt.expected_unmet) + "%</small>" : "") : "–";
+    $("tUnmet").innerHTML = v.in_window ? fmt(unmet) + unit("uRide") : "–"; $("kUnmet").textContent = t("kUnmet", { h: v.meta.horizon_min });
+    $("tSaved").innerHTML = v.in_window ? fmt(tt.plan_value) + unit("uRide") + (tt.plan_value > 0 && unmet >= 1 ? "<small>" + Math.min(100, Math.round(100 * tt.plan_value / unmet)) + "%</small>" : "") : "–";
     $("kSaved").textContent = t("kSaved");
   }
   function actText(st) { return st.d > 0 ? t("dropN", { n: st.d }) : t("pickN", { n: -st.d }); }
@@ -471,7 +557,7 @@
       copyText(text, function () { cb.textContent = t("copied"); setTimeout(function () { cb.textContent = t("copy"); }, 1600); });
     };
     if (!v.in_window) { el.innerHTML = "<div class=\"empty\">" + t("offWindow") + "</div>"; return; }
-    if (!v.plans || !v.plans.length) { var worst = Math.max.apply(null, (v.unmet || [0]).map(function (x) { return x || 0; })); el.innerHTML = "<div class=\"empty\">" + t("noPlan", { m: Math.max(1, Math.round(worst)) }) + "</div>"; return; }
+    if (!v.plans || !v.plans.length) { var worst = Math.max.apply(null, [0].concat((v.unmet || []).map(function (x, i) { return v.stations[i].group !== "other" ? (x || 0) : 0; }))); el.innerHTML = "<div class=\"empty\">" + t("noPlan", { m: Math.max(1, Math.round(worst)) }) + "</div>"; return; }
     v.plans.forEach(function (pl) {
       var box = document.createElement("div");
       box.innerHTML = "<p class=\"trip\"><b>" + t("truck", { k: pl.truck }) + "</b><span>" + t("nStops", { n: pl.stops.length }) + "</span><span>" + t("tripLen", { t: fmt(pl.minutes), k: fmt(pl.km, 1) }) + "</span><span>" + t("tripGain", { v: fmt(pl.value) }) + "</span></p>";
@@ -490,7 +576,7 @@
   }
   function renderRisk(v) {
     var key = keyOf(), arr = key === "unmet" ? (v.unmet || []) : v[key], idx = [];
-    v.stations.forEach(function (s, i) { if (arr[i] != null) idx.push(i); });
+    v.stations.forEach(function (s, i) { if (arr[i] != null && s.group !== "other") idx.push(i); });     // the truck's own patch
     idx.sort(function (a, b) { return arr[b] - arr[a]; });
     $("hRisk").textContent = key === "unmet" ? t("unmetH") : t("riskH");
     $("h30").textContent = t("h30"); $("h60").textContent = t("h60"); $("hU").textContent = t("hU");
@@ -509,10 +595,10 @@
   // ---------- about, legend, status ----------
   function renderAbout(v) {
     var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
-    $("aboutWhat").innerHTML = t("aboutWhat");
+    $("aboutWhat").innerHTML = t("aboutWhat") + t("aboutProof");
     $("aboutKeyH").textContent = t("keyH");
     var sw = function (cls, n) { return "<span class=\"sw\"><span class=\"badge " + cls + "\">" + n + "</span></span>"; };
-    $("aboutKey").innerHTML = "<li>" + sw("g", 12) + "<span>" + t("keyGood") + "</span></li><li>" + sw("y", 6) + "<span>" + t("keyLow") + "</span></li><li>" + sw("o", 3) + "<span>" + t("keyEmpty") + "</span></li><li>" + sw("r", 1) + "<span>" + t("keyVery") + "</span></li>" +
+    $("aboutKey").innerHTML = "<li>" + sw("g", 12) + "<span>" + t("keyYes") + "</span></li><li>" + sw("y", 4) + "<span>" + t("keyMaybe") + "</span></li><li>" + sw("r", 1) + "<span>" + t("keyNo") + "</span></li>" +
       "<li>" + sw("x", 0) + "<span>" + t("keyGone") + "</span></li><li>" + sw("n", "–") + "<span>" + t("keyNone") + "</span></li>" +
       "<li><span class=\"sw\"><svg width=\"30\" height=\"30\" viewBox=\"0 0 30 30\" aria-hidden=\"true\"><circle cx=\"15\" cy=\"15\" r=\"12\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"2.5\"/><path d=\"M15 3 A12 12 0 0 1 25.4 21\" fill=\"none\" stroke=\"var(--ink-3)\" stroke-width=\"2.5\" stroke-linecap=\"round\"/><circle cx=\"15\" cy=\"15\" r=\"8\" fill=\"var(--ok-fill)\"/></svg></span><span>" + t("keyRing") + "</span></li>" +
       "<li><span class=\"sw\"><span class=\"ln\"></span></span><span>" + t("keyRoute") + "</span></li>";
@@ -528,8 +614,9 @@
       return;
     }
     var it = function (c, k) { return "<div class=\"it\"><span class=\"sw\" style=\"background:var(" + c + ")\"></span>" + t(k) + "</div>"; };
-    el.innerHTML = "<div class=\"ttl\">" + t("legOutlook") + "</div>" + it("--ok-fill", "lGood") + it("--low-fill", "lLow") + it("--risk-fill", "lEmpty") + it("--out-fill", "lVery") + it("--gone", "lGone") +
-      "<div class=\"it gap\">" + t("legNum") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
+    var bike = need() === "bike";
+    el.innerHTML = "<div class=\"ttl\">" + t(bike ? "legBike" : "legDock") + "</div>" + it("--ok-fill", bike ? "cBikeYes" : "cDockYes") + it("--low-fill", bike ? "cBikeMaybe" : "cDockMaybe") + it("--out-fill", bike ? "cBikeNo" : "cDockNo") + it("--gone", bike ? "sGone" : "sFullNow") +
+      "<div class=\"it gap\">" + t(bike ? "legNumBike" : "legNumDock") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
   }
   function dayLabel(d) {
     var y = parseInt(d.slice(0, 4), 10), mo = parseInt(d.slice(5, 7), 10), da = parseInt(d.slice(8, 10), 10), wd = T[lang].weekdays[new Date(Date.UTC(y, mo - 1, da)).getUTCDay()];
@@ -548,7 +635,7 @@
   function renderChrome() {
     document.title = t("docTitle"); $("where").textContent = t("where");
     $("mLive").textContent = t("live"); $("mReplay").textContent = t("replay"); $("modeSeg").setAttribute("aria-label", t("modeLabel"));
-    $("tabRiderT").textContent = t("tabRider"); $("tabOpsT").textContent = t("tabOps"); $("tabAboutT").textContent = t("tabAbout");
+    $("tabRiderT").textContent = t("tabRider"); $("tabDockT").textContent = t("tabDock"); $("tabOpsT").textContent = t("tabOps"); $("tabAboutT").textContent = t("tabAbout");
     $("grip").setAttribute("aria-label", t("gripLabel")); $("fab").setAttribute("aria-label", t("fabLabel")); $("fab").title = t("fabLabel");
     $("slider").setAttribute("aria-label", t("sliderLabel")); $("replayDay").setAttribute("aria-label", t("dayLabel")); $("horizonSeg").setAttribute("aria-label", t("horizonLabel"));
     $("map").setAttribute("aria-label", t("mapLabel")); $("langSeg").setAttribute("aria-label", t("langK"));
@@ -558,12 +645,14 @@
   }
   function applyTab() {
     shell.setAttribute("data-tab", tab);
-    [["rider", "tabRider", "paneRider"], ["ops", "tabOps", "paneOps"], ["about", "tabAbout", "paneAbout"]].forEach(function (x) {
-      $(x[1]).setAttribute("aria-selected", tab === x[0] ? "true" : "false"); $(x[1]).tabIndex = tab === x[0] ? 0 : -1; $(x[2]).hidden = tab !== x[0]; });
+    [["rider", "tabRider"], ["dock", "tabDock"], ["ops", "tabOps"], ["about", "tabAbout"]].forEach(function (x) {
+      $(x[1]).setAttribute("aria-selected", tab === x[0] ? "true" : "false"); $(x[1]).tabIndex = tab === x[0] ? 0 : -1; });
+    $("paneRider").hidden = tab !== "rider" && tab !== "dock"; $("paneOps").hidden = tab !== "ops"; $("paneAbout").hidden = tab !== "about";
+    $("paneRider").setAttribute("aria-labelledby", tab === "dock" ? "tabDock" : "tabRider");
   }
   function setTab(x) {
     var was = tab; tab = x; store("btb-tab", x); applyTab();
-    if (x !== "rider" && picking) setPicking(false);
+    if (picking) setPicking(false);
     if (x === "ops" && was !== "ops") { var v = view(); if (v && map.getZoom() >= 15 && selected == null) fitArea(v); }
     if (isPhone()) setSheet(sheetState === "peek" ? "half" : sheetState);
     scroller.scrollTop = 0; render();
@@ -571,7 +660,7 @@
   function render() {
     var v = view(); renderChrome(); renderAbout(v); if (!v) return;
     renderStatus(v); renderBell(v); renderCard(v); renderLegend(v);
-    if (tab === "rider") renderRider(v); else if (tab === "ops") { renderKpis(v); renderPlans(v); renderRisk(v); }
+    if (tab === "rider" || tab === "dock") renderRider(v); else if (tab === "ops") { renderKpis(v); renderPlans(v); renderRisk(v); }
     drawStations(v); drawRoute(v); drawOrigin();
     if (mode === "replay") {
       var sl = $("slider"); sl.max = replay.slots.length - 1; sl.value = slot; $("sliderT").textContent = replay.slots[slot].snapshot_at.slice(11);
@@ -583,7 +672,7 @@
   }
   function select(i) {
     selected = i; var v = view(); if (!v) return;
-    renderCard(v); if (tab === "rider") renderRider(v); else if (tab === "ops") renderRisk(v);
+    renderCard(v); if (tab === "rider" || tab === "dock") renderRider(v); else if (tab === "ops") renderRisk(v);
     drawStations(v);
     if (i != null) { if (isPhone()) setSheet("half"); scroller.scrollTop = 0; }
     try { history.replaceState(null, "", i != null ? "#" + v.stations[i].sno : location.pathname + location.search); } catch (e) {}
@@ -641,11 +730,12 @@
   $("lZh").addEventListener("click", function () { setLang("zh"); });
   $("lEn").addEventListener("click", function () { setLang("en"); });
   $("tabRider").addEventListener("click", function () { setTab("rider"); });
+  $("tabDock").addEventListener("click", function () { setTab("dock"); });
   $("tabOps").addEventListener("click", function () { setTab("ops"); });
   $("tabAbout").addEventListener("click", function () { setTab("about"); });
   $("tabs").addEventListener("keydown", function (e) {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    var order = ["rider", "ops", "about"], k = (order.indexOf(tab) + (e.key === "ArrowRight" ? 1 : 2)) % 3; setTab(order[k]); $({ rider: "tabRider", ops: "tabOps", about: "tabAbout" }[order[k]]).focus();
+    var order = ["rider", "dock", "ops", "about"], k = (order.indexOf(tab) + (e.key === "ArrowRight" ? 1 : 3)) % 4; setTab(order[k]); $({ rider: "tabRider", dock: "tabDock", ops: "tabOps", about: "tabAbout" }[order[k]]).focus();
   });
   $("h30").addEventListener("click", function () { setH(30); });
   $("h60").addEventListener("click", function () { setH(60); });
@@ -657,8 +747,9 @@
   $("q").addEventListener("keydown", function (e) { if (e.key === "Escape") { $("qres").hidden = true; e.target.blur(); } if (e.key === "Enter") { var b = document.querySelector("#qres button"); if (b) b.click(); } });
   document.addEventListener("click", function (e) { if (!e.target.closest(".search")) $("qres").hidden = true; });
   $("oCampus").addEventListener("click", function () { if (picking) setPicking(false); setOrigin("campus", CAMPUS_CENTER[0], CAMPUS_CENTER[1]); var v = view(); if (v) fitCampus(v); });
+  $("oKrt").addEventListener("click", function () { if (picking) setPicking(false); var v = view(); if (!v) return; v.stations.forEach(function (s) { if (s.sno === KRT) { setOrigin("krt", s.lat, s.lng); viewTo(s.lat, s.lng, Math.max(map.getZoom(), 16)); } }); });
   $("oMe").addEventListener("click", locate);
-  $("fab").addEventListener("click", function () { if (tab !== "rider") setTab("rider"); locate(); });
+  $("fab").addEventListener("click", function () { if (tab !== "rider" && tab !== "dock") setTab("rider"); locate(); });
   $("oPick").addEventListener("click", function () { setPicking(!picking); });
   $("more").addEventListener("click", function () { nearN = nearN > 8 ? 8 : 16; var v = view(); if (v) renderRider(v); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (picking) setPicking(false); else if (selected != null) select(null); } });
@@ -667,12 +758,13 @@
   var qs = {}; location.search.replace(/^\?/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) qs[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ""); });
   var savedLang = qs.lang || load("btb-lang", null);
   if (savedLang === "en") { lang = "en"; $("lZh").setAttribute("aria-pressed", "false"); $("lEn").setAttribute("aria-pressed", "true"); root.lang = "en"; }
-  var savedTab = qs.tab || load("btb-tab", "rider"); tab = savedTab === "ops" || savedTab === "about" ? savedTab : "rider"; applyTab();
+  var savedTab = qs.tab || load("btb-tab", "rider"); tab = savedTab === "ops" || savedTab === "about" || savedTab === "dock" ? savedTab : "rider"; applyTab();
   if (/^#\d{6,}$/.test(location.hash)) pendingSno = location.hash.slice(1);
   if (/^\d\d:\d\d$/.test(qs.t || "")) wantSlot = mins(qs.t);
 
   initSheet(); initMap(); renderChrome(); renderAbout(null);
   loadLive();
+  fetch("outlook.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { usual = j; if (j && view()) render(); }).catch(function () {});
   loadDays().then(function () { if (/^\d{4}-\d\d-\d\d$/.test(qs.replay || "") && replayDays.indexOf(qs.replay) >= 0) { replayDay = qs.replay; fillDays(); setMode("replay"); } });
   setInterval(function () { if (mode === "live") loadLive(); }, 60000);
   setInterval(function () { var v = view(); if (v && mode === "live") { renderBell(v); renderStatus(v); } }, 15000);
