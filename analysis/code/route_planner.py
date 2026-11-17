@@ -64,16 +64,48 @@ def kernels(lam_r, lam_q, cap, C):
     return K, u
 
 
-class ChainValues:
-    """Expected-unmet value tables for one day type. rates_r, rates_q: (N, 24) hourly rates."""
+def load_slot_rates(path, sidx):
+    """rates_slots.csv (nsysu_rates.py --slots) as the slot_rates argument of ChainValues, or None if the file is absent.
+    sidx maps station numbers to row indices."""
+    import os
+    import pandas as pd
+    if not os.path.exists(path):
+        return None
+    t = pd.read_csv(path, dtype={"sno": str})
+    snos = [s for s in t.sno.unique() if s in sidx]
+    if not snos:
+        return None
+    pos = {s: k for k, s in enumerate(snos)}
+    lr = np.full((len(snos), 144), np.nan); lq = np.full((len(snos), 144), np.nan)
+    for row in t[t.sno.isin(pos)].itertuples():
+        lr[pos[row.sno], row.slot] = row.lam_r; lq[pos[row.sno], row.slot] = row.lam_q
+    return np.array([sidx[s] for s in snos]), lr, lq
 
-    def __init__(self, rates_r, rates_q, cap, horizon_min, Q):
+
+class ChainValues:
+    """Expected-unmet value tables for one day type. rates_r, rates_q: (N, 24) hourly rates.
+
+    slot_rates = (idx, lam_r, lam_q) optionally gives some stations their own rate for every 10-minute slot of the
+    day: idx (m,) station indices, lam_r and lam_q (m, 144), NaN where the hourly rate should be kept. Around a
+    campus the demand of an hour is not spread evenly over it: most of it falls in the 20 minutes after the bell,
+    and a chain run on hourly rates misses that (nsysu_rates.py --slots fits these rates)."""
+
+    def __init__(self, rates_r, rates_q, cap, horizon_min, Q, slot_rates=None):
         self.cap = np.asarray(cap, int)
         self.N, self.C, self.Q = len(cap), int(self.cap.max()), Q
         self.A = horizon_min // STEP
         self.K, self.u = {}, {}
         for hod in range(24):
             self.K[hod], self.u[hod] = kernels(rates_r[:, hod], rates_q[:, hod], self.cap, self.C)
+        self.sub, self.Ks, self.us = None, {}, {}
+        if slot_rates is not None:
+            idx, lr, lq = slot_rates
+            self.sub = np.asarray(idx, int)
+            for slot in range(144):
+                ok = ~np.isnan(lr[:, slot]) & ~np.isnan(lq[:, slot])
+                if ok.any():
+                    r = np.where(ok, lr[:, slot], rates_r[self.sub, slot // 6]); q = np.where(ok, lq[:, slot], rates_q[self.sub, slot // 6])
+                    self.Ks[slot], self.us[slot] = kernels(r, q, self.cap[self.sub], self.C)
         s = np.arange(self.C + 1)[None, :, None]
         d = np.arange(-Q, Q + 1)[None, None, :]
         self.idx = np.clip(s + d, 0, self.cap[:, None, None]).reshape(self.N, -1)   # V[n, clip(s + d)]
@@ -81,11 +113,10 @@ class ChainValues:
     def benefit(self, t_min, bikes):
         """B (N, A, 2Q+1): unmet rentals avoided in [t, t + H) if the stock changes by d at step a."""
         A, N, C, Q = self.A, self.N, self.C, self.Q
-        hods = [int((t_min + STEP * a) // 60) % 24 for a in range(A)]
         V = [None] * (A + 1)
         V[A] = np.zeros((N, C + 1), np.float32)
         for a in range(A - 1, -1, -1):
-            V[a] = self.u[hods[a]] + np.einsum("nij,nj->ni", self.K[hods[a]], V[a + 1])
+            V[a] = self._back(t_min + STEP * a, V[a + 1])
         P = np.zeros((N, C + 1), np.float32)
         P[np.arange(N), np.clip(bikes, 0, self.cap)] = 1.0
         self.last_unmet = V[0][np.arange(N), np.clip(bikes, 0, self.cap)]   # expected unmet rentals per station without action
@@ -94,8 +125,24 @@ class ChainValues:
             ev = (P * V[a]).sum(1)
             G = np.take_along_axis(V[a], self.idx, axis=1).reshape(N, C + 1, 2 * Q + 1)
             B[:, a, :] = ev[:, None] - np.einsum("ns,nsd->nd", P, G)
-            P = np.einsum("ni,nij->nj", P, self.K[hods[a]])
+            P = self._fwd(t_min + STEP * a, P)
         return B
+
+    def _back(self, t, Vnext):
+        """Expected unmet rentals from the step starting at minute t to the horizon, given the values after it."""
+        hod, slot = int(t // 60) % 24, int(t // STEP) % 144
+        V = self.u[hod] + np.einsum("nij,nj->ni", self.K[hod], Vnext)
+        if slot in self.Ks:
+            V[self.sub] = self.us[slot] + np.einsum("nij,nj->ni", self.Ks[slot], Vnext[self.sub])
+        return V
+
+    def _fwd(self, t, P):
+        """Stock distribution after the step starting at minute t."""
+        hod, slot = int(t // 60) % 24, int(t // STEP) % 144
+        Pn = np.einsum("ni,nij->nj", P, self.K[hod])
+        if slot in self.Ks:
+            Pn[self.sub] = np.einsum("ni,nij->nj", P[self.sub], self.Ks[slot])
+        return Pn
 
 
     def forecast(self, t_min, bikes, steps):
@@ -104,8 +151,7 @@ class ChainValues:
         P = np.zeros((N, C + 1), np.float32)
         P[np.arange(N), np.clip(bikes, 0, self.cap)] = 1.0
         for a in range(min(steps, 36)):                 # kernels exist for every hour of the day; cap at 6 h
-            hod = int((t_min + STEP * a) // 60) % 24
-            P = np.einsum("ni,nij->nj", P, self.K[hod])
+            P = self._fwd(t_min + STEP * a, P)
         s = np.arange(C + 1)[None, :]
         return (P * s).sum(1), P[:, 0], P[np.arange(N), self.cap]
 

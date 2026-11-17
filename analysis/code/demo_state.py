@@ -28,7 +28,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 from features import INV_FEATS, NSYSU_BELLS, NSYSU_SEMESTERS, TW_HOLIDAYS, _bell_minutes, _to_since, neighbors  # noqa: E402
 from nsysu_data import CAMPUS, GATEWAY, HOLIDAYS, load_logger, load_stations  # noqa: E402
-from route_planner import STEP, ChainValues, RoutePlanner  # noqa: E402
+from route_planner import STEP, ChainValues, RoutePlanner, load_slot_rates  # noqa: E402
 
 DATA, RESULTS, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 ARG = lambda name, default, cast: cast(sys.argv[sys.argv.index(name) + 1]) if name in sys.argv else default
@@ -75,7 +75,9 @@ def chain_values(offday):
             R[:, row.hod] = row.pr; Qr[:, row.hod] = row.pq
         for row in rates[(rates.offday == offday) & rates.sno.isin(sidx)].itertuples():
             R[sidx[row.sno], row.hod] = row.lam_r; Qr[sidx[row.sno], row.hod] = row.lam_q
-        _values[offday] = ChainValues(R, Qr, CAP, HORIZON, Q)
+        # on teaching days the campus corridor has its own rate for every 10-minute slot, so the chain sees the surge after a bell
+        slots = load_slot_rates(RESULTS / "nsysu" / "rates" / "rates_slots.csv", sidx) if offday == 0 else None
+        _values[offday] = ChainValues(R, Qr, CAP, HORIZON, Q, slots)
     return _values[offday]
 
 
@@ -185,7 +187,7 @@ def station_list():
 
 META = {"horizon_min": HORIZON, "bells": NSYSU_BELLS, "major_bells": MAJORS, "window": ["06:00", "23:00"],
         "settings": {"Q": Q, "speed_kmh": SPEED_KMH, "stop_min": STOP_MIN, "per_bike_min": PER_BIKE_MIN, "beta": BETA, "max_stops": STOPS, "iters": ITERS,
-                     "predictor": "NTU inventory-only LightGBM, zero-shot", "rates": "chain MLE on the logger (nsysu_rates.py)",
+                     "predictor": "NTU inventory-only LightGBM, zero-shot", "rates": "chain MLE on the logger, hourly for every station and per 10-minute slot for the campus corridor (nsysu_rates.py)",
                      "excluded": "Qijin district (harbour tunnel detour)"}}
 
 if __name__ == "__main__":

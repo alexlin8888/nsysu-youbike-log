@@ -204,6 +204,27 @@
       m.on("click", function (e) { L.DomEvent.stopPropagation(e); if (picking) { setOrigin("pick", s.lat, s.lng); setPicking(false); } select(i); });
       m.addTo(glyphLayer); markers[i] = m;
     });
+    declutter();
+  }
+  // Station names sit under their mark. Where two campus stations are close, a name would cover its neighbour's
+  // mark or name, so each name tries below, above, right and left of its mark and is left out if none is free.
+  function declutter() {
+    var names = [].slice.call(document.querySelectorAll("#map .glyph .lbl"));
+    if (!names.length) return;
+    var marks = [].slice.call(document.querySelectorAll("#map .glyph svg")).map(function (el) { return { el: el, r: el.getBoundingClientRect() }; });
+    var hit = function (a, b, pad) { return a.left < b.right - pad && a.right > b.left + pad && a.top < b.bottom - pad && a.bottom > b.top + pad; };
+    var placed = [];
+    names.forEach(function (el) {
+      var own = el.parentNode.querySelector("svg");
+      var free = ["", " t", " r", " l"].some(function (pos) {
+        el.className = "lbl" + pos;
+        var r = el.getBoundingClientRect();
+        var blocked = placed.some(function (p) { return hit(r, p, 0); }) || marks.some(function (m) { return m.el !== own && hit(r, m.r, 4); });
+        if (!blocked) placed.push(r);
+        return !blocked;
+      });
+      if (!free) el.className = "lbl off";
+    });
   }
   function drawRoute(v) {
     routeLayer.clearLayers();
@@ -299,8 +320,8 @@
     }, fail, { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true });
   }
   function walkCell(km) { return km > 3 ? "<span class=\"walk\">" + t("walkKm", { k: km.toFixed(1) }) + "<small>" + t("farK") + "</small></span>" : "<span class=\"walk\">" + t("walkMin", { m: walkMin(km) }) + "<small>" + t("walkK") + "</small></span>"; }
-  function subLine(v, i) {
-    var o = outlook(v, i), eb = bellBikes(v, i), h = "";
+  function subLine(v, i, nowOnly) {
+    var o = outlook(v, i), eb = nowOnly ? null : bellBikes(v, i), h = "";
     if (o.text) h += "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
     if (v.bikes[i] != null && v.docks && v.docks[i] === 0) h += "<span class=\"state o\">" + t("noDock") + "</span>";
     else if (v.bikes[i] != null && v.docks && v.docks[i] != null) h += "<span>" + t("ret", { d: v.docks[i] }) + "</span>";
@@ -315,17 +336,32 @@
     li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
     return li;
   }
-  function bestPick(v, order) {
+  // Two questions a rider has: where is a bike now, and where will one be when my class ends?
+  function pickNow(v, order) {
     for (var k = 0; k < order.length; k++) {
       var i = order[k][1], km = order[k][0];
       if (km > 2) break;
       if (v.bikes[i] == null || v.bikes[i] < 2) continue;
       if (v.p30[i] != null && v.p30[i] >= 0.5) continue;
-      var eb = bellBikes(v, i); if (eb != null && eb < 1.5) continue;
       return { i: i, km: km, nearest: k === 0 };
     }
     return null;
   }
+  function pickAfter(v, order) {
+    if (!v.bell || !v.bell.bikes) return null;
+    var weak = null;
+    for (var k = 0; k < order.length; k++) {
+      var i = order[k][1], km = order[k][0];
+      if (km > 2) break;
+      var eb = bellBikes(v, i), pe = v.bell.p_empty[i];
+      if (v.bikes[i] == null || eb == null || pe == null) continue;
+      if (eb >= 2 && pe < 0.3) return { i: i, km: km, sure: true };
+      if (km <= 1.5 && (!weak || pe < weak.pe)) weak = { i: i, km: km, sure: false, pe: pe };
+    }
+    return weak;
+  }
+  function afterBadge(v, i) { return "<span class=\"badge b\">" + Math.round(bellBikes(v, i)) + "</span>"; }
+  function afterLine(v, i) { return "<span>" + t("afterSub", { at: v.bell.at, b: Math.round(bellBikes(v, i)), p: Math.round(100 * v.bell.p_empty[i]) }) + "</span>"; }
   function renderRider(v) {
     $("q").placeholder = t("search"); $("q").setAttribute("aria-label", t("search"));
     $("originK").textContent = t("originK"); $("oCampus").textContent = t("oCampus"); $("oMe").textContent = t("oMe"); $("oPick").textContent = t("oPick"); syncOrigin();
@@ -340,14 +376,19 @@
     var nl = $("near"); nl.innerHTML = "";
     order.slice(0, nearN).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
     $("more").textContent = nearN > 8 ? t("less") : t("more");
-    var pk = $("best"), best = bestPick(v, order);
-    pk.hidden = false; pk.onclick = null;
-    if (!best) { pk.className = "best none"; pk.disabled = true; pk.innerHTML = "<span><span class=\"why\">" + t("bestNoneK") + "</span><span class=\"sub\">" + t("bestNone") + "</span></span>"; }
+    var pk = $("best"), now = pickNow(v, order), after = pickAfter(v, order), bt = v.bell ? v.bell.bell : "";
+    pk.hidden = false; pk.innerHTML = "";
+    var add = function (cls, i, html) {
+      var el = document.createElement(i == null ? "div" : "button"); el.className = "pick" + (cls ? " " + cls : ""); el.innerHTML = html;
+      if (i != null) { el.type = "button"; el.addEventListener("click", function () { select(i); focusStation(v.stations[i]); }); }
+      pk.appendChild(el);
+    };
+    var row = function (lead, why, i, sub, km) { return lead + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(v.stations[i])) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(km); };
+    if (now && after && after.sure && now.i === after.i) add("", now.i, row(badge(v, now.i), t("bestBoth", { t: bt }), now.i, subLine(v, now.i), now.km));
     else {
-      var s = v.stations[best.i];
-      pk.className = "best"; pk.disabled = false;
-      pk.innerHTML = badge(v, best.i) + "<span><span class=\"why\">" + t("bestK") + sep() + (best.nearest ? t("bestNearest") : t("bestFar")) + "</span><span class=\"nm\">" + esc(nameOf(s)) + "</span><span class=\"sub\">" + subLine(v, best.i) + "</span></span>" + walkCell(best.km);
-      pk.onclick = function () { select(best.i); focusStation(s); };
+      if (now) add("", now.i, row(badge(v, now.i), t("bestNowK") + (now.nearest ? "" : sep() + t("bestNowFar")), now.i, subLine(v, now.i, true), now.km));
+      else add("none", null, "<span><span class=\"why\">" + t("bestNoneK") + "</span><span class=\"sub\">" + t("bestNone") + "</span></span>");
+      if (after) add("later", after.i, row(afterBadge(v, after.i), t("bestAfterK", { t: bt }) + (after.sure ? "" : sep() + t("bestAfterWeak")), after.i, afterLine(v, after.i), after.km));
     }
   }
   function searchStations(q) {
@@ -409,7 +450,9 @@
     var tt = v.totals, unit = function (k) { return "<small>" + t(k) + "</small>"; };
     $("hKpi").innerHTML = "<span>" + t("kpi") + "</span><span class=\"sub\">" + t("kpiSub", { n: tt.observed }) + "</span>";
     $("tEmpty").innerHTML = fmt(tt.empty_now) + unit("uSta"); $("kEmpty").textContent = t("kEmpty");
-    $("tRisk").innerHTML = fmt(tt.p30_over_half) + unit("uSta"); $("kRisk").textContent = t("kRisk");
+    // stations that still have bikes but will probably run out: the ones already empty are counted on the left
+    var soon = 0; v.stations.forEach(function (s, i) { if (v.bikes[i] > 0 && v.p30[i] != null && v.p30[i] >= 0.5) soon++; });
+    $("tRisk").innerHTML = fmt(soon) + unit("uSta"); $("kRisk").textContent = t("kRisk");
     $("tUnmet").innerHTML = v.in_window ? fmt(tt.expected_unmet) + unit("uRide") : "–"; $("kUnmet").textContent = t("kUnmet", { h: v.meta.horizon_min });
     $("tSaved").innerHTML = v.in_window ? fmt(tt.plan_value) + unit("uRide") + (tt.plan_value > 0 && tt.expected_unmet ? "<small>" + Math.round(100 * tt.plan_value / tt.expected_unmet) + "%</small>" : "") : "–";
     $("kSaved").textContent = t("kSaved");

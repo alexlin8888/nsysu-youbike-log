@@ -16,8 +16,10 @@ GATEWAY = {  # off-campus stations students ride to after class (within ~1.2 km)
     "501209022": "Shaochuan/Anhai", "501209032": "Sizihwan Scenic", "501209025": "Gushan Marina Park",
     "501209104": "Shinhamacho", "501209028": "Xinbin Police",
 }
-# Taiwan public holidays inside the logging window (2026)
-HOLIDAYS = {"2026-10-09", "2026-10-10"}
+# Days without classes inside the semester (115-1): National Day and its bridge day, the Monday off for Retrocession Day
+# (25 Oct fell on a Sunday), Constitution Day and New Year's Day. 23 Oct 2026 needs no entry: YouBike closed every
+# Kaohsiung station that day (typhoon), so the logger holds no stock for it.
+HOLIDAYS = {"2026-10-09", "2026-10-10", "2026-10-26", "2026-12-25", "2027-01-01"}
 
 
 def load_logger(data_dir, days=None):

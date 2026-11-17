@@ -119,10 +119,11 @@ async def check_rider(browser, size):
     nums = [int(re.search(r"\d+", w).group()) for w in walks]
     record(size, "nearby list is ordered by walking time", nums == sorted(nums), str(nums))
     best_hidden = await page.get_attribute("#best", "hidden")
-    best_name = await page.locator("#best .nm").inner_text() if await page.locator("#best .nm").count() else ""
-    record(size, "a suggestion is shown", best_hidden is None and (bool(best_name) or "none" in (await page.get_attribute("#best", "class"))), best_name)
+    picks = await page.locator("#best .pick").count()
+    best_name = await page.locator("#best button.pick .nm").first.inner_text() if await page.locator("#best button.pick").count() else ""
+    record(size, "a suggestion is shown", best_hidden is None and picks >= 1, f"{picks} suggestion(s): " + " / ".join(x.replace(chr(10), " ")[:40] for x in await page.locator("#best .pick .why").all_inner_texts()))
     if best_name:
-        await page.click("#best"); await page.wait_for_timeout(500)
+        await page.locator("#best button.pick").first.click(); await page.wait_for_timeout(500)
         card_name = await page.locator("#card .nm").inner_text()
         record(size, "tapping the suggestion opens that station", card_name == best_name and re.fullmatch(r"#\d+", await page.evaluate("location.hash")) is not None, f"{card_name} {await page.evaluate('location.hash')}")
         if is_phone(size):
@@ -272,6 +273,23 @@ async def check_replay(browser, size):
         name = await page.locator("#plans .stop .nm").first.inner_text()
         await page.locator("#plans .stop").first.click(); await page.wait_for_timeout(500)
         record(size, "a stop opens its station", await page.locator("#card .nm").inner_text() == name, name)
+    await ctx.close()
+    # the rider tab an hour before the 17:00 class end: where to borrow now, and where after class
+    ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:00")
+    await page.wait_for_timeout(1200)
+    await open_sheet(page, size)
+    rows = await page.locator("#best .pick").count()
+    later = page.locator("#best .pick.later")
+    text = (await page.locator("#best").inner_text()).replace("\n", " ")
+    ok = rows >= 1 and "現在借" in text and "下課後借" in text and (await later.count() == 1 or "都去這站" in text)
+    record(size, "before a class end the suggestion covers now and after class", ok, text[:120])
+    if await later.count():
+        name = await later.locator(".nm").inner_text()
+        box = await later.bounding_box()
+        vw = SIZES[size][0]
+        record(size, "the after-class row fits its column", box is not None and box["x"] >= 0 and box["x"] + box["width"] <= vw + 0.5, f"x {box['x']:.0f}, width {box['width']:.0f}")
+        await later.click(); await page.wait_for_timeout(500)
+        record(size, "the after-class row opens its station", await page.locator("#card .nm").inner_text() == name, name)
     await ctx.close()
 
 

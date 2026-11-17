@@ -755,16 +755,21 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .more { width: 100%; border: 0; background: var(--surface-2); border-radius: 12px; min-height: 42px; font-size: 13.5px; color: var(--ink-2); margin-top: 6px; }
 .more:hover { background: var(--surface-3); color: var(--ink); }
 
-/* the suggestion */
-.best { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--ok-soft); cursor: pointer; width: 100%; text-align: left; border: 0; }
-.best .why { display: block; font-size: 12.5px; color: var(--ok); font-weight: 600; }
-.best .nm { display: block; font-weight: 600; font-size: 16px; line-height: 1.3; }
-.best .sub { font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; column-gap: 10px; }
-.best .walk { text-align: right; white-space: nowrap; font: 600 20px/1.1 var(--font-num); }
-.best .walk small { display: block; font: 400 11.5px/1.3 var(--font-ui); color: var(--ink-2); }
-.best.none { background: var(--surface-2); cursor: default; grid-template-columns: minmax(0, 1fr); }
-.best.none .why { color: var(--ink-2); }
-.best.none .sub { font-size: 13.5px; color: var(--ink); }
+/* the suggestions: a station for now (green) and one for after the next class end (the board's colours) */
+.best { display: grid; gap: 8px; }
+.pick { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--ok-soft); cursor: pointer; width: 100%; text-align: left; border: 0; }
+.pick .why { display: block; font-size: 12.5px; color: var(--ok); font-weight: 600; line-height: 1.35; }
+.pick .nm { display: block; font-weight: 600; font-size: 16px; line-height: 1.3; }
+.pick .sub { font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; column-gap: 10px; }
+.pick .walk { text-align: right; white-space: nowrap; font: 600 20px/1.1 var(--font-num); }
+.pick .walk small { display: block; font: 400 11.5px/1.3 var(--font-ui); color: var(--ink-2); }
+.pick.later { background: var(--board); color: var(--board-ink); }
+.pick.later .why { color: var(--bell); }
+.pick.later .sub, .pick.later .walk small { color: var(--board-mute); }
+.badge.b { background: var(--board-2); color: var(--bell); }
+.pick.none { background: var(--surface-2); cursor: default; grid-template-columns: minmax(0, 1fr); }
+.pick.none .why { color: var(--ink-2); }
+.pick.none .sub { font-size: 13.5px; color: var(--ink); }
 
 /* buttons */
 .btn { border: 0; background: var(--surface-3); border-radius: 10px; padding: 8px 14px; font-size: 13.5px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; color: var(--ink); white-space: nowrap; }
@@ -887,6 +892,10 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .glyph svg { display: block; overflow: visible; }
 .glyph text { font-family: var(--font-num); font-weight: 600; font-variant-numeric: tabular-nums; }
 .glyph .lbl { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--ink); padding: 0 5px; background: var(--surface); background: color-mix(in srgb, var(--surface) 86%, transparent); border-radius: 4px; pointer-events: none; line-height: 1.5; }
+.glyph .lbl.t { top: auto; bottom: 100%; }
+.glyph .lbl.r { left: 100%; top: 50%; transform: translateY(-50%); }
+.glyph .lbl.l { left: auto; right: 100%; top: 50%; transform: translateY(-50%); }
+.glyph .lbl.off { display: none; }
 .glyph.sel svg { filter: drop-shadow(0 0 0 var(--accent)) drop-shadow(0 0 5px var(--accent)); }
 .glyph .star { position: absolute; right: -6px; top: -8px; font-size: 13px; color: var(--low-fill); pointer-events: none; text-shadow: 0 0 2px var(--surface), 0 0 2px var(--surface); }
 .stopicon { background: var(--accent); color: var(--on-accent); border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; font: 600 13px/1 var(--font-num); box-shadow: 0 0 0 2px var(--surface), var(--shadow-1); }
@@ -1003,7 +1012,7 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
             <input id="q" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-controls="qres">
             <div class="results" id="qres" hidden></div>
           </div>
-          <button class="best" id="best" type="button" hidden></button>
+          <div class="best" id="best" hidden></div>
           <div class="origin" role="group" id="originGroup">
             <span class="k" id="originK"></span>
             <button class="opt" id="oCampus" type="button" aria-pressed="true"></button>
@@ -1090,7 +1099,7 @@ var T = {
     search: "搜尋站名，例如 圖資", noMatch: "找不到這個站",
     originK: "起點", oCampus: "中山校園", oMe: "我的位置", oPick: "地圖選點",
     geoFail: "拿不到你的位置，改用地圖選點", tooFar: "你不在中山附近，起點先留在校園。", picking: "在地圖上點一下，設成起點", fabLabel: "用我的位置當起點",
-    bestK: "建議", bestNearest: "最近的站就有車", bestFar: "近一點的站可能沒車，這站比較保險",
+    bestNowK: "現在借", bestNowFar: "近一點的站可能沒車", bestAfterK: "{t} 下課後借", bestAfterWeak: "這附近到時可能都沒車，這站機會最大", bestBoth: "現在借、{t} 下課後借都去這站", afterSub: "{at} 預估剩 {b} 台，沒車機率 {p}%",
     bestNoneK: "附近可能都沒車", bestNone: "2 公里內的站都可能沒車。往外找地圖上綠色的站。",
     fav: "我的站", near: "附近的站", nearSub: "由近到遠", more: "再看 8 站", less: "收起來",
     walkK: "步行", walkMin: "{m} 分", farK: "直線", walkKm: "{k} 公里",
@@ -1105,7 +1114,7 @@ var T = {
     stale2: "這站的資料是 {m} 分鐘前的", excluded: "旗津的站，卡車路線不會排到", inCampus: "校內", nearCampus: "校外鄰近",
     favAdded: "加進我的站了", favRemoved: "移出我的站了", close: "關閉",
 
-    kpi: "現在的狀況", kpiSub: "{n} 站有資料", uSta: "站", uRide: "人次", kEmpty: "現在沒車", kRisk: "30 分內可能沒車", kUnmet: "未來 {h} 分預估借不到車", kSaved: "照建議路線可以少掉",
+    kpi: "現在的狀況", kpiSub: "{n} 站有資料", uSta: "站", uRide: "人次", kEmpty: "現在沒車", kRisk: "30 分內可能被借光", kUnmet: "未來 {h} 分預估借不到車", kSaved: "照建議路線可以少掉",
     plan: "下課前的卡車路線", copy: "複製路線", copied: "已複製",
     pickN: "載走 {n} 台", dropN: "補 {n} 台", nowAt: "現在 {b}/{c}", eta: "分後到", onTruck: "車上 {n} 台", truck: "卡車 {k}", nStops: "{n} 站",
     tripLen: "約 {t} 分鐘、{k} 公里", tripGain: "預估少 {v} 人次借不到車",
@@ -1122,7 +1131,7 @@ var T = {
     aboutHow: "<h3>數字怎麼來的</h3>" +
       "<p>車數來自 YouBike 官方 API。紀錄器每 10 分鐘抓一次中山大學周邊 5 公里內的 {n} 個站，從 2026 年 10 月 1 日記到現在。</p>" +
       "<p>「30 分內沒車的機率」是一個 LightGBM 模型算的。模型用臺大周邊 10 個月的站點資料訓練，只看車數和時間，沒有拿中山的資料再調過。在臺大的測試月份 AUC 是 0.93，直接搬到中山也是 0.93。</p>" +
-      "<p>「下課後預估剩幾台」把每一站當成一條生滅鏈：借走一台少一台，還進一台多一台。借還的速率用紀錄器的資料估，再從現在的車數往後推到下課後 20 分。</p>" +
+      "<p>「下課後預估剩幾台」把每一站當成一條生滅鏈：借走一台少一台，還進一台多一台。借還的速率用紀錄器的資料估。校園到捷運之間的 19 站在上課日每 10 分鐘估一組，因為下課那 10 分鐘借得特別快。再從現在的車數往後推到下課後 20 分。拿 12 個沒用來估速率的上課日來對，校內每站平均差 3.3 台。</p>" +
       "<p>卡車路線先估每一站未來 {h} 分有幾個人借不到車，再搜尋一條路線，決定先去哪一站、載走或補上幾台。一台卡車最多載 {q} 台、時速 {s} 公里、每站停 {st} 分鐘。用臺大的真實騎乘紀錄重播，派 1、3、6 台卡車，借不到車的人次分別少 13%、30%、45%。</p>" +
       "<p>車程是用直線距離乘 1.3 估的，旗津的站不排進路線。「我的站」只存在這台裝置的瀏覽器裡，不會上傳。</p>",
     langK: "語言", credit: "人工智慧導論期末專案，第 54 組。程式和資料放在 <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\" target=\"_blank\" rel=\"noopener\">GitHub</a>。",
@@ -1144,7 +1153,7 @@ var T = {
     search: "Search stations, e.g. Library", noMatch: "No station by that name",
     originK: "From", oCampus: "Campus", oMe: "My location", oPick: "Pick on map",
     geoFail: "Couldn't get your location. Pick a point on the map instead.", tooFar: "You are far from NSYSU, so the start stays on campus.", picking: "Tap the map to set where you start", fabLabel: "Start from my location",
-    bestK: "Suggested", bestNearest: "the nearest station has bikes", bestFar: "closer stations may run out, this one is safer",
+    bestNowK: "Now", bestNowFar: "closer stations may run out", bestAfterK: "After the {t} bell", bestAfterWeak: "nearby stations may all be empty then, this one has the best chance", bestBoth: "Now and after the {t} bell", afterSub: "about {b} left at {at}, {p}% chance of none",
     bestNoneK: "Nearby stations may all run out", bestNone: "Every station within 2 km may be empty. Look for a green one further out on the map.",
     fav: "My stations", near: "Nearby", nearSub: "nearest first", more: "Show 8 more", less: "Show fewer",
     walkK: "walk", walkMin: "{m} min", farK: "away", walkKm: "{k} km",
@@ -1159,12 +1168,12 @@ var T = {
     stale2: "This station last reported {m} min ago", excluded: "A Qijin station; the truck route never includes it", inCampus: "on campus", nearCampus: "near campus",
     favAdded: "Saved to My stations", favRemoved: "Removed from My stations", close: "Close",
 
-    kpi: "Right now", kpiSub: "{n} stations reporting", uSta: "stations", uRide: "riders", kEmpty: "empty now", kRisk: "may be empty within 30 min", kUnmet: "expected to find no bike in the next {h} min", kSaved: "spared if the truck follows the route",
+    kpi: "Right now", kpiSub: "{n} stations reporting", uSta: "stations", uRide: "riders", kEmpty: "empty now", kRisk: "likely to run out within 30 min", kUnmet: "expected to find no bike in the next {h} min", kSaved: "spared if the truck follows the route",
     plan: "Truck route before the bell", copy: "Copy route", copied: "Copied",
     pickN: "Pick up {n}", dropN: "Drop off {n}", nowAt: "now {b}/{c}", eta: "min away", onTruck: "{n} on the truck", truck: "Truck {k}", nStops: "{n} stops",
     tripLen: "about {t} min, {k} km", tripGain: "about {v} fewer riders left without a bike",
     noPlan: "No trip is worth making now. The shortfall is spread over many stations, {m} riders at the worst one, so a run would save less than it costs in time.", offWindow: "Routes are planned between 06:00 and 23:00 only.",
-    riskH: "Most likely to run out", unmetH: "Largest shortfall, next 90 min", h30: "30 min", h60: "60 min", hU: "90-min shortfall",
+    riskH: "Most likely to run out", unmetH: "Largest shortfall, next 90 min", h30: "30 min", h60: "60 min", hU: "Shortfall",
 
     legOutlook: "Next 30 minutes", legP: "Chance of no bikes within {h} min", legU: "Riders without a bike, next {h} min",
     legNum: "The number is bikes available now", legCampus: "A blue outline marks a campus station", legRoute: "Truck route",
@@ -1176,7 +1185,7 @@ var T = {
     aboutHow: "<h3>Where the numbers come from</h3>" +
       "<p>Bike counts come from the official YouBike API. A logger reads the {n} stations within 5 km of NSYSU every 10 minutes and has done so since 1 October 2026.</p>" +
       "<p>The chance of no bikes within 30 minutes comes from a LightGBM model. It was trained on 10 months of station data around NTU, uses only bike counts and time, and was never tuned on NSYSU data. Its AUC is 0.93 on the NTU test months and 0.93 at NSYSU.</p>" +
-      "<p>The after-class estimate treats each station as a birth-death chain: a rental removes a bike, a return adds one. The rental and return rates are fitted to the logger's data, and the chain runs forward from the current count to 20 minutes after the bell.</p>" +
+      "<p>The after-class estimate treats each station as a birth-death chain: a rental removes a bike, a return adds one. The rental and return rates are fitted to the logger's data. The 19 stations between campus and the metro get one pair of rates per 10 minutes on teaching days, because rentals jump in the 10 minutes after a bell. The chain then runs forward from the current count to 20 minutes after the bell. On 12 teaching days that were not used for fitting, the estimate was off by 3.3 bikes per campus station on average.</p>" +
       "<p>The truck route starts from how many riders each station is expected to turn away over the next {h} minutes. A search then decides where the truck goes first and how many bikes it picks up or drops off. A truck carries {q} bikes, travels at {s} km/h and spends {st} minutes per stop. Replayed on real NTU trips, 1, 3 and 6 trucks cut the number of riders turned away by 13%, 30% and 45%.</p>" +
       "<p>Travel times are straight-line distance times 1.3, and Qijin stations are left out of the route. My stations are kept in this browser only and are never uploaded.</p>",
     langK: "Language", credit: "Final project for Introduction to Artificial Intelligence, Group 54. Code and data are on <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\" target=\"_blank\" rel=\"noopener\">GitHub</a>.",
@@ -1391,6 +1400,27 @@ var T = {
       m.on("click", function (e) { L.DomEvent.stopPropagation(e); if (picking) { setOrigin("pick", s.lat, s.lng); setPicking(false); } select(i); });
       m.addTo(glyphLayer); markers[i] = m;
     });
+    declutter();
+  }
+  // Station names sit under their mark. Where two campus stations are close, a name would cover its neighbour's
+  // mark or name, so each name tries below, above, right and left of its mark and is left out if none is free.
+  function declutter() {
+    var names = [].slice.call(document.querySelectorAll("#map .glyph .lbl"));
+    if (!names.length) return;
+    var marks = [].slice.call(document.querySelectorAll("#map .glyph svg")).map(function (el) { return { el: el, r: el.getBoundingClientRect() }; });
+    var hit = function (a, b, pad) { return a.left < b.right - pad && a.right > b.left + pad && a.top < b.bottom - pad && a.bottom > b.top + pad; };
+    var placed = [];
+    names.forEach(function (el) {
+      var own = el.parentNode.querySelector("svg");
+      var free = ["", " t", " r", " l"].some(function (pos) {
+        el.className = "lbl" + pos;
+        var r = el.getBoundingClientRect();
+        var blocked = placed.some(function (p) { return hit(r, p, 0); }) || marks.some(function (m) { return m.el !== own && hit(r, m.r, 4); });
+        if (!blocked) placed.push(r);
+        return !blocked;
+      });
+      if (!free) el.className = "lbl off";
+    });
   }
   function drawRoute(v) {
     routeLayer.clearLayers();
@@ -1486,8 +1516,8 @@ var T = {
     }, fail, { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true });
   }
   function walkCell(km) { return km > 3 ? "<span class=\"walk\">" + t("walkKm", { k: km.toFixed(1) }) + "<small>" + t("farK") + "</small></span>" : "<span class=\"walk\">" + t("walkMin", { m: walkMin(km) }) + "<small>" + t("walkK") + "</small></span>"; }
-  function subLine(v, i) {
-    var o = outlook(v, i), eb = bellBikes(v, i), h = "";
+  function subLine(v, i, nowOnly) {
+    var o = outlook(v, i), eb = nowOnly ? null : bellBikes(v, i), h = "";
     if (o.text) h += "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
     if (v.bikes[i] != null && v.docks && v.docks[i] === 0) h += "<span class=\"state o\">" + t("noDock") + "</span>";
     else if (v.bikes[i] != null && v.docks && v.docks[i] != null) h += "<span>" + t("ret", { d: v.docks[i] }) + "</span>";
@@ -1502,17 +1532,32 @@ var T = {
     li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
     return li;
   }
-  function bestPick(v, order) {
+  // Two questions a rider has: where is a bike now, and where will one be when my class ends?
+  function pickNow(v, order) {
     for (var k = 0; k < order.length; k++) {
       var i = order[k][1], km = order[k][0];
       if (km > 2) break;
       if (v.bikes[i] == null || v.bikes[i] < 2) continue;
       if (v.p30[i] != null && v.p30[i] >= 0.5) continue;
-      var eb = bellBikes(v, i); if (eb != null && eb < 1.5) continue;
       return { i: i, km: km, nearest: k === 0 };
     }
     return null;
   }
+  function pickAfter(v, order) {
+    if (!v.bell || !v.bell.bikes) return null;
+    var weak = null;
+    for (var k = 0; k < order.length; k++) {
+      var i = order[k][1], km = order[k][0];
+      if (km > 2) break;
+      var eb = bellBikes(v, i), pe = v.bell.p_empty[i];
+      if (v.bikes[i] == null || eb == null || pe == null) continue;
+      if (eb >= 2 && pe < 0.3) return { i: i, km: km, sure: true };
+      if (km <= 1.5 && (!weak || pe < weak.pe)) weak = { i: i, km: km, sure: false, pe: pe };
+    }
+    return weak;
+  }
+  function afterBadge(v, i) { return "<span class=\"badge b\">" + Math.round(bellBikes(v, i)) + "</span>"; }
+  function afterLine(v, i) { return "<span>" + t("afterSub", { at: v.bell.at, b: Math.round(bellBikes(v, i)), p: Math.round(100 * v.bell.p_empty[i]) }) + "</span>"; }
   function renderRider(v) {
     $("q").placeholder = t("search"); $("q").setAttribute("aria-label", t("search"));
     $("originK").textContent = t("originK"); $("oCampus").textContent = t("oCampus"); $("oMe").textContent = t("oMe"); $("oPick").textContent = t("oPick"); syncOrigin();
@@ -1527,14 +1572,19 @@ var T = {
     var nl = $("near"); nl.innerHTML = "";
     order.slice(0, nearN).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
     $("more").textContent = nearN > 8 ? t("less") : t("more");
-    var pk = $("best"), best = bestPick(v, order);
-    pk.hidden = false; pk.onclick = null;
-    if (!best) { pk.className = "best none"; pk.disabled = true; pk.innerHTML = "<span><span class=\"why\">" + t("bestNoneK") + "</span><span class=\"sub\">" + t("bestNone") + "</span></span>"; }
+    var pk = $("best"), now = pickNow(v, order), after = pickAfter(v, order), bt = v.bell ? v.bell.bell : "";
+    pk.hidden = false; pk.innerHTML = "";
+    var add = function (cls, i, html) {
+      var el = document.createElement(i == null ? "div" : "button"); el.className = "pick" + (cls ? " " + cls : ""); el.innerHTML = html;
+      if (i != null) { el.type = "button"; el.addEventListener("click", function () { select(i); focusStation(v.stations[i]); }); }
+      pk.appendChild(el);
+    };
+    var row = function (lead, why, i, sub, km) { return lead + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(v.stations[i])) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(km); };
+    if (now && after && after.sure && now.i === after.i) add("", now.i, row(badge(v, now.i), t("bestBoth", { t: bt }), now.i, subLine(v, now.i), now.km));
     else {
-      var s = v.stations[best.i];
-      pk.className = "best"; pk.disabled = false;
-      pk.innerHTML = badge(v, best.i) + "<span><span class=\"why\">" + t("bestK") + sep() + (best.nearest ? t("bestNearest") : t("bestFar")) + "</span><span class=\"nm\">" + esc(nameOf(s)) + "</span><span class=\"sub\">" + subLine(v, best.i) + "</span></span>" + walkCell(best.km);
-      pk.onclick = function () { select(best.i); focusStation(s); };
+      if (now) add("", now.i, row(badge(v, now.i), t("bestNowK") + (now.nearest ? "" : sep() + t("bestNowFar")), now.i, subLine(v, now.i, true), now.km));
+      else add("none", null, "<span><span class=\"why\">" + t("bestNoneK") + "</span><span class=\"sub\">" + t("bestNone") + "</span></span>");
+      if (after) add("later", after.i, row(afterBadge(v, after.i), t("bestAfterK", { t: bt }) + (after.sure ? "" : sep() + t("bestAfterWeak")), after.i, afterLine(v, after.i), after.km));
     }
   }
   function searchStations(q) {
@@ -1596,7 +1646,9 @@ var T = {
     var tt = v.totals, unit = function (k) { return "<small>" + t(k) + "</small>"; };
     $("hKpi").innerHTML = "<span>" + t("kpi") + "</span><span class=\"sub\">" + t("kpiSub", { n: tt.observed }) + "</span>";
     $("tEmpty").innerHTML = fmt(tt.empty_now) + unit("uSta"); $("kEmpty").textContent = t("kEmpty");
-    $("tRisk").innerHTML = fmt(tt.p30_over_half) + unit("uSta"); $("kRisk").textContent = t("kRisk");
+    // stations that still have bikes but will probably run out: the ones already empty are counted on the left
+    var soon = 0; v.stations.forEach(function (s, i) { if (v.bikes[i] > 0 && v.p30[i] != null && v.p30[i] >= 0.5) soon++; });
+    $("tRisk").innerHTML = fmt(soon) + unit("uSta"); $("kRisk").textContent = t("kRisk");
     $("tUnmet").innerHTML = v.in_window ? fmt(tt.expected_unmet) + unit("uRide") : "–"; $("kUnmet").textContent = t("kUnmet", { h: v.meta.horizon_min });
     $("tSaved").innerHTML = v.in_window ? fmt(tt.plan_value) + unit("uRide") + (tt.plan_value > 0 && tt.expected_unmet ? "<small>" + Math.round(100 * tt.plan_value / tt.expected_unmet) + "%</small>" : "") : "–";
     $("kSaved").textContent = t("kSaved");

@@ -6,6 +6,9 @@ For each of the last --days complete days (yesterday and earlier, local time) th
 docs/replay_YYYY-MM-DD.json exists (built with demo_state.py --replay; at most --max-new per call so that one
 logger loop iteration stays short), removes older replay files and writes docs/replays.json, the list the page
 offers in its replay menu (newest first).
+
+Days listed in docs/replays_keep.txt (one YYYY-MM-DD per line) are kept however old they are, so that links to a
+replay moment in the report and in the video script keep working.
 """
 import json
 import subprocess
@@ -19,6 +22,9 @@ DAYS, MAX_NEW = ARG("--days", 7, int), ARG("--max-new", 1, int)
 TZ = timezone(timedelta(hours=8))
 today = datetime.now(TZ).date()
 wanted = [(today - timedelta(days=k)).strftime("%Y-%m-%d") for k in range(1, DAYS + 1)]
+keep_file = DOCS / "replays_keep.txt"
+pinned = [ln.strip() for ln in keep_file.read_text(encoding="utf-8").splitlines() if ln.strip() and not ln.startswith("#")] if keep_file.exists() else []
+wanted += [d for d in pinned if d not in wanted and d < today.strftime("%Y-%m-%d")]
 wanted = [d for d in wanted if (DATA / "kaohsiung" / f"{d}.csv").exists() or (DATA / "kaohsiung" / f"{d}.csv.gz").exists()]
 made = 0
 for d in wanted:
