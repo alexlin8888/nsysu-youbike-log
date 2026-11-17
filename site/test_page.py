@@ -136,10 +136,12 @@ async def check_rider(browser, size):
         facts = await page.locator("#card .fact .v").all_inner_texts()
         says = (await page.locator("#card .says").inner_text()).replace("\n", " ")
         record(size, "card shows bikes, docks and the answer on arrival", len(facts) == 2 and all(re.search(r"\d|–", f) for f in facts) and bool(re.search(r"你到的時候|現在沒車", says)), " | ".join(f.replace("\n", "") for f in facts) + " | " + says[:50])
+        # the forecast block is in state.json once the logger runs the current demo_state.py; an older snapshot has none
+        has_ahead = await page.evaluate("fetch('state.json', { cache: 'no-store' }).then(r => r.json()).then(j => !!j.ahead)")
         cells = await page.evaluate("Array.from(document.querySelectorAll('#card .ahead .cell')).map(c => c.querySelector('b').textContent + '@' + c.querySelector('span').textContent)")
-        record(size, "card lists the next 90 minutes in five steps", len(cells) == 5 and all(re.fullmatch(r"\d+@\d\d:\d\d", c) for c in cells), " ".join(cells))
+        record(size, "card lists the next 90 minutes in five steps", (len(cells) == 5 and all(re.fullmatch(r"\d+@\d\d:\d\d", c) for c in cells)) if has_ahead else not cells, " ".join(cells) if has_ahead else "snapshot without a forecast block")
         chart = await page.locator("#card .chart svg path").count(); dashed = await page.locator("#card .chart svg path[stroke-dasharray]").count()
-        record(size, "card draws today's stock and the forecast", chart >= 3 and dashed == 1, f"{chart} paths, {dashed} dashed")
+        record(size, "card draws today's stock and the forecast", chart >= 2 and dashed == (1 if has_ahead else 0), f"{chart} paths, {dashed} dashed")
         box = await page.locator("#card").bounding_box()
         record(size, "card fits the panel width", box["x"] >= 0 and box["x"] + box["width"] <= SIZES[size][0] + 1, str(box))
         # favourite on, visible in the list, survives a reload, favourite off

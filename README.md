@@ -61,7 +61,7 @@
 
 ## 即時 demo
 
-`docs/index.html` 是即時頁面，有「找車」「調度」「說明」三個分頁。找車給下課要借車的人看：現在去哪一站借、下課後去哪一站借、附近每一站 30 分內會不會沒車。調度給派卡車的人看：未來 90 分預估借不到車的人次和一條建議的卡車路線。頁面的讀法、可以直接開到某個畫面的連結寫在 `docs/DEMO.md`，期末影片的腳本在 `docs/VIDEO.md`。頁面由 `site/src` 組成，改版流程見 `site/README.md`。
+`docs/index.html` 是即時頁面，有「借車」「還車」「調度」「說明」四個分頁。借車告訴你走到的時候哪一站還有車，還車告訴你騎到的時候哪一站還有位子，兩者都可以選出發或抵達的時間。調度給派卡車的人看：校園到捷運之間 19 站未來 90 分預估借不到車的人次，和一台校園專車的下一趟路線。頁面的讀法、可以直接開到某個畫面的連結寫在 `docs/DEMO.md`，期末影片的腳本在 `docs/VIDEO.md`。頁面由 `site/src` 組成，改版流程見 `site/README.md`。
 
 公開網址要在 repo 的 **Settings → Pages** 設定一次：Source 選 *Deploy from a branch*，Branch 選 `main`、資料夾選 `/docs`，Save。之後網址是 `https://alexlin8888.github.io/nsysu-youbike-log/`，每次 commit 後約一分鐘更新。
 

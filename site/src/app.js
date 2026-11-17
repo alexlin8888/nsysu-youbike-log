@@ -75,10 +75,10 @@
   }
   function look(v, i) { return verdict(v, i, need(), arriveMin(v, i)); }
   // when the answer changes: "likely out by 17:20", or for an empty station "a bike likely back by 18:10"
-  function turnText(v, i, kind) {
+  function turnText(v, i, kind, cls) {
     var a = aheadOf(v, i, kind), h = have(v, i, kind), bike = kind === "bike", k; if (!a || h == null) return "";
     var end = hm((v.t_min + 10 * a.length) % 1440), at = function (n) { return hm((v.t_min + 10 * (n + 1)) % 1440); };
-    if (h > 0) { for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) < 32) return t(bike ? "tGone" : "tFull", { t: at(k) }); return t(bike ? "tKeep" : "tFree", { t: end }); }
+    if (h > 0) { for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) < 32) return t(bike ? "tGone" : "tFull", { t: at(k) }); return cls === "g" ? t(bike ? "tKeep" : "tFree", { t: end }) : ""; }   // "bikes until 20:30" would contradict a "may be out"
     for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) >= 32) return t(bike ? "tBack" : "tOpen", { t: at(k) });
     return t(bike ? "tNoBack" : "tNoOpen", { t: end });
   }
@@ -365,7 +365,7 @@
   function walkCell(km, label) { return km > 3 ? "<span class=\"walk\">" + t("walkKm", { k: km.toFixed(1) }) + "<small>" + t("farK") + "</small></span>" : "<span class=\"walk\">" + t("walkMin", { m: walkMin(km) }) + "<small>" + t(label || "walkK") + "</small></span>"; }
   function shortName(s) { return isCampus(s) && SHORT[s.sno] ? SHORT[s.sno][lang === "zh" ? 0 : 1] : nameOf(s); }
   function subLine(v, i) {
-    var o = look(v, i), turn = v.bikes[i] == null ? "" : turnText(v, i, need()), h = "";
+    var o = look(v, i), turn = v.bikes[i] == null ? "" : turnText(v, i, need(), o.cls), h = "";
     if (o.text) h += "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
     if (turn) h += "<span>" + turn + "</span>";
     return h;
@@ -511,7 +511,7 @@
   function renderCard(v) {
     var wrap = $("cardWrap");
     if (selected == null) { wrap.hidden = true; return; }
-    var i = selected, s = v.stations[i], observed = v.bikes[i] != null, kind = need(), o = look(v, i), isFav = favs.indexOf(s.sno) >= 0, turn = observed ? turnText(v, i, kind) : "";
+    var i = selected, s = v.stations[i], observed = v.bikes[i] != null, kind = need(), o = look(v, i), isFav = favs.indexOf(s.sno) >= 0, turn = observed ? turnText(v, i, kind, o.cls) : "";
     var foot = [];
     if (v.age && v.age[i] != null && v.age[i] > 20) foot.push(t("stale2", { m: v.age[i] }));
     if (s.excluded) foot.push(t("excluded"));

@@ -51,7 +51,7 @@ var T = {
     keyYes: "綠色是你到的時候應該有車。還車那一頁是應該有位子。圓圈裡的數字是現在的數量。", keyMaybe: "黃色是不一定，十次裡大概有一到四次會撲空。", keyNo: "紅色是很可能沒有。",
     keyGone: "深紅是現在就沒有，短時間內也不太會有。", keyNone: "灰色是暫停服務或沒有資料。",
     keyRing: "地圖上圓圈外緣的弧線是車柱有車的比例，藍框是校內的站。", keyRoute: "虛線是建議的卡車路線，圓圈裡的數字是停靠順序。",
-    aboutWhat: "<h3>這個頁面在做什麼</h3><p>中山的 YouBike 有三個時段特別難用。傍晚 5 點到 7 點半，校內借不到車。早上 9 點到 10 點半，校內沒位子還車。同一段時間，山下和捷運站的車也被借光。這個頁面每 10 分鐘更新一次，告訴你走到的時候哪一站還有車，騎到的時候哪一站還有位子。</p>",
+    aboutWhat: "<h3>這個頁面在做什麼</h3><p>上課日的中山，YouBike 有三個時段特別難用。傍晚 5 點到 8 點，校內的站有四成的時間沒車。早上 9 點到 11 點，校內有將近三成的時間沒位子還車，山下和捷運站也有四分之一的時間沒車。這個頁面每 10 分鐘更新一次，告訴你走到的時候哪一站還有車，騎到的時候哪一站還有位子。</p>",
     aboutProof: "<h3>照著走有沒有用</h3><p>我們拿 12 個沒有用來估模型的上課日來對：頁面建議的站，在人走到的那一刻，紀錄器上是不是真的有車。</p>" +
       "<p>傍晚在校內借車，走到最近的站有 64% 借得到，看現在的車數挑站是 73%，照這個頁面的建議是 93%，平均多走不到 5 分鐘。早上到校內還車，最近的站有 69% 還得進去，照建議是 95%，多走 1 分鐘。早上在山下借車，76% 變成 97%。</p>",
     aboutHow: "<h3>數字怎麼來的</h3>" +
@@ -115,7 +115,7 @@ var T = {
     keyYes: "Green: there should be a bike when you get there. On the Return tab, a free dock. The number in the circle is the count right now.", keyMaybe: "Yellow: not certain. You would come up empty one to four times in ten.", keyNo: "Red: probably none.",
     keyGone: "Dark red: none right now, and little chance of one soon.", keyNone: "Grey: out of service or no data.",
     keyRing: "On the map, the arc around a circle is the share of docks holding a bike. A blue outline marks a campus station.", keyRoute: "The dotted line is the suggested truck route; the numbers are the order of its stops.",
-    aboutWhat: "<h3>What this page does</h3><p>YouBike around NSYSU is hard to use at three times of day. From 17:00 to 19:30 the campus has no bikes. From 09:00 to 10:30 the campus has no free docks. Over the same morning hours the stations at the foot of the campus and at the metro run out of bikes. This page updates every 10 minutes and tells you which station will still have a bike when you get there on foot, and which will still have a dock when you ride in.</p>",
+    aboutWhat: "<h3>What this page does</h3><p>On teaching days YouBike around NSYSU is hard to use at three times. From 17:00 to 20:00 the campus stations are empty 40% of the time. From 09:00 to 11:00 they have no free dock 28% of the time, and the stations at the foot of the campus and at the metro are empty a quarter of the time. This page updates every 10 minutes and tells you which station will still have a bike when you get there on foot, and which will still have a dock when you ride in.</p>",
     aboutProof: "<h3>Does following it help</h3><p>We checked on 12 teaching days that were not used to fit the model: at the minute a rider would reach the suggested station, did the logger show a bike there?</p>" +
       "<p>Leaving campus in the evening, the nearest station had a bike 64% of the time, a station chosen from live counts 73%, and the station this page suggests 93%, for under 5 minutes of extra walking. Returning a bike on campus in the morning, the nearest station had a dock 69% of the time and the suggested one 95%, for 1 extra minute. Borrowing at the foot of the campus in the morning went from 76% to 97%.</p>",
     aboutHow: "<h3>Where the numbers come from</h3>" +
