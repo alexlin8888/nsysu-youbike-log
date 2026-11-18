@@ -1,10 +1,11 @@
-// Beat the Bell: page logic. Reads docs/state.json (live) or docs/replay_YYYY-MM-DD.json and draws the same three
+// Beat the Bell: page logic. Reads docs/state.json (live) or docs/replay_YYYY-MM-DD.json and draws the same four
 // tabs from either. Strings live in strings.js (T), the look in style.css. No framework; Leaflet draws the map.
 (function () {
   "use strict";
   var SHORT = { "501209052": ["圖資", "Library"], "501209070": ["西灣藝廊", "Xiziwan Hall"], "501209051": ["工學院", "Engineering"], "501209054": ["材料", "Materials"],
                 "501209039": ["社科院", "Social Sci."], "501209069": ["體育館", "Gym"], "501209040": ["海工館", "Marine Eng."], "501209071": ["海資館", "Marine Res."] };
   var CAMPUS_CENTER = [22.6273, 120.2658];
+  var HOME = { kind: "place", id: "lib", lat: 22.62741, lng: 120.26586 };                     // the library, in the middle of the campus
   var FILL = { g: "--ok-fill", y: "--low-fill", o: "--risk-fill", r: "--out-fill", x: "--gone", n: "--r0" };
   var ICON = {
     play: "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M4 2.5v11l9-5.5z\" fill=\"currentColor\"/></svg>",
@@ -17,11 +18,12 @@
   var lang = "zh", mode = "live", tab = "rider", horizon = 30;
   var live = null, replay = null, replays = {}, replayDays = [], replayDay = null, slot = 0, playing = false, playTimer = null;
   var selected = null, fitted = false, nearN = 8, pendingSno = null, wantSlot = null, errKind = null, daysKey = "";
-  var origin = { kind: "campus", lat: CAMPUS_CENTER[0], lng: CAMPUS_CENTER[1] }, dest = { kind: "campus", lat: CAMPUS_CENTER[0], lng: CAMPUS_CENTER[1] }, picking = false, favs = [];
+  var origin = HOME, goal = null, dest = HOME, picking = null, favs = [];                     // borrow: from origin, optionally on to goal; return: at dest. picking: which of them the next map click sets
   var when = { rider: { kind: "now" }, dock: { kind: "plus", min: 10 } }, usual = null;      // when the rider leaves (borrow) or rides in (return)
-  var KRT = "501209023";                                                                      // the metro station at the foot of the campus (Exit 2), a preset place
+  var PL = null, fresh = null, merged = null, track = null, placesKey = "";                   // places.json; counts read from the operator a minute ago; the live view with them; track.json
   var A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";               // state.json packs a chance or a count into one character
-  var SURE = { bike: 57, dock: 60 }, MAYBE = { bike: 38, dock: 45 };                          // in 64ths: 0.9 and 0.6 for a bike, 0.95 and 0.7 for a dock
+  var SURE = { bike: 0.9, dock: 0.95 }, MAYBE = { bike: 0.6, dock: 0.7 }, G = 12, MARGIN = 0.5; // the chances behind "should" and "may"; G: minutes charged if the second station fails too; MARGIN: minutes given up for a surer station
+  var API = "https://apis.youbike.com.tw/tw2/parkingInfo";                                    // the operator's own counts for a list of stations
   var map, attrib, glyphLayer, routeLayer, originLayer, markers = {};
   var sheetState = "half", sheetPx = { peek: 158, half: 320, full: 600 }, drag = null, swallowClick = false, toastTimer = null;
 
@@ -36,8 +38,9 @@
   function mins(s) { return parseInt(s.slice(0, 2), 10) * 60 + parseInt(s.slice(3), 10); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
   function isCampus(s) { return s.group === "campus"; }
-  function nameOf(s) { if (lang === "zh") return s.name; return isCampus(s) && SHORT[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || s.name); }
-  function altName(s) { return lang === "zh" ? (isCampus(s) && SHORT[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en || "")) : s.name; }
+  function nameEn(s) { return (s.name_en || s.name).replace(/\(Exit \)(\d+)/, "(Exit $1)"); }     // the operator writes "(Exit )1" for one station
+  function nameOf(s) { if (lang === "zh") return s.name; return isCampus(s) && SHORT[s.sno] ? "NSYSU " + SHORT[s.sno][1] : nameEn(s); }
+  function altName(s) { return lang === "zh" ? (isCampus(s) && SHORT[s.sno] ? "NSYSU " + SHORT[s.sno][1] : (s.name_en ? nameEn(s) : "")) : s.name; }
   function taipeiNow() { var n = new Date(); return new Date(n.getTime() + (n.getTimezoneOffset() + 480) * 60000); }
   function distKm(a, b, c, d) { return Math.hypot((a - c) * 111, (b - d) * 102.5); }
   function walkMin(km) { return Math.max(1, Math.round(km * 1.25 * 1000 / 80)); }   // straight line x 1.25 at 80 m/min
@@ -55,19 +58,38 @@
   function have(v, i, kind) { return kind === "bike" ? v.bikes[i] : (v.docks ? v.docks[i] : null); }
   function nowMin(v) { if (mode !== "live") return v.t_min; var n = taipeiNow(), m = n.getHours() * 60 + n.getMinutes(); return m >= v.t_min && m - v.t_min <= 30 ? m : v.t_min; }
   function leaveMin(v) { var w = when[tab === "dock" ? "dock" : "rider"], n = nowMin(v); return w.kind === "bell" ? Math.max(n, w.time + 5) : w.kind === "plus" ? n + w.min : n; }
-  function arriveMin(v, i) { var s = v.stations[i], p = point(); return leaveMin(v) + (need() === "bike" ? walkMin(distKm(s.lat, s.lng, p.lat, p.lng)) : 0); }
+  // Minutes on foot and by bike. places.json has path lengths for the campus buildings and the stations around them;
+  // any other pair is a straight line (x 1.25 at 80 m/min on foot, x 1.3 at 200 m/min by bike). analysis/code/paths.py does the same.
+  function nodeP(p) { return PL && p.kind === "place" && PL.pos[p.id] != null ? PL.pos[p.id] : null; }
+  function nodeS(v, i) { var k = PL ? PL.pos[v.stations[i].sno] : null; return k == null ? null : k; }
+  function tbl(name, a, b) { return A64.indexOf(PL[name][a].charAt(b)); }
+  function lineRide(km) { return Math.max(1, Math.round(km * 1.3 * 1000 / 200)); }
+  function walkPS(v, p, i) { var a = nodeP(p), b = nodeS(v, i), s = v.stations[i]; return a != null && b != null ? Math.max(1, tbl("walk", a, b)) : walkMin(distKm(s.lat, s.lng, p.lat, p.lng)); }
+  function ridePS(v, p, i) { var a = nodeP(p), b = nodeS(v, i), s = v.stations[i]; return a != null && b != null ? Math.max(1, tbl("ride", a, b)) : lineRide(distKm(s.lat, s.lng, p.lat, p.lng)); }
+  function walkSS(v, i, j) { if (i === j) return 0; var a = nodeS(v, i), b = nodeS(v, j), s = v.stations[i], u = v.stations[j]; return a != null && b != null ? tbl("walk", a, b) : walkMin(distKm(s.lat, s.lng, u.lat, u.lng)); }
+  function rideSS(v, i, j) { if (i === j) return 0; var a = nodeS(v, i), b = nodeS(v, j), s = v.stations[i], u = v.stations[j]; return a != null && b != null ? tbl("ride", a, b) : lineRide(distKm(s.lat, s.lng, u.lat, u.lng)); }
+  function walkPP(p, q) { var a = nodeP(p), b = nodeP(q); return a != null && b != null ? tbl("walk", a, b) : walkMin(distKm(p.lat, p.lng, q.lat, q.lng)); }
+  function arriveMin(v, i) { return leaveMin(v) + (need() === "bike" ? walkPS(v, point(), i) : ridePS(v, point(), i)); }
   function aheadOf(v, i, key) { return v.ahead && v.ahead[key] && v.ahead[key][i] ? v.ahead[key][i] : ""; }
-  function stepAt(v, a, at) { return Math.max(1, Math.min(a.length, Math.ceil((at - v.t_min) / 10))); }
-  // chance in 64ths that station i has a bike (dock) at minute `at`; without a forecast, a guess from the count now
-  function chanceAt(v, i, kind, at) {
+  function baseMin(v, i) { return v.base && v.base[i] != null ? v.base[i] : v.t_min; }       // the minute the count of station i was read
+  // chance (0..1) that station i has a bike (a dock) at minute `at`: the count now, then the chain's 10-minute steps, linear in between
+  function chance(v, i, kind, at) {
     var h = have(v, i, kind); if (v.bikes[i] == null || h == null) return null;
-    var a = aheadOf(v, i, kind); if (!a) return h >= 3 ? 63 : h >= 1 ? 40 : 0;
-    return A64.indexOf(a.charAt(stepAt(v, a, at) - 1));
+    var a = aheadOf(v, i, kind), p0 = h >= 1 ? 1 : 0;
+    if (!a) return h >= 3 ? 1 : h >= 1 ? 0.63 : 0;                                            // a snapshot without the forecast: a guess from the count
+    var x = Math.max(0, Math.min(a.length, (at - baseMin(v, i)) / 10)), k = Math.floor(x), f = x - k;
+    var pa = k === 0 ? p0 : A64.indexOf(a.charAt(k - 1)) / 63, pb = k >= a.length ? pa : A64.indexOf(a.charAt(k)) / 63;
+    return (1 - f) * pa + f * pb;
   }
-  function expectAt(v, i, at) { var a = aheadOf(v, i, "bikes"); return a ? A64.indexOf(a.charAt(stepAt(v, a, at) - 1)) : null; }
+  function expectAt(v, i, at) {
+    var a = aheadOf(v, i, "bikes"); if (!a) return null;
+    var x = Math.max(0, Math.min(a.length, (at - baseMin(v, i)) / 10)), k = Math.floor(x), f = x - k;
+    var ea = k === 0 ? v.bikes[i] : A64.indexOf(a.charAt(k - 1)), eb = k >= a.length ? ea : A64.indexOf(a.charAt(k));
+    return Math.round((1 - f) * ea + f * eb);
+  }
   function verdict(v, i, kind, at) {
     if (v.bikes[i] == null) return { cls: "n", text: v.status && v.status[i] === 2 ? t("sOos") : t("sNone") };
-    var c = chanceAt(v, i, kind, at), h = have(v, i, kind), bike = kind === "bike";
+    var c = chance(v, i, kind, at), h = have(v, i, kind), bike = kind === "bike";
     if (c == null) return { cls: "n", text: "" };
     if (c >= SURE[kind]) return { cls: "g", text: t(bike ? "cBikeYes" : "cDockYes") };
     if (c >= MAYBE[kind]) return { cls: "y", text: t(bike ? "cBikeMaybe" : "cDockMaybe") };
@@ -77,7 +99,7 @@
   // when the answer changes: "likely out by 17:20", or for an empty station "a bike likely back by 18:10"
   function turnText(v, i, kind, cls) {
     var a = aheadOf(v, i, kind), h = have(v, i, kind), bike = kind === "bike", k; if (!a || h == null) return "";
-    var end = hm((v.t_min + 10 * a.length) % 1440), at = function (n) { return hm((v.t_min + 10 * (n + 1)) % 1440); };
+    var b0 = baseMin(v, i), end = hm((b0 + 10 * a.length) % 1440), at = function (n) { return hm((b0 + 10 * (n + 1)) % 1440); };
     if (h > 0) { for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) < 32) return t(bike ? "tGone" : "tFull", { t: at(k) }); return cls === "g" ? t(bike ? "tKeep" : "tFree", { t: end }) : ""; }   // "bikes until 20:30" would contradict a "may be out"
     for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) >= 32) return t(bike ? "tBack" : "tOpen", { t: at(k) });
     return t(bike ? "tNoBack" : "tNoOpen", { t: end });
@@ -97,6 +119,7 @@
   }
   function countOf(v, i) { var h = have(v, i, need()); return v.bikes[i] == null || h == null ? "–" : h; }
   function badge(v, i) { return "<span class=\"badge " + look(v, i).cls + "\">" + countOf(v, i) + "</span>"; }
+  function badgeAt(v, i, kind, at) { var h = have(v, i, kind); return "<span class=\"badge " + verdict(v, i, kind, at).cls + "\">" + (v.bikes[i] == null || h == null ? "–" : h) + "</span>"; }
 
   // ---------- current view: live state or one replay slot, in one shape ----------
   function view() {
@@ -107,9 +130,29 @@
                history: function (i) { return replay.slots.slice(0, slot + 1).map(function (x) { return [x.t_min, x.bikes[i]]; }); } };
     }
     if (!live) return null;
-    return { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell, ahead: live.ahead || null,
-             totals: live.totals, plans: live.plans, bikes: live.bikes, docks: live.docks, status: live.status, age: live.age, p30: live.p30, p60: live.p60, unmet: live.unmet,
-             history: function (i) { var t0 = mins(live.history.from), st = live.history.step; return (live.history.bikes[i] || []).map(function (b, k) { return [t0 + k * st, b]; }); } };
+    var key = live.snapshot_at + "|" + (fresh ? fresh.min : "");
+    if (merged && merged.key === key) return merged.v;
+    var v = { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell, ahead: live.ahead || null,
+              totals: live.totals, plans: live.plans, bikes: live.bikes, docks: live.docks, status: live.status, age: live.age, p30: live.p30, p60: live.p60, unmet: live.unmet,
+              history: function (i) { var t0 = mins(live.history.from), st = live.history.step; return (live.history.bikes[i] || []).map(function (b, k) { return [t0 + k * st, b]; }); } };
+    // Counts read from the operator a moment ago replace the snapshot's for the stations around campus. state.json carries
+    // the forecast for every stock such a station could have ("fresh"), so the new count picks its own row.
+    var fr = live.fresh;
+    if (fresh && fr && fr.sno && live.ahead && fresh.day === live.snapshot_at.slice(0, 10) && fresh.min >= live.t_min && fresh.min - live.t_min <= 25) {
+      var pos = {}, bikes = live.bikes.slice(), docks = live.docks.slice(), base = [], used = 0;
+      var ah = { step: live.ahead.step, bike: live.ahead.bike.slice(), dock: live.ahead.dock.slice(), bikes: live.ahead.bikes.slice() };
+      live.stations.forEach(function (s, i) { pos[s.sno] = i; });
+      fr.sno.forEach(function (sno, j) {
+        var i = pos[sno], c = fresh.c[sno]; if (i == null || !c) return;
+        var cap = live.stations[i].cap, w = fr.bike[j].length / (cap + 1), b = Math.max(0, Math.min(cap, c[0]));
+        if (w !== Math.floor(w) || w < 1) return;
+        bikes[i] = c[0]; docks[i] = c[1]; base[i] = fresh.min; used++;
+        ah.bike[i] = fr.bike[j].substr(b * w, w); ah.dock[i] = fr.dock[j].substr(b * w, w); ah.bikes[i] = fr.bikes[j].substr(b * w, w);
+      });
+      if (used) { v.bikes = bikes; v.docks = docks; v.ahead = ah; v.base = base; v.freshMin = fresh.min; }
+    }
+    merged = { key: key, v: v };
+    return v;
   }
 
   // ---------- the sheet (phones) ----------
@@ -194,7 +237,7 @@
     originLayer = L.layerGroup().addTo(map);
     map.on("zoomend", function () { var v = view(); if (v) drawStations(v); });
     map.on("click", function (e) {
-      if (picking) { setOrigin("pick", e.latlng.lat, e.latlng.lng); setPicking(false); return; }
+      if (picking) { var w = picking; setPicking(null); setPoint(w, { kind: "pick", lat: e.latlng.lat, lng: e.latlng.lng }); return; }
       if (selected != null) select(null); else if (isPhone() && sheetState !== "peek") setSheet("peek");
     });
     var mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -231,7 +274,7 @@
       var S = 2 * glyphR(s.cap) + 6;
       var m = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: glyphHtml(s, v, i, selected === i), iconSize: [S, S], iconAnchor: [S / 2, S / 2] }),
         zIndexOffset: selected === i ? 800 : (isCampus(s) ? 500 : 0), keyboard: false });
-      m.on("click", function (e) { L.DomEvent.stopPropagation(e); if (picking) { setOrigin("pick", s.lat, s.lng); setPicking(false); } select(i); });
+      m.on("click", function (e) { L.DomEvent.stopPropagation(e); if (picking) { var w = picking; setPicking(null); setPoint(w, { kind: "pick", lat: s.lat, lng: s.lng }); } select(i); });
       m.addTo(glyphLayer); markers[i] = m;
     });
     declutter();
@@ -271,9 +314,10 @@
   }
   function drawOrigin() {
     originLayer.clearLayers();
-    var p = point();
-    if (p.kind === "campus" || tab === "ops" || tab === "about") return;
-    L.marker([p.lat, p.lng], { icon: L.divIcon({ className: "", html: "<div class=\"originicon\"></div>", iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 900, keyboard: false, interactive: false }).addTo(originLayer);
+    if (tab === "ops" || tab === "about") return;
+    var mark = function (p, cls) { L.marker([p.lat, p.lng], { icon: L.divIcon({ className: "", html: "<div class=\"originicon" + cls + "\"></div>", iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 900, keyboard: false, interactive: false }).addTo(originLayer); };
+    if (tab === "dock") { mark(dest, " to"); return; }
+    mark(origin, ""); if (goal) mark(goal, " to");
   }
   // Centre a point in the part of the map that the sheet leaves visible.
   function viewTo(lat, lng, zoom, animate) {
@@ -297,7 +341,7 @@
   function campusStatus(v) {
     if (!v.ahead || !v.in_window) return "";
     var kind = need(), n = 0, sure = 0, at = nowMin(v) + 3;
-    v.stations.forEach(function (s, i) { if (!isCampus(s) || v.bikes[i] == null) return; var c = chanceAt(v, i, kind, at); if (c == null) return; n++; if (c >= SURE[kind]) sure++; });
+    v.stations.forEach(function (s, i) { if (!isCampus(s) || v.bikes[i] == null) return; var c = chance(v, i, kind, at); if (c == null) return; n++; if (c >= SURE[kind]) sure++; });
     if (n < 4) return "";
     var k = sure >= 0.6 * n ? "Ok" : sure >= 0.3 * n ? "Low" : "Out";
     return t((kind === "bike" ? "stBike" : "stDock") + k);
@@ -337,32 +381,56 @@
   }
 
   // ---------- borrow and return ----------
-  function setOrigin(kind, lat, lng) { var p = point(); p.kind = kind; p.lat = lat; p.lng = lng; nearN = 8; if (view()) render(); }
-  function setPicking(on) {
-    picking = on; $("hint").hidden = !on; $("hint").textContent = t(tab === "dock" ? "pickingDest" : "picking"); $("map").classList.toggle("picking", on); syncOrigin();
-    if (isPhone()) setSheet(on ? "peek" : "half");
+  function setPoint(which, p) {
+    if (which === "origin") origin = p; else if (which === "goal") goal = p; else dest = p;
+    store("btb-" + which, p && p.kind === "place" ? p.id : null); nearN = 8; if (view()) render();
   }
-  function syncOrigin() {
-    var k = point().kind;
-    $("oCampus").setAttribute("aria-pressed", !picking && k === "campus" ? "true" : "false");
-    $("oKrt").setAttribute("aria-pressed", !picking && k === "krt" ? "true" : "false");
-    $("oMe").setAttribute("aria-pressed", !picking && k === "me" ? "true" : "false");
-    $("oPick").setAttribute("aria-pressed", picking || k === "pick" ? "true" : "false");
-    $("fab").setAttribute("aria-pressed", k === "me" ? "true" : "false");
+  function setPicking(which) {
+    picking = which || null; $("hint").hidden = !picking; $("hint").textContent = picking ? t(picking === "origin" ? "picking" : "pickingDest") : ""; $("map").classList.toggle("picking", !!picking);
+    if (isPhone()) setSheet(picking ? "peek" : "half");
+    if (!picking) syncPlaces();
   }
-  function locate() {
-    var fab = $("fab"), fail = function () { fab.classList.remove("busy"); toast(t("geoFail"), 4000); };
+  function locate(which) {
+    var fab = $("fab"), fail = function () { fab.classList.remove("busy"); toast(t("geoFail"), 4000); syncPlaces(); };
     if (!navigator.geolocation) { fail(); return; }
-    fab.classList.add("busy"); if (picking) setPicking(false);
+    fab.classList.add("busy"); if (picking) setPicking(null);
     navigator.geolocation.getCurrentPosition(function (pos) {
       fab.classList.remove("busy");
       var lat = pos.coords.latitude, lng = pos.coords.longitude, v = view();
       var nearest = v ? Math.min.apply(null, v.stations.map(function (s) { return distKm(s.lat, s.lng, lat, lng); })) : 0;
-      if (nearest > 5) { toast(t("tooFar"), 4500); return; }
-      setOrigin("me", lat, lng); viewTo(lat, lng, Math.max(map.getZoom(), 16));
+      if (nearest > 5) { toast(t("tooFar"), 4500); syncPlaces(); return; }
+      setPoint(which, { kind: "me", lat: lat, lng: lng }); viewTo(lat, lng, Math.max(map.getZoom(), 16));
     }, fail, { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true });
   }
-  function walkCell(km, label) { return km > 3 ? "<span class=\"walk\">" + t("walkKm", { k: km.toFixed(1) }) + "<small>" + t("farK") + "</small></span>" : "<span class=\"walk\">" + t("walkMin", { m: walkMin(km) }) + "<small>" + t(label || "walkK") + "</small></span>"; }
+  // the two selectors: from (borrow tab) and to (borrow: optional; return: where the ride ends)
+  function placeLabel(p) { return lang === "zh" ? p.name : p.name_en; }
+  function valueOf(p) { return !p ? "" : p.kind === "place" ? p.id : p.kind; }
+  function syncPlaces() {
+    var dock = tab === "dock", key = lang + "|" + (dock ? "d" : "r") + "|" + (PL ? PL.places.length : 0);
+    if (key !== placesKey) {
+      placesKey = key;
+      var list = PL ? PL.places : [{ id: "lib", name: "圖資大樓", name_en: "Library", group: "campus" }];
+      var grp = function (g, label) { var o = list.filter(function (p) { return p.group === g; }).map(function (p) { return "<option value=\"" + p.id + "\">" + esc(placeLabel(p)) + "</option>"; }).join(""); return o ? "<optgroup label=\"" + t(label) + "\">" + o + "</optgroup>" : ""; };
+      var rest = "<optgroup label=\"" + t("grpOther") + "\"><option value=\"me\">" + t("oMe") + "</option><option value=\"pick\">" + t("oPick") + "</option></optgroup>";
+      $("fromSel").innerHTML = grp("campus", "grpCampus") + grp("town", "grpTown") + rest;
+      $("toSel").innerHTML = (dock ? "" : "<option value=\"\">" + t("toNone") + "</option>") + grp("campus", "grpCampus") + grp("town", "grpTown") + rest;
+    }
+    $("fromWrap").hidden = dock; $("fromK").textContent = t("originK"); $("toK").textContent = t(dock ? "destK" : "goalK");
+    $("fromSel").value = picking === "origin" ? "pick" : valueOf(origin);
+    $("toSel").value = picking && picking !== "origin" ? "pick" : valueOf(dock ? dest : goal);
+    $("fab").setAttribute("aria-pressed", point().kind === "me" ? "true" : "false");
+  }
+  function choosePlace(which, val) {
+    if (picking) setPicking(null);
+    if (val === "") { goal = null; store("btb-goal", null); render(); return; }
+    if (val === "me") { locate(which); return; }
+    if (val === "pick") { setPicking(which); return; }
+    var p = PL && PL.byId[val]; if (!p) { syncPlaces(); return; }
+    setPoint(which, { kind: "place", id: p.id, lat: p.lat, lng: p.lng });
+    if (isPhone()) viewTo(p.lat, p.lng, Math.max(map.getZoom(), 16)); else viewTo(p.lat, p.lng, Math.max(map.getZoom(), 16));
+  }
+  function walkCell(m, label) { return "<span class=\"walk\">" + t("walkMin", { m: m }) + "<small>" + t(label || "walkK") + "</small></span>"; }
+  function farCell(km) { return "<span class=\"walk\">" + t("walkKm", { k: km.toFixed(1) }) + "<small>" + t("farK") + "</small></span>"; }
   function shortName(s) { return isCampus(s) && SHORT[s.sno] ? SHORT[s.sno][lang === "zh" ? 0 : 1] : nameOf(s); }
   function subLine(v, i) {
     var o = look(v, i), turn = v.bikes[i] == null ? "" : turnText(v, i, need(), o.cls), h = "";
@@ -373,35 +441,89 @@
   function stationRow(v, i) {
     var s = v.stations[i], p = point(), li = document.createElement("li"); li.className = "row" + (selected === i ? " sel" : ""); li.tabIndex = 0;
     var km = distKm(s.lat, s.lng, p.lat, p.lng);
-    li.innerHTML = badge(v, i) + "<span><span class=\"nm\">" + esc(nameOf(s)) + (favs.indexOf(s.sno) >= 0 ? "<span class=\"star\" aria-hidden=\"true\">★</span>" : "") + "</span><span class=\"sub\">" + subLine(v, i) + "</span></span>" + walkCell(km, tab === "dock" ? "walkDest" : "walkK");
+    li.innerHTML = badge(v, i) + "<span><span class=\"nm\">" + esc(nameOf(s)) + (favs.indexOf(s.sno) >= 0 ? "<span class=\"star\" aria-hidden=\"true\">★</span>" : "") + "</span><span class=\"sub\">" + subLine(v, i) + "</span></span>" + (km > 3 ? farCell(km) : walkCell(walkPS(v, p, i), tab === "dock" ? "walkDest" : "walkK"));
     var go = function () { select(i); focusStation(s); };
     li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
     return li;
   }
-  function ordered(v) { var p = point(); return v.stations.map(function (s, i) { return [distKm(s.lat, s.lng, p.lat, p.lng), i]; }).sort(function (a, b) { return a[0] - b[0]; }); }
-  // The rule checked against the logger (analysis/code/final_rider.py): the nearest station that should still have what
-  // the rider needs at the minute of arrival; if none is sure, the best chance in reach. A bike is needed after the walk
-  // to the station, a dock when the ride ends.
-  function pick(v, ord, kind, leave) {
-    var reach = kind === "bike" ? 2 : 0.6, best = null, skipped = null;
-    for (var k = 0; k < ord.length; k++) {
-      var km = ord[k][0], i = ord[k][1]; if (km > reach) break;
-      var c = chanceAt(v, i, kind, leave + (kind === "bike" ? walkMin(km) : 0)); if (c == null) continue;
-      if (c >= SURE[kind]) return { i: i, km: km, sure: true, skipped: skipped };
-      if (skipped == null && c < MAYBE[kind]) skipped = i;
-      if (!best || c > best.c) best = { i: i, km: km, sure: false, c: c, skipped: null };
-    }
+  function ordered(v) { var p = point(); return v.stations.map(function (s, i) { var km = distKm(s.lat, s.lng, p.lat, p.lng); return [km > 3 ? 1000 + km : walkPS(v, p, i), i, km]; }).sort(function (a, b) { return a[0] - b[0] || a[2] - b[2]; }); }
+
+  // ---------- which station ----------
+  // The rule checked against the logger (analysis/code/final_time.py "expectm", and day by day in demo_track.py): the
+  // station with the fewest expected minutes until the rider has a bike, or is rid of one. A station that may fail is
+  // charged the cost of going on to the next: x.e = minutes to reach it + chance of success x minutes left after it
+  // + chance of failure x (the cheapest way on, itself charged G minutes if it fails too). Among the stations within
+  // MARGIN minutes of the fewest, the one with the best chance is named, so nobody is sent past an empty rack to save seconds.
+  function solve(v, c, kind, t0, hop) {
+    if (!c.length) return null;
+    var best = null, k;
+    c.forEach(function (x) {
+      x.at = t0 + x.leg; x.p = chance(v, x.i, kind, x.at);
+      var on = null;
+      c.forEach(function (y) { if (y === x) return; var h = hop(v, x.i, y.i), p2 = chance(v, y.i, kind, x.at + h), cost = h + y.tail + (1 - p2) * G; if (!on || cost < on.cost - 1e-9) on = { i: y.i, hop: h, p: p2, cost: cost }; });
+      x.on = on; x.e = x.leg + x.p * x.tail + (1 - x.p) * (on ? on.cost : G);
+      if (!best || x.e < best.e - 1e-9) best = x;
+    });
+    var least = best.e;
+    c.forEach(function (x) { if (x.e <= least + MARGIN + 1e-9 && x.p > best.p + 1e-9) best = x; });
+    var sure = null, skipped = null;
+    for (k = 0; k < c.length; k++) if (c[k].p >= SURE[kind]) { sure = c[k]; break; }
+    for (k = 0; k < c.length && c[k] !== best; k++) if (c[k].p < MAYBE[kind]) { skipped = c[k]; break; }
+    return { best: best, sure: sure, skipped: skipped, cand: c };
+  }
+  function planBike(v, p, leave) {
+    var c = [];
+    v.stations.forEach(function (s, i) { if (v.bikes[i] == null) return; var km = distKm(s.lat, s.lng, p.lat, p.lng); if (km <= 2) c.push({ i: i, km: km, leg: walkPS(v, p, i), tail: 0 }); });
+    c.sort(function (a, b) { return a.leg - b.leg || a.km - b.km; });
+    return solve(v, c.slice(0, 12), "bike", leave, walkSS);
+  }
+  // p: where the rider is going; at: the minute the ride ends near p, or, with `from`, the minute it starts at station `from`
+  function planDock(v, p, at, from) {
+    var c = [], all = [];
+    v.stations.forEach(function (s, i) {
+      if (v.bikes[i] == null || have(v, i, "dock") == null || i === from) return;                                           // a ride does not end where it started
+      var km = distKm(s.lat, s.lng, p.lat, p.lng), x = { i: i, km: km, leg: from == null ? ridePS(v, p, i) : rideSS(v, from, i), tail: walkPS(v, p, i) };
+      if (km <= 0.6) c.push(x); else if (km <= 1.5) all.push(x);
+    });
+    if (c.length < 2) { all.sort(function (a, b) { return a.km - b.km; }); c = c.concat(all.slice(0, 3 - c.length)); }      // a destination with no station next to it
+    c.sort(function (a, b) { return (a.leg + a.tail) - (b.leg + b.tail) || a.km - b.km; });
+    return solve(v, c.slice(0, 12), "dock", at, rideSS);
+  }
+  // borrow, ride, return, against walking all the way
+  function planTrip(v, from, to, leave) {
+    var pb = planBike(v, from, leave); if (!pb) return null;
+    var best = null, opts = [];
+    pb.cand.slice().sort(function (a, b) { return a.e - b.e; }).slice(0, 3).forEach(function (x) {
+      var pd = planDock(v, to, leave + x.e + 1, x.i); if (!pd) return;
+      var o = { bike: x, dock: pd.best, total: x.e + 1 + pd.best.e + 1 };     // a minute to take the bike, a minute to lock it
+      opts.push(o); if (!best || o.total < best.total - 1e-9) best = o;
+    });
+    if (best) { var least = best.total; opts.forEach(function (o) { if (o.total <= least + MARGIN + 1e-9 && o.bike.p > best.bike.p + 1e-9) best = o; }); }
+    if (!best) best = { bike: pb.best, dock: null, total: null };            // no other station near the destination: the trip is too short for a bike
+    best.plan = pb; best.walk = walkPP(from, to); best.rideIt = best.dock != null && best.total + 1 < best.walk;
     return best;
   }
-  // "Leave before 16:55 and a bike is 1 min away. Later it is 9 min." The walk to a sure station, for departures in the next hour.
-  function leaveTip(v, ord) {
-    if (!v.ahead) return "";
-    var n = nowMin(v), first = pick(v, ord, "bike", n); if (!first || !first.sure) return "";
-    var a = walkMin(first.km), last = 0, later = null;
-    for (var d = 10; d <= 60; d += 10) { var p = pick(v, ord, "bike", n + d); if (p && p.sure && walkMin(p.km) <= a + 2) last = d; else { later = p; break; } }
-    if (last >= 60) return t("tipCalm", { a: a });
-    var by = hm(Math.floor((n + last + 5) / 5) * 5);
-    return later && later.sure ? t("tipSoon", { t: by, a: a, b: walkMin(later.km) }) : t("tipLast", { t: by, a: a });
+  function odds(p) { return t("odds", { n: Math.max(1, Math.min(9, Math.round(p * 10))) }); }
+  function pickRow(v, x, kind, why, cellLabel, cell) {
+    var s = v.stations[x.i], o = verdict(v, x.i, kind, x.at), el = document.createElement("button");
+    el.type = "button"; el.className = "pick" + (x.p >= SURE[kind] ? "" : x.p >= MAYBE[kind] ? " weak" : " poor");
+    var sub = "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
+    if (x.p < SURE[kind] && x.p > 0.05) sub += "<span>" + odds(x.p) + "</span>";
+    if (kind === "dock") sub += "<span>" + t(v.docks && v.docks[x.i] === 1 ? "docksNow1" : "docksNow", { d: v.docks && v.docks[x.i] != null ? v.docks[x.i] : "–" }) + "</span>";
+    else { var eb = expectAt(v, x.i, x.at); sub += "<span>" + (eb != null && x.p >= SURE[kind] ? t("expect", { b: eb }) : t("bikesNow", { b: v.bikes[x.i] })) + "</span>"; }
+    el.innerHTML = badgeAt(v, x.i, kind, x.at) + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(s)) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(cell, cellLabel);
+    el.addEventListener("click", function () { select(x.i); focusStation(s); });
+    return el;
+  }
+  // what to say under the suggestion: the way on if it may fail, the safer station, the nearer one that was skipped
+  function notes(v, pl, kind) {
+    var b = pl.best, out = [], dock = kind === "dock";
+    if (b.p < SURE[kind]) {
+      if (b.p < MAYBE[kind] && !pl.sure) out.push(t(dock ? "weakDock" : "weakBike"));
+      if (b.on) out.push(t(dock ? "tipOnDock" : "tipOn", { m: b.on.hop, n: shortName(v.stations[b.on.i]) }));
+      if (pl.sure && pl.sure !== b) out.push(t(dock ? "tipSureDock" : "tipSure", { n: shortName(v.stations[pl.sure.i]), m: dock ? pl.sure.tail : pl.sure.leg }));
+    } else if (pl.skipped) out.push(t(dock ? "skipDock" : "skipBike", { n: shortName(v.stations[pl.skipped.i]) }));
+    return out;
   }
   function renderWhen(v) {
     var el = $("whenChips"), dock = tab === "dock", key = dock ? "dock" : "rider", w = when[key], n = nowMin(v), opts = [];
@@ -420,21 +542,59 @@
       el.appendChild(b);
     });
   }
-  function renderBest(v, ord) {
-    var pk = $("best"), tip = $("tip"), kind = need(), dock = kind === "dock", w = when[dock ? "dock" : "rider"], leave = leaveMin(v), p = pick(v, ord, kind, leave);
+  function renderBest(v) {
+    var pk = $("best"), tip = $("tip"), dock = tab === "dock", w = when[dock ? "dock" : "rider"], leave = leaveMin(v), lines = [];
     pk.hidden = false; pk.innerHTML = ""; tip.hidden = true;
-    if (!p) { pk.innerHTML = "<div class=\"pick none\"><span><span class=\"sub\">" + t(dock ? "noneDock" : "noneBike") + "</span></span></div>"; return; }
-    var s = v.stations[p.i], at = leave + (dock ? 0 : walkMin(p.km)), o = verdict(v, p.i, kind, at), eb = expectAt(v, p.i, at);
-    var why = dock ? t("bestDock") : w.kind === "bell" ? t("bestBikeBell", { t: hm(w.time) }) : t("bestBikeNow");
-    var sub = "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
-    if (dock) sub += "<span>" + t("docksNow", { d: v.docks && v.docks[p.i] != null ? v.docks[p.i] : "–" }) + "</span>";
-    else sub += "<span>" + (eb != null && p.sure ? t("expect", { b: eb }) : t("bikesNow", { b: v.bikes[p.i] })) + "</span>";
-    var el = document.createElement("button"); el.type = "button"; el.className = "pick" + (p.sure ? "" : " weak");
-    el.innerHTML = badge(v, p.i) + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(s)) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(p.km, dock ? "walkDest" : "walkK");
-    el.addEventListener("click", function () { select(p.i); focusStation(s); });
-    pk.appendChild(el);
-    var note = !p.sure ? t(dock ? "weakDock" : "weakBike") : p.skipped != null ? t(dock ? "skipDock" : "skipBike", { n: shortName(v.stations[p.skipped]) }) : (!dock && w.kind === "now" ? leaveTip(v, ord) : "");
-    if (note) { tip.textContent = note; tip.hidden = false; }
+    if (dock) {
+      var pd = planDock(v, dest, leave);
+      if (!pd) { pk.innerHTML = "<div class=\"pick none\"><span><span class=\"sub\">" + t("noneDock") + "</span></span></div>"; return; }
+      pk.appendChild(pickRow(v, pd.best, "dock", t("bestDock"), "walkDest", pd.best.tail));
+      lines = notes(v, pd, "dock");
+    } else {
+      var why = w.kind === "bell" ? t("bestBikeBell", { t: hm(w.time) }) : t("bestBikeNow");
+      var trip = goal ? planTrip(v, origin, goal, leave) : null, pb = trip ? trip.plan : planBike(v, origin, leave);
+      if (!pb) { pk.innerHTML = "<div class=\"pick none\"><span><span class=\"sub\">" + t("noneBike") + "</span></span></div>"; return; }
+      var bx = trip ? trip.bike : pb.best;
+      if (trip && !trip.rideIt) {
+        var wk = document.createElement("div"); wk.className = "pick walkit";
+        wk.innerHTML = "<span class=\"badge n\">" + ICON.walk + "</span><span><span class=\"why\">" + t("walkWins") + "</span><span class=\"nm\">" + t("walkAll", { m: trip.walk }) + "</span>" + (trip.dock ? "<span class=\"sub\"><span>" + t("walkVs", { m: Math.round(trip.total) }) + "</span></span>" : "") + "</span>";
+        pk.appendChild(wk);
+      }
+      pk.appendChild(pickRow(v, bx, "bike", why, "walkK", bx.leg));
+      if (trip && trip.dock) {
+        pk.appendChild(pickRow(v, trip.dock, "dock", t("bestDock"), "walkDest", trip.dock.tail));
+        if (trip.rideIt) lines.push(t("tripRide", { a: Math.round(trip.total), b: trip.walk }));
+      }
+      lines = lines.concat(notes(v, { best: bx, sure: pb.sure, skipped: bx === pb.best ? pb.skipped : null }, "bike"));
+      if (!lines.length && w.kind === "now") { var lt = leaveTip(v); if (lt) lines.push(lt); }
+    }
+    if (lines.length) { tip.innerHTML = lines.map(esc).join("<br>"); tip.hidden = false; }
+  }
+  // "Leave before 17:15 and you ride within about 3 minutes. Later it takes about 8."
+  function minutesAt(v, leave) { var pl = planBike(v, origin, leave); return pl ? pl.best.e : null; }
+  function leaveTip(v) {
+    if (!v.ahead) return "";
+    var n = nowMin(v), a = minutesAt(v, n), last = 0, later = null; if (a == null) return "";
+    for (var d = 10; d <= 60; d += 10) { var e = minutesAt(v, n + d); if (e != null && e <= a + 2) last = d; else { later = e; break; } }
+    if (last >= 60) return t("tipCalm", { a: Math.max(1, Math.round(a)) });
+    return t("tipSoon", { t: hm(Math.floor((n + last + 5) / 5) * 5), a: Math.max(1, Math.round(a)), b: Math.round(later == null ? a + G : later) });
+  }
+  // how long it takes to be on a bike for departures over the next hour: the bars a rider reads to decide when to go
+  function renderLater(v) {
+    var sec = $("laterSec");
+    if (tab !== "rider" || !v.ahead || !v.in_window) { sec.hidden = true; return; }
+    var n = nowMin(v), bars = [], top = 0;
+    for (var d = 0; d <= 60; d += 10) { var e = minutesAt(v, n + d); if (e == null) { sec.hidden = true; return; } bars.push([n + d, e]); top = Math.max(top, e); }
+    sec.hidden = false;
+    $("hLater").textContent = t("laterH"); $("hLaterSub").textContent = t("laterSub");
+    var W = 340, H = 74, bw = W / bars.length, cap = Math.max(8, Math.ceil(top)), h = "";
+    bars.forEach(function (b, k) {
+      var hh = Math.max(3, 40 * Math.min(1, b[1] / cap)), col = b[1] <= 4 ? "--ok-fill" : b[1] <= 8 ? "--low-fill" : "--out-fill";
+      h += "<rect x=\"" + (k * bw + 5).toFixed(1) + "\" y=\"" + (56 - hh).toFixed(1) + "\" width=\"" + (bw - 10).toFixed(1) + "\" height=\"" + hh.toFixed(1) + "\" rx=\"3\" fill=\"" + tok(col) + "\"/>" +
+        "<text x=\"" + (k * bw + bw / 2).toFixed(1) + "\" y=\"" + (51 - hh).toFixed(1) + "\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"600\" fill=\"" + tok("--ink") + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + Math.max(1, Math.round(b[1])) + "</text>" +
+        "<text x=\"" + (k * bw + bw / 2).toFixed(1) + "\" y=\"70\" text-anchor=\"middle\" font-size=\"10.5\" fill=\"" + tok("--ink-3") + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + (k === 0 ? t("wNow") : hm(b[0] % 1440)) + "</text>";
+    });
+    $("later").innerHTML = "<svg viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"" + t("laterH") + "\">" + h + "</svg>";
   }
   // The usual day around the starting point (docs/outlook.json): when is it hard to borrow, or to return?
   function renderUsual(v) {
@@ -455,9 +615,8 @@
   function renderRider(v) {
     var dock = tab === "dock";
     $("q").placeholder = t("search"); $("q").setAttribute("aria-label", t("search"));
-    $("originK").textContent = t(dock ? "destK" : "originK"); $("oCampus").textContent = t("oCampus"); $("oKrt").textContent = t("oKrt"); $("oMe").textContent = t("oMe"); $("oPick").textContent = t("oPick"); syncOrigin();
-    renderWhen(v);
-    $("hFav").textContent = t("fav"); $("hNear").textContent = t("near"); $("hNearSub").textContent = t(dock ? "nearDock" : "nearBike");
+    syncPlaces(); renderWhen(v);
+    $("hFav").textContent = t("fav"); $("hNear").textContent = t("near"); $("hNearSub").textContent = v.freshMin != null ? t("nearFresh", { t: hm(v.freshMin) }) : t(dock ? "nearDock" : "nearBike");
     var idx = {}; v.stations.forEach(function (s, i) { idx[s.sno] = i; });
     var fl = $("favs"); fl.innerHTML = "";
     var fi = favs.map(function (sno) { return idx[sno]; }).filter(function (i) { return i != null; });
@@ -467,7 +626,7 @@
     var ord = ordered(v), nl = $("near"); nl.innerHTML = "";
     ord.slice(0, nearN).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
     $("more").textContent = nearN > 8 ? t("less") : t("more");
-    renderBest(v, ord); renderUsual(v);
+    renderBest(v); renderLater(v); renderUsual(v);
   }
   function searchStations(q) {
     var v = view(), box = $("qres"); if (!v || !q.trim()) { box.hidden = true; return; }
@@ -504,7 +663,7 @@
     var a = aheadOf(v, i, kind), eb = aheadOf(v, i, "bikes"), s = v.stations[i], h = ""; if (!a || !eb) return "";
     for (var k = 0; k < a.length; k += 2) {
       var c = A64.indexOf(a.charAt(k)), n = A64.indexOf(eb.charAt(k)), val = kind === "bike" ? n : Math.max(0, s.cap - n);
-      h += "<div class=\"cell " + (c >= SURE[kind] ? "g" : c >= MAYBE[kind] ? "y" : "r") + "\"><b>" + val + "</b><span>" + hm((v.t_min + 10 * (k + 1)) % 1440) + "</span></div>";
+      h += "<div class=\"cell " + (c / 63 >= SURE[kind] ? "g" : c / 63 >= MAYBE[kind] ? "y" : "r") + "\"><b>" + val + "</b><span>" + hm((baseMin(v, i) + 10 * (k + 1)) % 1440) + "</span></div>";
     }
     return "<div class=\"ahead\"><div class=\"cap\">" + t("aheadH") + sep() + t(kind === "bike" ? "aheadBike" : "aheadDock") + "</div><div class=\"cells\">" + h + "</div></div>";
   }
@@ -604,6 +763,25 @@
       "<li><span class=\"sw\"><span class=\"ln\"></span></span><span>" + t("keyRoute") + "</span></li>";
     $("aboutHow").innerHTML = t("aboutHow", { n: v ? v.stations.length : 309, h: v ? v.meta.horizon_min : 90, q: s.Q, s: Math.round(s.speed_kmh), st: Math.round(s.stop_min) });
     $("langK").textContent = t("langK"); $("credit").innerHTML = t("credit");
+    renderTrack();
+  }
+  // track.json: what the page advised, written down before the outcome, and what then happened (analysis/code/demo_track.py)
+  function renderTrack() {
+    var el = $("aboutTrack"); if (!track || !track.days || !track.fields) { el.hidden = true; return; }
+    var F = {}; track.fields.forEach(function (k, n) { F[k] = n; });
+    var sum = {}, days = 0;
+    Object.keys(track.days).forEach(function (d) { var x = track.days[d]; if (!x.teaching) return; days++; Object.keys(x.w).forEach(function (w) { if (!sum[w]) sum[w] = x.w[w].slice(); else x.w[w].forEach(function (val, n) { sum[w][n] += val; }); }); });
+    var md = function (d) { return parseInt(d.slice(5, 7), 10) + "/" + parseInt(d.slice(8, 10), 10); };
+    var h = "<h3>" + t("trackH") + "</h3><p>" + t("trackSub", { d: md(track.since || ""), n: days }) + "</p>", any = false;
+    [["leave", "trackLeave"], ["arrive", "trackArrive"], ["dock", "trackDock"]].forEach(function (x) {
+      var a = sum[x[0]]; if (!a || a[F.cases] < 20) return; any = true;
+      var n = a[F.cases], f1 = function (k) { return (a[F[k]] / n).toFixed(1); };
+      h += "<p><b>" + t(x[1]) + "</b>" + sep() + t(x[0] === "dock" ? "trackLineDock" : "trackLine", { n: Math.round(n), a: f1("min_pick"), b: f1("min_alt"), c: f1("min_near") });
+      if (x[0] !== "dock" && a[F.n20] >= 20) h += t("trackSee", { x: (a[F.err20] / a[F.n20]).toFixed(1) });
+      h += "</p>";
+    });
+    if (!any) h += "<p>" + t("trackNone") + "</p>";
+    el.innerHTML = h; el.hidden = false;
   }
   function renderLegend(v) {
     var el = $("legend");
@@ -628,6 +806,7 @@
     st.className = "status";
     if (mode === "replay") { st.classList.add("replay"); tx.textContent = t("replayAt", { d: dayLabel(replay.date), t: v.snapshot_at.slice(11) }); if (errKind === "old") showErr(null); return; }
     var n = taipeiNow(), snap = v.snapshot_at, agoMin = Math.max(0, Math.round((n - new Date(snap.replace(" ", "T") + ":00")) / 60000));
+    if (v.freshMin != null && agoMin <= 30) { var fm = Math.max(0, n.getHours() * 60 + n.getMinutes() - v.freshMin); tx.textContent = t("liveAt", { t: hm(v.freshMin) }) + sep() + (fm < 1 ? t("justNow") : t("ago", { m: fm })); if (errKind === "old") showErr(null); return; }
     if (agoMin > 25) st.classList.add("stale");
     tx.textContent = t("liveAt", { t: snap.slice(11) }) + sep() + (agoMin < 1 ? t("justNow") : agoMin < 90 ? t("ago", { m: agoMin }) : t("agoH", { h: Math.round(agoMin / 60) }));
     if (agoMin > 60) { if (!errKind || errKind === "old") showErr("old", t("stalebig", { m: agoMin })); } else if (errKind === "old") showErr(null);
@@ -652,7 +831,7 @@
   }
   function setTab(x) {
     var was = tab; tab = x; store("btb-tab", x); applyTab();
-    if (picking) setPicking(false);
+    if (picking) setPicking(null);
     if (x === "ops" && was !== "ops") { var v = view(); if (v && map.getZoom() >= 15 && selected == null) fitArea(v); }
     if (isPhone()) setSheet(sheetState === "peek" ? "half" : sheetState);
     scroller.scrollTop = 0; render();
@@ -682,11 +861,23 @@
   function loadLive() {
     var url = /claude\.ai$/.test(location.hostname) || location.protocol === "file:" ? "state.json" : "state.json?t=" + Math.floor(Date.now() / 60000);
     return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (s) { live = s; if (errKind === "load") showErr(null); if (mode === "live") render(); })
+      .then(function (s) { live = s; merged = null; if (errKind === "load") showErr(null); if (mode === "live") render(); loadFresh(); })
       .catch(function (e) {
         if (live) { showErr("load", t("stale", { t: live.snapshot_at.slice(11) })); if (mode === "live") { render(); $("status").classList.add("stale"); } }
         else { showErr("load", t("loadFail", { e: e.message })); $("statusText").textContent = "–"; }
       });
+  }
+  // the operator's counts for the stations around campus, read by the browser itself: up to a minute old instead of up to ten
+  function loadFresh() {
+    if (qs.fresh === "0" || mode !== "live" || !live || !live.fresh || !live.fresh.sno || !live.fresh.sno.length || document.hidden) return;
+    fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ station_no: live.fresh.sno }) })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var d = j && j.retVal && j.retVal.data; if (!Array.isArray(d) || !d.length) return;
+        var c = {}; d.forEach(function (x) { if (x.status === 1 && typeof x.available_spaces === "number" && typeof x.empty_spaces === "number") c[x.station_no] = [x.available_spaces, x.empty_spaces]; });
+        var n = taipeiNow(); fresh = { min: n.getHours() * 60 + n.getMinutes(), day: n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate()), c: c }; merged = null;
+        if (mode === "live") render();
+      }).catch(function () {});
   }
   function loadReplay(day) {
     if (replays[day]) { replay = replays[day]; return Promise.resolve(replay); }
@@ -746,13 +937,11 @@
   $("q").addEventListener("focus", function (e) { if (isPhone()) setSheet("full"); if (e.target.value) searchStations(e.target.value); });
   $("q").addEventListener("keydown", function (e) { if (e.key === "Escape") { $("qres").hidden = true; e.target.blur(); } if (e.key === "Enter") { var b = document.querySelector("#qres button"); if (b) b.click(); } });
   document.addEventListener("click", function (e) { if (!e.target.closest(".search")) $("qres").hidden = true; });
-  $("oCampus").addEventListener("click", function () { if (picking) setPicking(false); setOrigin("campus", CAMPUS_CENTER[0], CAMPUS_CENTER[1]); var v = view(); if (v) fitCampus(v); });
-  $("oKrt").addEventListener("click", function () { if (picking) setPicking(false); var v = view(); if (!v) return; v.stations.forEach(function (s) { if (s.sno === KRT) { setOrigin("krt", s.lat, s.lng); viewTo(s.lat, s.lng, Math.max(map.getZoom(), 16)); } }); });
-  $("oMe").addEventListener("click", locate);
-  $("fab").addEventListener("click", function () { if (tab !== "rider" && tab !== "dock") setTab("rider"); locate(); });
-  $("oPick").addEventListener("click", function () { setPicking(!picking); });
+  $("fromSel").addEventListener("change", function (e) { choosePlace("origin", e.target.value); });
+  $("toSel").addEventListener("change", function (e) { choosePlace(tab === "dock" ? "dest" : "goal", e.target.value); });
+  $("fab").addEventListener("click", function () { if (tab !== "rider" && tab !== "dock") setTab("rider"); locate(tab === "dock" ? "dest" : "origin"); });
   $("more").addEventListener("click", function () { nearN = nearN > 8 ? 8 : 16; var v = view(); if (v) renderRider(v); });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (picking) setPicking(false); else if (selected != null) select(null); } });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (picking) setPicking(null); else if (selected != null) select(null); } });
 
   // ---------- start ----------
   var qs = {}; location.search.replace(/^\?/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) qs[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ""); });
@@ -765,7 +954,17 @@
   initSheet(); initMap(); renderChrome(); renderAbout(null);
   loadLive();
   fetch("outlook.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { usual = j; if (j && view()) render(); }).catch(function () {});
+  fetch("places.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j || !j.places || !j.walk) return;
+    j.pos = {}; j.byId = {}; j.places.forEach(function (p, k) { j.pos[p.id] = k; j.byId[p.id] = p; }); j.stations.forEach(function (sno, k) { j.pos[sno] = j.places.length + k; });
+    PL = j;
+    var at = function (id) { var p = id && j.byId[id]; return p ? { kind: "place", id: p.id, lat: p.lat, lng: p.lng } : null; };
+    origin = at(qs.from) || at(load("btb-origin", null)) || origin; goal = at(qs.to) || (qs.to === "" ? null : at(load("btb-goal", null))); dest = at(qs.to) || at(load("btb-dest", null)) || dest;
+    if (view()) render(); else syncPlaces();
+  }).catch(function () {});
+  fetch("track.json", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { track = j; renderTrack(); }).catch(function () {});
   loadDays().then(function () { if (/^\d{4}-\d\d-\d\d$/.test(qs.replay || "") && replayDays.indexOf(qs.replay) >= 0) { replayDay = qs.replay; fillDays(); setMode("replay"); } });
   setInterval(function () { if (mode === "live") loadLive(); }, 60000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && mode === "live") loadFresh(); });
   setInterval(function () { var v = view(); if (v && mode === "live") { renderBell(v); renderStatus(v); } }, 15000);
 })();

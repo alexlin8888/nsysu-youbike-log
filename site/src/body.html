@@ -44,19 +44,20 @@
             <input id="q" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-controls="qres">
             <div class="results" id="qres" hidden></div>
           </div>
-          <div class="best" id="best" hidden></div>
-          <p class="tip" id="tip" hidden></p>
+          <div class="trip" id="tripRow">
+            <label class="sel" id="fromWrap"><span class="k" id="fromK"></span><select id="fromSel"></select></label>
+            <label class="sel" id="toWrap"><span class="k" id="toK"></span><select id="toSel"></select></label>
+          </div>
           <div class="origin" role="group" id="whenGroup">
             <span class="k" id="whenK"></span>
             <span class="opts" id="whenChips"></span>
           </div>
-          <div class="origin" role="group" id="originGroup">
-            <span class="k" id="originK"></span>
-            <button class="opt" id="oCampus" type="button" aria-pressed="true"></button>
-            <button class="opt" id="oKrt" type="button" aria-pressed="false"></button>
-            <button class="opt" id="oMe" type="button" aria-pressed="false"></button>
-            <button class="opt" id="oPick" type="button" aria-pressed="false"></button>
-          </div>
+          <div class="best" id="best" hidden></div>
+          <p class="tip" id="tip" hidden></p>
+          <section class="later" id="laterSec" hidden>
+            <h2><span id="hLater"></span><span class="sub" id="hLaterSub"></span></h2>
+            <div class="laterbar" id="later"></div>
+          </section>
           <section class="usual" id="usualSec" hidden>
             <h2><span id="hUsual"></span><span class="sub" id="hUsualSub"></span></h2>
             <div class="usualbar" id="usual"></div>
@@ -95,6 +96,7 @@
 
         <div id="paneAbout" class="pane about" role="tabpanel" aria-labelledby="tabAbout" hidden>
           <section id="aboutWhat"></section>
+          <section id="aboutTrack" hidden></section>
           <section><h3 id="aboutKeyH"></h3><ul class="key" id="aboutKey"></ul></section>
           <section id="aboutHow"></section>
           <section class="langrow"><span id="langK"></span><span class="seg" role="group" id="langSeg"><button id="lZh" type="button" aria-pressed="true">中文</button><button id="lEn" type="button" aria-pressed="false">English</button></span></section>
