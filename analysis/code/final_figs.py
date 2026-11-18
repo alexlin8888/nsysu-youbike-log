@@ -8,7 +8,7 @@ FINAL_DIR is analysis/results/final. Each figure is drawn when its inputs exist:
   fig_final_forecast.png  forecast/forecast_*.csv     the after-class forecast against its baselines; reliability
   fig_final_planner.png   planner/planner_by_slot.csv what the planner expects and plans at NSYSU, by time of day
   fig_final_rates.png     RATES_DIR/rates*.csv        hourly and 10-minute chain rates at the campus stations
-  fig_final_rider.png     rider/rider_summary.csv     does the advice get a rider a bike or a dock: success against extra walking
+  fig_final_time.png      time/time_*.csv             minutes until a rider is on a bike, by rule; by time of leaving; how early a slow search is known
   fig_final_sim.png       sim/sim_summary.csv         simulated trucks at NSYSU: what one to three campus trucks avoid
   fig_architecture_final.png                          the system as deployed
 """
@@ -218,29 +218,41 @@ if f.exists():
     title(fig, 0.01, 0.995, "(a) Rental rate, 8 campus stations"); title(fig, 0.01, 0.52, "(b) Return rate")
     save(fig, "fig_final_rates.png", ax=axes[0])
 
-# ======================= does the advice get a rider a bike (a dock)? =======================
-f = FINAL / "rider" / "rider_summary.csv"
+# ======================= minutes until a rider is on a bike (rid of one) =======================
+f = FINAL / "time" / "time_summary.csv"
 if f.exists():
-    r = pd.read_csv(f)
-    fig = plt.figure(figsize=(W, 1.9))
-    panels = [("leave", "(a) Leaving campus,\n17:00-19:50", "chain0.9"), ("dock", "(b) Returning on\ncampus, 09:00-10:50", "chain0.95"), ("arrive", "(c) Borrowing below\ncampus, 08:30-10:50", "chain0.9")]
-    axes = [fig.add_axes([0.115 + 0.295 * k, 0.2, 0.26, 0.5]) for k in range(3)]
-    for ax, (name, head, used) in zip(axes, panels):
-        g = r[r.scenario == name].set_index("strategy")
-        cs = [c for c in g.index if c.startswith("counts")]; ch = [c for c in g.index if c.startswith("chain")]
-        ax.plot(g.loc[cs, "extra_walk_min"], 100 * g.loc[cs, "success"], color=MUTED, lw=1.0, marker="s", ms=2.6, label="live counts, at least K")
-        ax.plot(g.loc[ch, "extra_walk_min"], 100 * g.loc[ch, "success"], color=BLUE, lw=1.2, marker="o", ms=2.8, label="chance on arrival (chain)")
-        ax.plot([0], [100 * g.loc["nearest", "success"]], marker="D", ms=3.6, lw=0, color=ORANGE, label="nearest station")
-        ax.plot([g.loc[used, "extra_walk_min"]], [100 * g.loc[used, "success"]], marker="o", ms=6.5, mfc="none", mec=BLUE, mew=0.9, lw=0)
-        ax.set_ylim(58, 101); ax.set_yticks([60, 70, 80, 90, 100]); top = float(g.loc[cs + ch, "extra_walk_min"].max()); ax.set_xlim(-0.08 * top - 0.15, top * 1.08)
-        ax.set_xticks([0, 2, 4, 6] if top > 4 else [0, 1, 2, 3] if top > 2.4 else [0, 1, 2]); grid(ax)
-        ax.set_xlabel("extra walk, min", labelpad=2)
-        if ax is not axes[0]:
-            ax.set_yticklabels([])
-        ax.set_title(head, fontsize=6.6, loc="left", pad=3)
-    axes[0].set_ylabel("got one on arrival, %", labelpad=2)
-    axes[0].legend(loc="lower left", bbox_to_anchor=(-0.48, 1.4), ncol=3, frameon=False, handletextpad=0.3, columnspacing=0.9, borderaxespad=0.1, fontsize=6.0)
-    save(fig, "fig_final_rider.png", ax=axes[0])
+    r = pd.read_csv(f); bm = pd.read_csv(FINAL / "time" / "time_by_minute.csv"); fs = pd.read_csv(FINAL / "time" / "time_foresight_summary.csv")
+    RULES = [("nearest", "nearest station", ORANGE, "D"), ("official", "live counts", MUTED, "s"), ("chain", "chance \u2265 0.9", AQUA, "^"), ("expectm", "fewest minutes", BLUE, "o")]
+    fig = plt.figure(figsize=(W, 3.0))
+    tops = [fig.add_axes([0.27 + 0.245 * k, 0.665, 0.205, 0.2]) for k in range(3)]
+    for ax, (name, head) in zip(tops, (("leave", "Leaving campus\n17:00-19:50"), ("arrive", "Below campus\n08:30-10:50"), ("dock", "Campus docks\n09:00-10:50"))):
+        g = r[(r.scenario == name) & (r.lead == 0)].set_index("policy")
+        for y, (pol, lab, col, mk) in enumerate(RULES[::-1]):
+            ax.plot([g.loc[pol, "minutes_lo"], g.loc[pol, "minutes_hi"]], [y, y], color=col, lw=0.9)
+            ax.plot([g.loc[pol, "minutes"]], [y], marker=mk, ms=3.4, color=col, lw=0)
+        ax.set_ylim(-0.6, 3.6); ax.set_yticks(range(4)); ax.set_yticklabels([x[1] for x in RULES[::-1]] if ax is tops[0] else [])
+        ax.tick_params(axis="y", length=0); grid(ax, "x")
+        top = float(g.loc[[x[0] for x in RULES], "minutes_hi"].max())
+        ax.set_xlim(0, 8 if top > 4 else 4); ax.set_xticks([0, 4, 8] if top > 4 else [0, 2, 4]); ax.set_xlabel("minutes", labelpad=1.5)
+        ax.set_title(head, fontsize=6.2, loc="left", pad=3)
+    ax1 = fig.add_axes([0.115, 0.115, 0.4, 0.355]); ax2 = fig.add_axes([0.66, 0.115, 0.32, 0.355])
+    ev = bm[bm.scenario == "leave"]
+    for pol, lab, col, mk in RULES[1:]:
+        g = ev[ev.policy == pol].sort_values("minute")
+        ax1.plot(g.minute / 60, g.minutes, color=col, lw=1.3 if pol == "expectm" else 0.9, marker=mk, ms=2.0, label=lab)
+    ax1.set_xlim(16.9, 19.95); ax1.set_xticks([17, 18, 19]); ax1.set_xticklabels(["17:00", "18:00", "19:00"]); ax1.set_xlabel("time of leaving", labelpad=2)
+    ax1.set_ylim(0, 10.5); ax1.set_yticks([0, 5, 10]); ax1.set_ylabel("minutes until riding", labelpad=2); grid(ax1)
+    ax1.legend(loc="upper right", bbox_to_anchor=(1.03, 1.04), ncol=1, frameon=False, handletextpad=0.3, borderaxespad=0.15, fontsize=5.7, handlelength=1.5, labelspacing=0.2)
+    g = fs[fs.scenario == "leave"].sort_values("ahead")
+    ax2.plot(g.ahead, g.auc_slow_by_chain, color=BLUE, lw=1.3, marker="o", ms=2.6, label="forecast")
+    ax2.plot(g.ahead, g.auc_slow_by_counts, color=MUTED, lw=0.9, marker="s", ms=2.4, label="counts held")
+    ax2.plot(g.ahead, g.auc_slow_usual, color=ORANGE, lw=0.9, ls=(0, (3, 1.5)), label="usual day")
+    ax2.set_xlim(-2, 32); ax2.set_xticks([0, 10, 20, 30]); ax2.set_xlabel("minutes before leaving", labelpad=2)
+    ax2.set_ylim(0.5, 1.0); ax2.set_yticks([0.5, 0.75, 1.0]); ax2.set_ylabel("AUC, search over 8 min", labelpad=2); grid(ax2)
+    ax2.legend(loc="lower left", bbox_to_anchor=(-0.02, -0.02), ncol=1, frameon=False, handletextpad=0.3, borderaxespad=0.15, fontsize=5.7, handlelength=1.5, labelspacing=0.2)
+    title(fig, 0.01, 0.995, "(a) Minutes until riding, or until the bike is docked")
+    title(fig, 0.01, 0.535, "(b) Evening, by time of leaving"); title(fig, 0.555, 0.535, "(c) Known in advance")
+    save(fig, "fig_final_time.png", ax=tops[0])
 
 # ======================= simulated trucks at NSYSU =======================
 f = FINAL / "sim" / "sim_summary.csv"

@@ -8,7 +8,7 @@
 |---|---|
 | `build_final.js` | 產生 `Final_54.docx`。由 `build_hw3.js` 改寫而來：`BLUE` 設成不上色，新內容用 `fb`、`bodyF`、`capM` 等函式或字串裡的 `{{…}}` 標成藍色 |
 | `layout_final.json`、`layout_final_space.py` | 期末報告每張圖的位置，以及搜尋時每張圖可以放的段落 |
-| `make_app_figure.py` | Fig. 19 的兩張手機截圖：用 Playwright 開頁面的英文版，重播 2026-11-11 的 16:40（借車）和 09:20（還車），併成 `figs/fig_demo_app.png` |
+| `make_app_figure.py` | Fig. 19 的兩張手機截圖：用 Playwright 開頁面的英文版，重播 2026-11-11 的 16:40（從圖資大樓借車）和 17:30（管理學院到捷運站），併成 `figs/fig_demo_app.png` |
 | `video_url.txt`（自行新增） | 放 YouTube 連結。標題下方、作者上方那一行會印出這個連結；沒有這個檔時印「link to be added after upload」 |
 
 重建：

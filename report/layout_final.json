@@ -3,54 +3,36 @@
   "after": 13
  },
  "fig_architecture_final.png": {
-  "after": 26
+  "after": 30
  },
  "fig_method.png": {
   "after": 34
  },
- "fig_final_rates.png": {
-  "after": 93
- },
  "fig_nsysu_tide_a.png": {
-  "after": 103
- },
- "fig_nsysu_tide_b.png": {
-  "after": 104
- },
- "fig_ntu_moves.png": {
-  "after": 106
- },
- "fig_sim_ci.png": {
-  "after": 125
- },
- "fig1_motivation.png": {
-  "after": 10,
-  "frac": 0.9
- },
- "fig_final_weeks.png": {
   "after": 105
  },
- "fig_moves_check.png": {
-  "after": 116
+ "fig_nsysu_tide_b.png": {
+  "after": 106
  },
- "fig_horizon.png": {
-  "after": 116
+ "fig_ntu_moves.png": {
+  "after": 108
  },
- "fig_nsysu.png": {
-  "after": 118,
-  "frac": 0.9
+ "fig_sim_ci.png": {
+  "after": 124
  },
- "fig_final_transfer.png": {
-  "after": 125,
-  "frac": 0.9
+ "fig1_motivation.png": {
+  "after": 6
+ },
+ "fig_final_weeks.png": {
+  "after": 108
  },
  "fig_final_forecast.png": {
-  "after": 128
+  "after": 136
  },
- "fig_demo_app.png": {
-  "after": 140
+ "fig_bells.png": {
+  "after": 106
  },
- "Table 5": {
-  "after": 155
+ "fig_model.png": {
+  "after": 117
  }
 }

@@ -86,4 +86,4 @@
 
 頁面由 `site/src` 的原始檔組成，改完執行 `python3 site/build.py` 產生 `docs/index.html`。`site/test_page.py` 會在 Chromium 裡用六種視窗大小把每個功能跑一遍，全部通過再推上去。檢查時地圖圖磚和官方 API 都用假的回應代替，結果不受外部服務影響。
 
-影片腳本在 [VIDEO.md](VIDEO.md)。
+影片腳本在 [VIDEO.md](VIDEO.md)，找同學試用的做法在 [USER_TEST.md](USER_TEST.md)。

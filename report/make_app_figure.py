@@ -6,7 +6,8 @@ Usage: python3 report/make_app_figure.py [BASE_URL] [OUT_PNG]
 
 Serve docs/ first (python3 -m http.server 8770 --directory docs), or pass the public address. The page is opened in
 English on a 360 x 760 phone screen with the list pulled up, at two moments of the replay of Wednesday 11 Nov 2026
-(a day the page keeps for good, see docs/replays_keep.txt): 16:40 on the Borrow tab and 09:20 on the Return tab.
+(a day the page keeps for good, see docs/replays_keep.txt), both on the Borrow tab: 16:40 from the library, and 17:30
+from the College of Management to the metro.
 """
 import asyncio
 import io
@@ -17,7 +18,7 @@ from playwright.async_api import async_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8770/index.html"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "report/figs/fig_demo_app.png"
-SHOTS = ["?replay=2026-11-11&t=16:40&lang=en", "?replay=2026-11-11&t=09:20&tab=dock&lang=en"]
+SHOTS = ["?replay=2026-11-11&t=16:40&from=lib&to=&lang=en", "?replay=2026-11-11&t=17:30&from=cm&to=krt&lang=en"]
 W, H, SCALE = 360, 760, 3
 PANEL_W, GAP, EDGE = 720, 56, 2
 
@@ -27,8 +28,10 @@ async def shoot(browser, query):
     page = await ctx.new_page()
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
-    await page.goto(BASE + query, wait_until="networkidle")
-    await page.wait_for_timeout(1800)
+    await page.route("https://apis.youbike.com.tw/**", lambda r: r.abort())      # a replay needs no live counts
+    await page.goto(BASE + query, wait_until="domcontentloaded")               # map tiles may keep the network busy
+    await page.wait_for_function("() => document.getElementById('shell').dataset.mode === 'replay' && document.querySelectorAll('#fromSel option').length > 3", timeout=30000)
+    await page.wait_for_timeout(2500)
     for _ in range(3):                                         # pull the list up over the map
         if await page.get_attribute("#shell", "data-sheet") == "full":
             break
