@@ -570,14 +570,23 @@
     }
     if (lines.length) { tip.innerHTML = lines.map(esc).join("<br>"); tip.hidden = false; }
   }
-  // "Leave before 17:15 and you ride within about 3 minutes. Later it takes about 8."
-  function minutesAt(v, leave) { var pl = planBike(v, origin, leave); return pl ? pl.best.e : null; }
+  // minutes until the rider is on a bike when leaving at `leave`; with a destination, at the station the trip borrows from
+  function minutesAt(v, leave) {
+    if (goal) { var tr = planTrip(v, origin, goal, leave); if (tr && tr.dock) return tr.bike.e; }
+    var pl = planBike(v, origin, leave); return pl ? pl.best.e : null;
+  }
+  // "Leave before 17:35 and you ride within about 3 min. Leaving at 17:40 takes about 5." The same numbers as the bars below it.
   function leaveTip(v) {
     if (!v.ahead) return "";
-    var n = nowMin(v), a = minutesAt(v, n), last = 0, later = null; if (a == null) return "";
-    for (var d = 10; d <= 60; d += 10) { var e = minutesAt(v, n + d); if (e != null && e <= a + 2) last = d; else { later = e; break; } }
-    if (last >= 60) return t("tipCalm", { a: Math.max(1, Math.round(a)) });
-    return t("tipSoon", { t: hm(Math.floor((n + last + 5) / 5) * 5), a: Math.max(1, Math.round(a)), b: Math.round(later == null ? a + G : later) });
+    var n = nowMin(v), es = [], d, r = function (x) { return Math.max(1, Math.round(x)); };
+    for (d = 0; d <= 60; d += 10) { var e = minutesAt(v, n + d); if (e == null) break; es.push(e); }
+    if (!es.length) return "";
+    var last = 0; while (last + 1 < es.length && es[last + 1] <= es[0] + 2) last++;          // departures that cost at most two minutes more than leaving now
+    var top = Math.max.apply(null, es.slice(0, last + 1));
+    if (last + 1 >= es.length) return t("tipCalm", { a: r(top) });
+    var worst = last + 1; for (d = last + 2; d < es.length; d++) if (es[d] > es[worst] + 1e-9) worst = d;
+    if (r(es[worst]) - r(top) < 2) return t("tipCalm", { a: r(es[worst]) });                // a one-minute difference is not worth a deadline
+    return t("tipSoon", { t: hm((Math.floor((n + 10 * last + 5) / 5) * 5) % 1440), a: r(top), u: hm((n + 10 * worst) % 1440), b: r(es[worst]) });
   }
   // how long it takes to be on a bike for departures over the next hour: the bars a rider reads to decide when to go
   function renderLater(v) {

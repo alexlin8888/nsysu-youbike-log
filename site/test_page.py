@@ -228,15 +228,20 @@ async def check_when(browser, size):
     ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:40")
     await open_sheet(page, size)
     tip = await page.inner_text("#tip") if await page.get_attribute("#tip", "hidden") is None else ""
-    record(size, "a line under the suggestion says when to leave, or what to do after a miss", bool(re.search(r"\d\d:\d\d 前出發，約 \d+ 分鐘騎上車。再晚約 \d+ 分鐘|接下來一小時出發，都約 \d+ 分鐘|沒車的話，再走 \d+ 分鐘|想穩一點|比較近", tip)), tip)
+    record(size, "a line under the suggestion says when to leave, or what to do after a miss", bool(re.search(r"\d\d:\d\d 前出發，約 \d+ 分鐘內騎上車。\d\d:\d\d 出發約 \d+ 分鐘。|接下來一小時出發，約 \d+ 分鐘內騎上車|沒車的話，再走 \d+ 分鐘|想穩一點|比較近", tip)), tip)
     later = await page.evaluate("Array.from(document.querySelectorAll('#later svg text')).map(x => x.textContent)")
     bars = await page.locator("#later svg rect").count(); head = (await page.inner_text("#laterSec h2")).replace("\n", " ")
     nums, ticks = later[0::2], later[1::2]
     step = [(int(b[:2]) * 60 + int(b[3:]) - int(a[:2]) * 60 - int(a[3:])) % 1440 for a, b in zip(ticks[1:], ticks[2:])] if all(re.fullmatch(r"\d\d:\d\d", x) for x in ticks[1:]) else []
     record(size, "minutes until riding are drawn for departures over the next hour", await page.get_attribute("#laterSec", "hidden") is None and bars == 7 and "幾點走，幾分鐘騎得上車" in head and ticks[:1] == ["現在"] and step == [10] * 5 and all(re.fullmatch(r"\d+", n) and int(n) >= 1 for n in nums), f"{head} | {' '.join(nums)} | {' '.join(ticks)}")
-    m = re.search(r"約 (\d+) 分鐘騎上車", tip)
-    if m and "前出發" in tip or "接下來一小時" in tip:
-        record(size, "the line and the first bar give the same minutes", m is not None and nums[:1] == [m.group(1)], f"{tip} | first bar {nums[:1]}")
+    m = re.search(r"(\d\d:\d\d) 前出發，約 (\d+) 分鐘內騎上車。(\d\d:\d\d) 出發約 (\d+) 分鐘", tip); calm = re.search(r"接下來一小時出發，約 (\d+) 分鐘內", tip)
+    mm = lambda x: int(x[:2]) * 60 + int(x[3:])
+    if m and len(ticks) == 7:                                   # the line is a summary of the bars: same minutes, same times
+        at = [mm(ticks[1]) - 10] + [mm(x) for x in ticks[1:]]
+        before = [int(n) for n, x in zip(nums, at) if x < mm(m.group(1))]
+        record(size, "the line and the bars give the same minutes", before and max(before) == int(m.group(2)) and m.group(3) in ticks and nums[ticks.index(m.group(3))] == m.group(4) and int(m.group(4)) >= int(m.group(2)) + 2, f"{tip} | {' '.join(nums)}")
+    elif calm:
+        record(size, "the line and the bars give the same minutes", max(int(n) for n in nums) == int(calm.group(1)), f"{tip} | {' '.join(nums)}")
     sub = await page.locator("#near .row .sub").first.inner_text()
     record(size, "each row says when its answer changes", bool(re.search(r"\d\d:\d\d", " ".join(await page.locator("#near .row .sub").all_inner_texts()))), sub.replace("\n", " "))
     usual = await page.get_attribute("#usualSec", "hidden") is None
