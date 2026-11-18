@@ -392,3 +392,9 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .tip { line-height: 1.6; }
 .laterbar svg { display: block; width: 100%; height: auto; }
 .originicon.to { background: var(--surface); border-color: var(--accent); }
+
+/* the operator's NT$5 reward: a small mark after a station's name, one line under the suggestion, one in the card */
+.relay { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 5px; font-size: 11.5px; font-weight: 600; line-height: 1.5; white-space: nowrap; vertical-align: 1px; color: var(--accent); border: 1px solid var(--accent); }
+.relayline { color: var(--ink); }
+.relaynote { margin-top: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.relaynote .relay { margin-left: 0; margin-right: 6px; }

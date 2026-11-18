@@ -50,6 +50,8 @@
 | `final_lost_demand.py` | 期末報告：臺大重播日上，空站時段流失的需求有多少（截斷校正速率 × 空站時間） |
 | `final_planner.py` | 期末報告：規劃器在中山每個時段預期的缺口與建議路線（由 `demo_state.py --replay` 的輸出彙整），並對照只用每小時速率的版本 |
 | `final_time.py` | 期末報告：照建議走，幾分鐘騎得上車（或還完車走到目的地）。12 個測試日逐一重播，第一站撲空就換下一站，最多三站；比較最近的站、官方 App 的即時車數、頁面第一版的規則（九成門檻）與現在的規則（預期分鐘數最少），並檢驗出發前 0–30 分鐘的預估有多準。`--outcome late|early` 是兩種計分方式的敏感度 |
+| `final_relay.py` | 期末報告：官方「友愛接力」（滿站借車、空站還車各 5 元）看的是借還那一刻的站況。頁面標出「你到的時候很可能還是空站／滿站」的站，這支程式拿 12 個測試日對答案，和「現在是空站就當它等一下也是」比較；另外數每天有多少台車出現在原本空著的站 |
+| `final_city.py` | 期末報告：用縣市公布的見車率算法（06:00–24:00 有車的時間比例）算校內、山下和周邊所有站，對照傍晚三小時；以及早上校內是整體車柱不夠，還是個別站停滿 |
 | `final_rider.py` | 期末報告的第一版檢驗，只看第一站：照頁面的建議走，到站時真的有車（有位子）的比例。三個難用的時段各自重播 12 個測試日，對照最近的站、看現在車數挑站（至少 K 台）與生滅鏈門檻；另外輸出三個時段沒車、沒位子的比例（`hard_hours.csv`） |
 | `final_avail.py` | 期末報告：生滅鏈的「k 步後有車／有位子」機率，對照保序校正與疊在鏈上的 LightGBM（兩個區塊交叉擬合）；輸出 `avail_oof.npz` 給 `final_rider.py --avail` |
 | `nsysu_sim.py` | 期末報告：中山的卡車模擬。需求由後段資料估的速率抽 Poisson，規劃器用前段資料估的速率；早上與傍晚各一個班次，比較不派車、1–3 台只補校園走廊的車、1 或 3 台不限區域的車 |
@@ -95,6 +97,8 @@ python code/final_planner.py work/replays results/final/planner work/replays_hou
 # 建議的成效、疊加模型、卡車模擬（世界的速率只用 10/30 之後的資料估）
 python code/final_avail.py ../data results/final/rates_fit_to_1029 results/final/avail
 python code/final_rider.py ../data results/final/rates_fit_to_1029 results/final/rider --avail results/final/avail/avail_oof.npz
+python code/final_relay.py ../data results/final/rates_fit_to_1029 results/final/relay
+python code/final_city.py ../data results/final/city
 python code/demo_places.py ../data ../docs/places.json                            # 需要網路；地點或站有變動時才重跑
 python code/final_time.py ../data results/final/rates_fit_to_1029 ../docs/places.json results/final/time
 python code/final_time.py ../data results/final/rates_fit_to_1029 ../docs/places.json results/final/time_late --outcome late --only leave,arrive,dock
@@ -120,7 +124,7 @@ TT_SPLIT=week python code/timetable_nsysu.py ../data work/model results/nsysu/ti
 - `model/`：預測模型的指標、可靠度曲線、特徵重要性、測試集預測；`model/sweep/` 時距掃描與 Poisson 推演
   （`sweep_metrics.csv`、`rates_train.csv`、`sweep_setup.json` 含 MC 對照）；`model/transfer/` 遷移；`model/ci/` 信賴區間；`model/timetable/` 課表特徵實驗（逐日留一；`week/` 為第一週訓練、第二週測試）。
 - `nsysu/rates/`：中山各站速率 `rates.csv`（`lam_r`、`lam_q` 每小時；`lam_*_gross` 為毛變化量下界）、全站同時段平均 `rates_prior.csv`、最後 7 天的檢驗 `rates_holdout.csv`（每筆轉移的對數概似：鏈估計 −1.51、毛變化量 −1.59、同時段平均 −1.72）。
-- `final/`：期末報告新增實驗的結果。`final_nsysu_*.csv/json` 六週的下課缺車數字與紀錄器完整度；`forecast/` 下課後預估的檢驗；`transfer/` 幾週本地資料的遷移；`planner/` 規劃器在中山的時段彙整；`lost_demand.json` 臺大流失需求；`rates_fit_to_1029/` 檢驗用的速率（只估到 10/29）；`rider/` 第一站借不借得到的比例與三個難用時段的比例；`time/` 幾分鐘騎得上車（`time_summary.csv` 各規則的平均與日拔靴區間、`time_by_minute.csv` 依出發時間、`time_foresight_summary.csv` 事前預估的準度；逐筆的 `time_cases.csv` 太大不放進 repo），`time_late/`、`time_early/` 是計分方式的敏感度；`avail/` 生滅鏈與疊加模型的比較；`sim/` 卡車模擬；`rates_fit_from_1030/` 模擬裡產生需求用的速率（10/30 到 11/16）。
+- `final/`：期末報告新增實驗的結果。`final_nsysu_*.csv/json` 六週的下課缺車數字與紀錄器完整度；`forecast/` 下課後預估的檢驗；`transfer/` 幾週本地資料的遷移；`planner/` 規劃器在中山的時段彙整；`lost_demand.json` 臺大流失需求；`rates_fit_to_1029/` 檢驗用的速率（只估到 10/29）；`rider/` 第一站借不借得到的比例與三個難用時段的比例；`time/` 幾分鐘騎得上車（`time_summary.csv` 各規則的平均與日拔靴區間、`time_by_minute.csv` 依出發時間、`time_foresight_summary.csv` 事前預估的準度；逐筆的 `time_cases.csv` 太大不放進 repo），`time_late/`、`time_early/` 是計分方式的敏感度；`relay/` 友愛接力標記的準度；`city/` 見車率與校內車柱分布；`avail/` 生滅鏈與疊加模型的比較；`sim/` 卡車模擬；`rates_fit_from_1030/` 模擬裡產生需求用的速率（10/30 到 11/16）。
 - `nsysu/rates/rates_slots.csv`：走廊 19 站上課日每 10 分鐘的速率（`slot` 0–143）；`rates_slots_tuning.csv` 是先驗權重的驗證。
 - `sim/k1,k3,k6/`：重播模擬每日結果與摘要（含 `route`、`route1`）；`sim/route/` 路徑搜尋的原始輸出與設定；`sim/tuning/sim_tune_summary.csv` 驗證日調參結果；`sim/sim_numbers.json` 報告引用的數字與區間。
 

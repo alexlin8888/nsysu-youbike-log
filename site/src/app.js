@@ -22,7 +22,7 @@
   var when = { rider: { kind: "now" }, dock: { kind: "plus", min: 10 } }, usual = null;      // when the rider leaves (borrow) or rides in (return)
   var PL = null, fresh = null, merged = null, track = null, placesKey = "";                   // places.json; counts read from the operator a minute ago; the live view with them; track.json
   var A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";               // state.json packs a chance or a count into one character
-  var SURE = { bike: 0.9, dock: 0.95 }, MAYBE = { bike: 0.6, dock: 0.7 }, G = 12, MARGIN = 0.5; // the chances behind "should" and "may"; G: minutes charged if the second station fails too; MARGIN: minutes given up for a surer station
+  var SURE = { bike: 0.9, dock: 0.95 }, MAYBE = { bike: 0.6, dock: 0.7 }, G = 12, MARGIN = 0.5, RELAY = 0.6; // the chances behind "should" and "may"; G: minutes charged if the second station fails too; MARGIN: minutes given up for a surer station
   var API = "https://apis.youbike.com.tw/tw2/parkingInfo";                                    // the operator's own counts for a list of stations
   var map, attrib, glyphLayer, routeLayer, originLayer, markers = {};
   var sheetState = "half", sheetPx = { peek: 158, half: 320, full: 600 }, drag = null, swallowClick = false, toastTimer = null;
@@ -96,6 +96,17 @@
     return h === 0 ? { cls: "x", text: t(bike ? "sGone" : "sFullNow") } : { cls: "r", text: t(bike ? "cBikeNo" : "cDockNo") };
   }
   function look(v, i) { return verdict(v, i, need(), arriveMin(v, i)); }
+  // The operator's reward ("friendship relay", in Kaohsiung since 1 July 2026): a NT$5 ride voucher for borrowing at a station
+  // with no free dock, or for returning an ordinary bike to a station with no bike, between 06:00 and 24:00. The station's
+  // state at that moment decides, so the page marks the stations likely to be in that state when the rider gets there
+  // (a chance of RELAY or more; analysis/code/final_relay.py scores the mark). kind: what the rider needs there. A rider
+  // who needs a dock is paid at an empty station, a rider who needs a bike at a full one.
+  function relayP(v, i, kind, at) {
+    if (!v.ahead || at < 360 || at >= 1440) return null;
+    var c = chance(v, i, kind === "dock" ? "bike" : "dock", at); return c == null ? null : 1 - c;
+  }
+  function tenth(p) { return Math.max(1, Math.min(9, Math.round(p * 10))); }
+  function relayTag(v, i, kind, at) { var p = relayP(v, i, kind, at); return p != null && p >= RELAY ? "<span class=\"relay\">" + t("relayTag") + "</span>" : ""; }
   // when the answer changes: "likely out by 17:20", or for an empty station "a bike likely back by 18:10"
   function turnText(v, i, kind, cls) {
     var a = aheadOf(v, i, kind), h = have(v, i, kind), bike = kind === "bike", k; if (!a || h == null) return "";
@@ -441,7 +452,7 @@
   function stationRow(v, i) {
     var s = v.stations[i], p = point(), li = document.createElement("li"); li.className = "row" + (selected === i ? " sel" : ""); li.tabIndex = 0;
     var km = distKm(s.lat, s.lng, p.lat, p.lng);
-    li.innerHTML = badge(v, i) + "<span><span class=\"nm\">" + esc(nameOf(s)) + (favs.indexOf(s.sno) >= 0 ? "<span class=\"star\" aria-hidden=\"true\">★</span>" : "") + "</span><span class=\"sub\">" + subLine(v, i) + "</span></span>" + (km > 3 ? farCell(km) : walkCell(walkPS(v, p, i), tab === "dock" ? "walkDest" : "walkK"));
+    li.innerHTML = badge(v, i) + "<span><span class=\"nm\">" + esc(nameOf(s)) + (favs.indexOf(s.sno) >= 0 ? "<span class=\"star\" aria-hidden=\"true\">★</span>" : "") + (v.bikes[i] == null ? "" : relayTag(v, i, need(), arriveMin(v, i))) + "</span><span class=\"sub\">" + subLine(v, i) + "</span></span>" + (km > 3 ? farCell(km) : walkCell(walkPS(v, p, i), tab === "dock" ? "walkDest" : "walkK"));
     var go = function () { select(i); focusStation(s); };
     li.addEventListener("click", go); li.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
     return li;
@@ -495,7 +506,7 @@
     var best = null, opts = [];
     pb.cand.slice().sort(function (a, b) { return a.e - b.e; }).slice(0, 3).forEach(function (x) {
       var pd = planDock(v, to, leave + x.e + 1, x.i); if (!pd) return;
-      var o = { bike: x, dock: pd.best, total: x.e + 1 + pd.best.e + 1 };     // a minute to take the bike, a minute to lock it
+      var o = { bike: x, dock: pd.best, dplan: pd, total: x.e + 1 + pd.best.e + 1 };     // a minute to take the bike, a minute to lock it
       opts.push(o); if (!best || o.total < best.total - 1e-9) best = o;
     });
     if (best) { var least = best.total; opts.forEach(function (o) { if (o.total <= least + MARGIN + 1e-9 && o.bike.p > best.bike.p + 1e-9) best = o; }); }
@@ -511,7 +522,7 @@
     if (x.p < SURE[kind] && x.p > 0.05) sub += "<span>" + odds(x.p) + "</span>";
     if (kind === "dock") sub += "<span>" + t(v.docks && v.docks[x.i] === 1 ? "docksNow1" : "docksNow", { d: v.docks && v.docks[x.i] != null ? v.docks[x.i] : "–" }) + "</span>";
     else { var eb = expectAt(v, x.i, x.at); sub += "<span>" + (eb != null && x.p >= SURE[kind] ? t("expect", { b: eb }) : t("bikesNow", { b: v.bikes[x.i] })) + "</span>"; }
-    el.innerHTML = badgeAt(v, x.i, kind, x.at) + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(s)) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(cell, cellLabel);
+    el.innerHTML = badgeAt(v, x.i, kind, x.at) + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(s)) + relayTag(v, x.i, kind, x.at) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(cell, cellLabel);
     el.addEventListener("click", function () { select(x.i); focusStation(s); });
     return el;
   }
@@ -524,6 +535,13 @@
       if (pl.sure && pl.sure !== b) out.push(t(dock ? "tipSureDock" : "tipSure", { n: shortName(v.stations[pl.sure.i]), m: dock ? pl.sure.tail : pl.sure.leg }));
     } else if (pl.skipped) out.push(t(dock ? "skipDock" : "skipBike", { n: shortName(v.stations[pl.skipped.i]) }));
     return out;
+  }
+  // one line about the reward: the suggested station if it is likely to pay, else the likeliest station that costs at most three minutes more
+  function relayLine(v, pl, kind, best) {
+    var dock = kind === "dock", p0 = relayP(v, best.i, kind, best.at), top = null;
+    if (p0 != null && p0 >= RELAY) return t(dock ? "relayRetHere" : "relayBorHere", { o: tenth(p0) });
+    pl.cand.forEach(function (x) { if (x === best || x.e > best.e + 3) return; var p = relayP(v, x.i, kind, x.at); if (p != null && p >= RELAY && (!top || p > top.p)) top = { x: x, p: p }; });
+    return top ? t(dock ? "relayRetAlt" : "relayBorAlt", { n: shortName(v.stations[top.x.i]), m: Math.max(1, Math.round(top.x.e - best.e)), o: tenth(top.p) }) : "";
   }
   function renderWhen(v) {
     var el = $("whenChips"), dock = tab === "dock", key = dock ? "dock" : "rider", w = when[key], n = nowMin(v), opts = [];
@@ -543,13 +561,13 @@
     });
   }
   function renderBest(v) {
-    var pk = $("best"), tip = $("tip"), dock = tab === "dock", w = when[dock ? "dock" : "rider"], leave = leaveMin(v), lines = [];
+    var pk = $("best"), tip = $("tip"), dock = tab === "dock", w = when[dock ? "dock" : "rider"], leave = leaveMin(v), lines = [], relay = "";
     pk.hidden = false; pk.innerHTML = ""; tip.hidden = true;
     if (dock) {
       var pd = planDock(v, dest, leave);
       if (!pd) { pk.innerHTML = "<div class=\"pick none\"><span><span class=\"sub\">" + t("noneDock") + "</span></span></div>"; return; }
       pk.appendChild(pickRow(v, pd.best, "dock", t("bestDock"), "walkDest", pd.best.tail));
-      lines = notes(v, pd, "dock");
+      lines = notes(v, pd, "dock"); relay = relayLine(v, pd, "dock", pd.best);
     } else {
       var why = w.kind === "bell" ? t("bestBikeBell", { t: hm(w.time) }) : t("bestBikeNow");
       var trip = goal ? planTrip(v, origin, goal, leave) : null, pb = trip ? trip.plan : planBike(v, origin, leave);
@@ -567,8 +585,9 @@
       }
       lines = lines.concat(notes(v, { best: bx, sure: pb.sure, skipped: bx === pb.best ? pb.skipped : null }, "bike"));
       if (!lines.length && w.kind === "now") { var lt = leaveTip(v); if (lt) lines.push(lt); }
+      relay = (trip && trip.dock ? relayLine(v, trip.dplan, "dock", trip.dock) : "") || relayLine(v, pb, "bike", bx);
     }
-    if (lines.length) { tip.innerHTML = lines.map(esc).join("<br>"); tip.hidden = false; }
+    if (lines.length || relay) { tip.innerHTML = lines.map(esc).join("<br>") + (relay ? (lines.length ? "<br>" : "") + "<span class=\"relayline\">" + esc(relay) + "</span>" : ""); tip.hidden = false; }
   }
   // minutes until the rider is on a bike when leaving at `leave`; with a destination, at the station the trip borrows from
   function minutesAt(v, leave) {
@@ -683,10 +702,11 @@
     var foot = [];
     if (v.age && v.age[i] != null && v.age[i] > 20) foot.push(t("stale2", { m: v.age[i] }));
     if (s.excluded) foot.push(t("excluded"));
-    var docks = v.docks && v.docks[i] != null ? v.docks[i] : null;
+    var docks = v.docks && v.docks[i] != null ? v.docks[i] : null, rp = observed ? relayP(v, i, kind, arriveMin(v, i)) : null;
     $("card").innerHTML = "<div class=\"hd\">" + badge(v, i) + "<div><div class=\"nm\">" + esc(nameOf(s)) + "</div><div class=\"alt\">" + esc(altName(s)) + "</div></div><button class=\"x\" id=\"cardX\" type=\"button\" aria-label=\"" + t("close") + "\">" + ICON.close + "</button></div>" +
       "<div class=\"says\">" + (o.text ? "<span class=\"state " + o.cls + "\">" + (observed && o.cls !== "x" ? t("fArrive") + sep() : "") + o.text + "</span>" : "") + (turn ? "<span>" + turn + "</span>" : "") +
       (isCampus(s) ? "<span class=\"tag\">" + t("inCampus") + "</span>" : (s.group === "gateway" ? "<span class=\"tag\">" + t("nearCampus") + "</span>" : "")) + (isFav ? "<span class=\"tag\">★ " + t("fav") + "</span>" : "") + "</div>" +
+      (rp != null && rp >= RELAY ? "<div class=\"relaynote\"><span class=\"relay\">" + t("relayTag") + "</span>" + t(kind === "dock" ? "relayCardRet" : "relayCardBor", { o: tenth(rp) }) + "</div>" : "") +
       "<div class=\"facts two\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + "<small>/ " + s.cap + "</small>" : "–") + "</div><div class=\"k\">" + t("fBikes") + "</div></div>" +
       "<div class=\"fact\"><div class=\"v\">" + (docks != null ? docks : "–") + "</div><div class=\"k\">" + t("fDocks") + "</div></div></div>" + (observed ? aheadStrip(v, i, kind) : "") +
       "<div class=\"chart\"><div class=\"cap\">" + t("chartCap") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(lang === "zh" ? "；" : "; ") + "</div>" : "") +
@@ -763,7 +783,7 @@
   // ---------- about, legend, status ----------
   function renderAbout(v) {
     var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
-    $("aboutWhat").innerHTML = t("aboutWhat") + t("aboutProof");
+    $("aboutWhat").innerHTML = t("aboutWhat") + t("aboutProof") + t("aboutRelay");
     $("aboutKeyH").textContent = t("keyH");
     var sw = function (cls, n) { return "<span class=\"sw\"><span class=\"badge " + cls + "\">" + n + "</span></span>"; };
     $("aboutKey").innerHTML = "<li>" + sw("g", 12) + "<span>" + t("keyYes") + "</span></li><li>" + sw("y", 4) + "<span>" + t("keyMaybe") + "</span></li><li>" + sw("r", 1) + "<span>" + t("keyNo") + "</span></li>" +

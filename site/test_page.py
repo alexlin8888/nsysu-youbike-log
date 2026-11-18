@@ -336,6 +336,59 @@ async def check_dock(browser, size):
     await ctx.close()
 
 
+async def check_relay(browser, size):
+    """The operator's NT$5 reward: stations likely to be still empty (for a return) or still full (for a rental) on arrival are marked."""
+    day = "2026-11-11"                                          # a day the page keeps for good (docs/replays_keep.txt)
+    ctx, page = await new_page(browser, size, query=f"?replay={day}&t=18:00&tab=dock&to=lib")
+    await open_sheet(page, size)
+    tags = await page.locator("#near .row .relay").all_inner_texts()
+    rows = await page.evaluate("Array.from(document.querySelectorAll('#near .row')).filter(r => r.querySelector('.relay')).map(r => r.querySelector('.nm').childNodes[0].textContent)")
+    tip = (await page.inner_text("#tip")).replace("\n", " ") if await page.get_attribute("#tip", "hidden") is None else ""
+    record(size, "return, evening: stations likely to be empty on arrival carry the reward mark", len(tags) >= 1 and set(tags) == {"+5 元"} and bool(re.search(r"約 \d 成還是空站.*可拿 5 元騎乘券", tip)), f"{len(tags)} marked: {' / '.join(rows[:3])} | {tip}")
+    boxes = await page.evaluate("Array.from(document.querySelectorAll('.relay')).map(e => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right)]; })")
+    record(size, "the mark stays inside its row", all(a >= 0 and b <= SIZES[size][0] for a, b in boxes) and (await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")), str(boxes[:4]))
+    if rows:
+        await page.locator("#near .row", has=page.locator(".relay")).first.click(); await page.wait_for_timeout(450)
+        note = (await page.inner_text("#card .relaynote")).replace("\n", " ") if await page.locator("#card .relaynote").count() else ""
+        bikes = (await page.locator("#card .fact .v").first.inner_text()).replace("\n", "").replace(" ", "")
+        record(size, "the card of a marked station explains the reward", "還是空站" in note and "5 元騎乘券" in note, f"{bikes} bikes | {note}")
+    record(size, "reward marks (return) run without script errors", not page.errors, "; ".join(page.errors[:3]))
+    await ctx.close()
+    # a morning rental on campus: the racks are full, and borrowing from a full one pays
+    ctx, page = await new_page(browser, size, query=f"?replay={day}&t=09:30&from=lib&to=")
+    await open_sheet(page, size)
+    tag = await page.locator("#best button.pick .relay").count()
+    tip = (await page.inner_text("#tip")).replace("\n", " ") if await page.get_attribute("#tip", "hidden") is None else ""
+    docks = await page.evaluate("(() => { const r = Array.from(document.querySelectorAll('#near .row')).find(r => r.querySelector('.relay')); return r ? r.querySelector('.nm').childNodes[0].textContent : ''; })()")
+    record(size, "borrow, morning: a station likely to be full on arrival carries the reward mark", tag == 1 and bool(re.search(r"約 \d 成還是滿站.*可拿 5 元騎乘券", tip)), f"{docks} | {tip}")
+    await ctx.close()
+    # the reward runs from 06:00: the library station, empty and forecast to stay so, is marked at 07:00 and not at 05:00
+    seen = {}
+    for minute in (420, 300):
+        def emptied(data, minute=minute):
+            fresh(data); data["t_min"] = minute; data["in_window"] = True
+            if not data.get("ahead"):
+                return
+            i = next(n for n, x in enumerate(data["stations"]) if x["sno"] == "501209052")
+            data["bikes"][i] = 0; data["docks"][i] = data["stations"][i]["cap"]
+            for key, ch in (("bike", "0"), ("bikes", "0"), ("dock", "_")):
+                data["ahead"][key][i] = ch * 9
+            seen["forecast"] = True
+        ctx, page = await new_page(browser, size, state_patch=emptied, query="?tab=dock&to=lib&fresh=0")
+        await open_sheet(page, size)
+        seen[minute] = await page.evaluate("Array.from(document.querySelectorAll('#near .row')).filter(r => r.querySelector('.relay')).map(r => r.querySelector('.nm').childNodes[0].textContent)")
+        await ctx.close()
+    if seen.get("forecast"):
+        record(size, "the reward mark keeps to the reward's hours", "中山大學圖資大樓" in seen[420] and not seen[300], f"07:00 {seen[420][:2]} | 05:00 {seen[300]}")
+    ctx, page = await new_page(browser, size, query=f"?replay={day}&t=18:00&tab=dock&to=lib&lang=en")
+    await open_sheet(page, size)
+    tags = set(await page.locator("#near .row .relay").all_inner_texts()); tip = (await page.inner_text("#tip")).replace("\n", " ")
+    record(size, "English: the mark and its line are translated", tags == {"+NT$5"} and "NT$5 ride voucher" in tip and not re.search(r"[\u4e00-\u9fff]", tip), f"{tags} | {tip}")
+    await page.click("#tabAbout"); await page.wait_for_timeout(300)
+    record(size, "about tab explains the reward", "friendship relay" in await page.inner_text("#aboutWhat"))
+    await ctx.close()
+
+
 async def check_search(browser, size):
     ctx, page = await new_page(browser, size, state_patch=fresh)
     await open_sheet(page, size)
@@ -606,7 +659,7 @@ async def check_states(browser, size):
         fresh(data); data.pop("ahead", None); data.pop("fresh", None)
     ctx, page = await new_page(browser, size, state_patch=no_forecast)
     await open_sheet(page, size)
-    rows = await page.locator("#near .row").count(); picks = await page.locator("#best .pick").count(); later = await page.get_attribute("#laterSec", "hidden") is not None
+    rows = await page.locator("#near .row").count(); picks = await page.locator("#best .pick").count(); later = await page.get_attribute("#laterSec", "hidden") is not None and await page.locator(".relay").count() == 0
     await page.locator("#near .row").first.click(); await page.wait_for_timeout(400)
     record(size, "a snapshot without the forecast still lists stations and opens a card", rows == 8 and picks == 1 and later and await page.locator("#card .fact").count() == 2 and await page.locator("#card .ahead").count() == 0 and not page.errors, "; ".join(page.errors[:2]))
     await ctx.close()
@@ -707,7 +760,7 @@ async def main():
         await ctx.close()
         print("replay day used for the plan checks:", REPLAY_DAY, flush=True)
         for size in SIZES:
-            for check in (check_load, check_rider, check_when, check_trip, check_dock, check_search, check_origin, check_fresh, check_ops, check_replay, check_about_lang, check_states, check_keyboard_a11y):
+            for check in (check_load, check_rider, check_when, check_trip, check_dock, check_relay, check_search, check_origin, check_fresh, check_ops, check_replay, check_about_lang, check_states, check_keyboard_a11y):
                 try:
                     await check(browser, size)
                 except Exception as exc:  # noqa: BLE001 - a crashed check is a failed check

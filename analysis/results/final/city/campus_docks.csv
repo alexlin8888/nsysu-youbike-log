@@ -1,0 +1,10 @@
+station,sno,docks,full_share,free_docks_mean,free_docks_10_or_fewer,one_or_more_full,stations_full_mean,fill_mean,snapshots
+Social Sci.,501209039,30,0.3093,,,,,,
+Marine Eng.,501209040,31,0.1381,,,,,,
+Engineering,501209051,24,0.5526,,,,,,
+Library,501209052,22,0.3183,,,,,,
+Materials,501209054,27,0.1261,,,,,,
+Gymnasium,501209069,63,0.1502,,,,,,
+Xiziwan Hall,501209070,17,0.2462,,,,,,
+Marine Res.,501209071,17,0.4024,,,,,,
+campus as a whole,,230,0.0,39.036,0.027,0.8108,2.2432,0.8299,333.0
