@@ -144,6 +144,14 @@ class ChainValues:
             Pn[self.sub] = np.einsum("ni,nij->nj", P[self.sub], self.Ks[slot])
         return Pn
 
+    def kernel_at(self, t, n):
+        """One-step transition matrix (C+1, C+1) of station n for the step starting at minute t."""
+        hod, slot = int(t // 60) % 24, int(t // STEP) % 144
+        if self.sub is not None and slot in self.Ks:
+            w = np.nonzero(self.sub == n)[0]
+            if len(w):
+                return self.Ks[slot][w[0]]
+        return self.K[hod][n]
 
     def forecast(self, t_min, bikes, steps):
         """Stock distribution after `steps` chain steps without any truck: expected bikes, P(empty), P(full), (N,) each."""

@@ -15,9 +15,15 @@ Runs after every logger snapshot (see .github/workflows/logger.yml). For the lat
 Writes OUT_JSON for the demo page (docs/index.html): the stations with their probabilities, today's stock
 history since 06:00, the plan and the totals. --at scores a past slot; --replay writes every slot of one day
 (06:00-22:50) in a compact form so the page can scrub through the day.
+
+The live state has two more parts. "fresh" lets the page use counts newer than this snapshot: for each of the 19
+corridor stations it holds the same forecast for every stock the station could have right now, so a count the page
+reads from the operator's API a minute ago picks its own row. And demo_track.py records what the page advises at
+this snapshot (DATA_DIR/advice) and scores the advice of earlier snapshots (track.json next to OUT_JSON).
 """
 import json
 import math
+import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -29,7 +35,9 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 from features import INV_FEATS, NSYSU_BELLS, NSYSU_SEMESTERS, TW_HOLIDAYS, _bell_minutes, _to_since, neighbors  # noqa: E402
+import demo_track  # noqa: E402
 from nsysu_data import CAMPUS, GATEWAY, HOLIDAYS, load_logger, load_stations  # noqa: E402
+from paths import station_minutes  # noqa: E402
 from route_planner import STEP, ChainValues, RoutePlanner, load_slot_rates  # noqa: E402
 
 DATA, RESULTS, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
@@ -132,7 +140,7 @@ def compute(df, ts, trucks=K, with_history=True):
     in_window = WINDOW[0] <= t_min < WINDOW[1]
     plans, unmet = [], np.zeros(N)
     nxt = [b for b in BELL_MIN if b > t_min]
-    ahead = None
+    ahead, fresh, quant = None, None, None
     if in_window:
         values = chain_values(offday)
         # the chain run forward without a truck: chance of a bike, chance of a free dock and expected bikes after 1..AHEAD_STEPS steps
@@ -144,6 +152,18 @@ def compute(df, ts, trucks=K, with_history=True):
             pb.append(1 - P[:, 0]); pk.append(1 - P[np.arange(N), CAP]); eb.append((P * lev).sum(1))
         code = lambda cols, top: ["".join(A64[min(63, int(c[i] * top + 0.5))] for c in cols) if observed[i] else "" for i in range(N)]
         ahead = {"step": STEP, "bike": code(pb, 63), "dock": code(pk, 63), "bikes": code(eb, 1)}
+        quant = (np.array([(c * 63 + 0.5).astype(int) for c in pb]), np.array([(c * 63 + 0.5).astype(int) for c in pk]))   # what the page reads, as numbers
+        if with_history:
+            # the same forecast from every stock a corridor station could have now: rows of AHEAD_STEPS characters, stock 0 first
+            fresh = {"sno": [], "bike": [], "dock": [], "bikes": []}
+            for i in np.nonzero(CORRIDOR & observed)[0]:
+                c = int(CAP[i]); T = np.eye(values.C + 1)[:c + 1]
+                fb, fk, fe = [], [], []
+                for k in range(AHEAD_STEPS):
+                    T = T @ values.kernel_at(t_min + STEP * k, i)
+                    fb.append(1 - T[:, 0]); fk.append(1 - T[:, c]); fe.append(T @ lev[0])
+                row = lambda cols, top: "".join(A64[min(63, int(col[b] * top + 0.5))] for b in range(c + 1) for col in cols)
+                fresh["sno"].append(st.sno[i]); fresh["bike"].append(row(fb, 63)); fresh["dock"].append(row(fk, 63)); fresh["bikes"].append(row(fe, 1))
         planner = RoutePlanner(TRAVEL_MIN, Q, STOP_MIN, 1.0, HORIZON, beta=BETA, max_stops=STOPS, iters=ITERS)
         B = values.benefit(t_min, bikes)
         unmet = values.last_unmet.astype(float)
@@ -181,6 +201,8 @@ def compute(df, ts, trucks=K, with_history=True):
            "p30": [round(float(x), 3) if o else None for x, o in zip(p30, observed)], "p60": [round(float(x), 3) if o else None for x, o in zip(p60, observed)],
            "unmet": [round(float(x), 2) if (o and in_window) else None for x, o in zip(unmet, observed)], "ahead": ahead}
     if with_history:
+        out["fresh"] = fresh
+        out["_track"] = {"quant": quant, "bikes": bikes, "docks": docks, "observed": observed, "day": dstr, "t_min": int(t_min)}
         grid = pd.date_range(date + pd.Timedelta(minutes=DAY_START), ts_last, freq="10min")
         h = wb.reindex(grid)
         out["history"] = {"from": f"{DAY_START // 60:02d}:{DAY_START % 60:02d}", "step": 10,
@@ -225,8 +247,18 @@ if __name__ == "__main__":
         df = load_days(days)
         ts = pd.Timestamp(now.replace(tzinfo=None)).floor("10min")
         s = compute(df, ts)
+        tr = s.pop("_track")
         state = dict(META, generated_at=datetime.now(TZ).isoformat(timespec="seconds"), trucks=K, stations=station_list(), **s)
         json.dump(state, open(OUT, "w"), ensure_ascii=False, separators=(",", ":"))
+        try:                                         # the record of the page's advice; never allowed to stop the state from being written
+            # only a snapshot taken just now is recorded, so no line can be written after its outcome is known (TRACK_TEST: the test hook)
+            fresh_snapshot = s["snapshot_at"] == ts.strftime("%Y-%m-%d %H:%M") and (not AT or os.environ.get("TRACK_TEST") == "1")
+            km, walk, ride = station_minutes(list(st.sno), lat, lng, OUT.parent / "places.json")
+            qb, qk = tr["quant"] if (tr["quant"] is not None and fresh_snapshot) else (None, None)
+            off = lambda d: int(pd.Timestamp(d).dayofweek >= 5 or d in TW_HOLIDAYS or d in HOLIDAYS)
+            n_adv = demo_track.update(DATA, OUT.parent, df[df.age <= 20], st.sno.values, GROUPS, tr["day"], tr["t_min"], off, qb, qk, tr["bikes"], tr["docks"], km, walk, ride, tr["observed"], s["snapshot_at"])
+        except Exception as exc:  # noqa: BLE001
+            n_adv = f"failed: {exc}"
         t = state["totals"]
         print(f"{state['snapshot_at']} observed {t['observed']}/{N}, empty {t['empty_now']}, p30>=0.5: {t['p30_over_half']}, "
-              f"expected unmet {t['expected_unmet']}, plan value {t['plan_value']} ({len(state['plans'])} trucks) in {time.time() - t0:.1f}s")
+              f"expected unmet {t['expected_unmet']}, plan value {t['plan_value']} ({len(state['plans'])} trucks), advice lines {n_adv}, in {time.time() - t0:.1f}s")

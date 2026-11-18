@@ -1,0 +1,58 @@
+{
+ "test_days": [
+  "2026-10-30",
+  "2026-11-02",
+  "2026-11-03",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06",
+  "2026-11-09",
+  "2026-11-10",
+  "2026-11-11",
+  "2026-11-12",
+  "2026-11-13",
+  "2026-11-16"
+ ],
+ "fit_end": "2026-10-29",
+ "outcome": "early",
+ "access_min": 2,
+ "reach_km": {
+  "bike": 2.0,
+  "dock": 0.6
+ },
+ "give_up_min": 15.0,
+ "g_min": 12.0,
+ "margin_min": 0.5,
+ "tries": 3,
+ "leads": {
+  "bike": [
+   0,
+   10
+  ],
+  "dock": [
+   10,
+   0
+  ]
+ },
+ "metro": "501209026",
+ "scenarios": {
+  "leave": {
+   "start_points": "campus",
+   "needs": "bike",
+   "from": 1020,
+   "to": 1190
+  },
+  "arrive": {
+   "start_points": "gateway",
+   "needs": "bike",
+   "from": 510,
+   "to": 650
+  },
+  "dock": {
+   "start_points": "campus",
+   "needs": "dock",
+   "from": 540,
+   "to": 650
+  }
+ }
+}
