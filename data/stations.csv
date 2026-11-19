@@ -1049,6 +1049,9 @@ sno,name_tw,name_en,district,lat,lng,capacity,dist_m,logged
 501210141,瑞仁瑞仁路76巷口,"Intersection of Ln. 76, Ruiren Rd., Ruiren",楠梓區,22.723000,120.312276,21,11661,0
 501210142,日月光K12(內環北路),ASE K12 (Neihuan N. Rd.),楠梓區,22.723616,120.299142,38,11243,0
 501210143,楠梓和平公園(靠外環東路),Nanzih Heping Park (near Waihuan E. Rd.),楠梓區,22.721365,120.310603,26,11425,0
+501210145,國光高中,Guoguang Senior High School,楠梓區,22.708436,120.306234,40,9930,0
+501210146,右昌教會,Youchang Church,楠梓區,22.725737,120.292557,20,11285,0
+501210148,三山街69巷口,"Ln. 69, Sanshan St",楠梓區,22.711640,120.286140,21,9608,0
 501211001,高雄科技大學旗津校區,NKUST Cijin Campus,旗津區,22.608250,120.272260,38,2220,1
 501211002,高雄市立旗津醫院(旗港路),Kaohsiung Municipal Cijin Hospital (Qigang Rd.),旗津區,22.590140,120.285190,15,4586,1
 501211003,中洲渡輪船站,Chungjon Ferry Station,旗津區,22.575610,120.298970,10,6681,0
@@ -1411,6 +1414,8 @@ sno,name_tw,name_en,district,lat,lng,capacity,dist_m,logged
 501220037,橋頭公兒10公園,Qiaotou No. 10 Park,橋頭區,22.748209,120.307958,15,14123,0
 501220038,仕隆帝仙宮,Shilong Dixian Temple,橋頭區,22.750679,120.306282,15,14334,0
 501220039,頂鹽田天月宮,Dingyantian Tianyue Temple,橋頭區,22.746570,120.276704,15,13309,0
+501220040,仕隆活動中心,Shilong Community Activity Center,橋頭區,22.752799,120.310814,0,14699,0
+501220041,甲北社區活動中心,Jiabei Community Activity Center,橋頭區,22.742750,120.295990,15,13206,0
 501220042,西林社區活動中心,Xilin Community Center,橋頭區,22.762591,120.290828,15,15261,0
 501220043,筆秀天后宮,Bisiou Matsu Temple,橋頭區,22.768006,120.312027,16,16349,0
 501221001,高雄市立圖書館湖內分館,Kaohsiung Public Hunei Branch,湖內區,22.906610,120.223800,10,31355,0
@@ -1520,4 +1525,5 @@ sno,name_tw,name_en,district,lat,lng,capacity,dist_m,logged
 501230002,雙峰公園停車場,Shuangfeng Park Parking Lot,美濃區,22.901680,120.542120,15,41636,0
 501230003,高雄市立圖書館美濃分館,Kaohsiung Public Library Meinong Branch,美濃區,22.900150,120.542010,15,41504,0
 501230004,高雄市美濃運動中心,Kaohsiung Meinong Sportscenter,美濃區,22.893921,120.542315,15,41022,0
+501231001,實踐大學停車場,Shih Chien University Parking Lot,內門區,22.904250,120.468240,33,37138,0
 501235001,甲仙親水公園停車場,Jiaxian Water Park Parking Lot,甲仙區,23.082440,120.586980,15,60368,0
