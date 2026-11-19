@@ -737,7 +737,7 @@
     $("remIcs").disabled = !on; g.hidden = !on; g.textContent = t("remindGcal"); if (on) g.href = gcalLink(r);
     $("remNote").textContent = on ? t("remindNote", { d: parseInt(REM_END.slice(5, 7), 10) + "/" + parseInt(REM_END.slice(8, 10), 10) }) : t("remindPick");
   }
-  function remLink(r) { var base = /^https:/.test(location.protocol) && !/claude\.ai$/.test(location.hostname) ? location.origin + location.pathname : SITE; return base + "?from=" + encodeURIComponent(r.place); }
+  function remLink(r) { var base = /^https:/.test(location.protocol) && !/claude\.ai$/.test(location.hostname) ? location.origin + location.pathname.replace(/index\.html$/, "") : SITE; return base + "?from=" + encodeURIComponent(r.place); }
   function ymd(d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
   function hhmm(m) { return pad(Math.floor(m / 60)) + pad(m % 60); }
   // the first date on one of the chosen weekdays on which the reminder is still ahead
