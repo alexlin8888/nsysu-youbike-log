@@ -5,3 +5,4 @@ analysis/results/final/avail/avail_oof.npz
 analysis/results/final/rider/rider_cases.csv
 analysis/results/final/time*/time_cases.csv
 analysis/results/final/time*/time_foresight.csv
+analysis/results/final/spread/spread_cases.csv

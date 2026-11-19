@@ -6,6 +6,11 @@ From every logged day, for teaching weekdays and for days off separately, the sh
 bike and with no free dock in each half hour from 06:00 to 23:00, for the eight campus stations and for the eleven
 stations at the foot of the campus. The page draws these as the "usual day" strip, so a student can see at a glance
 that the campus is hard to leave by bike between 17:00 and 19:30 and hard to return to between 09:00 and 10:30.
+
+"stations" gives the same two shares for each of the nineteen corridor stations, one character per half hour
+(sixty-thirds in the A64 alphabet of the other demo files, so "_" means always). A station's card can then say that
+Engineering is usually full between 09:00 and 10:00 while the Gymnasium usually has room. A half hour with fewer
+than four snapshots on record is written as a space.
 """
 import json
 import sys
@@ -13,6 +18,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
+
+A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+MIN_N = 4
 
 sys.path.insert(0, str(Path(__file__).parent))
 from nsysu_data import CAMPUS, GATEWAY, HOLIDAYS, load_logger  # noqa: E402
@@ -33,5 +41,13 @@ for kind, off in (("teaching", False), ("off", True)):
     for name, group in (("campus", CAMPUS), ("gateway", GATEWAY)):
         g = df[(df.off == off) & df.sno.isin(group)].groupby("bucket")[["no_bike", "no_dock"]].mean().reindex(range(34)).fillna(0)
         out[kind][name] = {"no_bike": [round(float(x), 2) for x in g.no_bike], "no_dock": [round(float(x), 2) for x in g.no_dock]}
+out["stations"] = {}
+for sno in list(CAMPUS) + list(GATEWAY):
+    rec = {}
+    for kind, off in (("teaching", False), ("off", True)):
+        g = df[(df.off == off) & (df.sno == sno)].groupby("bucket").agg(n=("no_bike", "size"), no_bike=("no_bike", "mean"), no_dock=("no_dock", "mean")).reindex(range(34))
+        enc = lambda col: "".join(" " if not (n >= MIN_N) else A64[int(round(float(x) * 63))] for n, x in zip(g.n, g[col]))
+        rec[kind] = {"no_bike": enc("no_bike"), "no_dock": enc("no_dock")}
+    out["stations"][sno] = rec
 OUT.write_text(json.dumps(out, separators=(",", ":")), encoding="utf-8")
 print("outlook:", out["days"], "campus no bike at 17:30 on teaching days:", out["teaching"]["campus"]["no_bike"][23])
