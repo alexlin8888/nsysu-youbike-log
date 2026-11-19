@@ -13,7 +13,7 @@
 | 任務 | 開這個連結 | 對他說 | 看什麼 |
 |---|---|---|---|
 | A | https://alexlin8888.github.io/nsysu-youbike-log/?replay=2026-11-11&t=17:30&from=lib&to= | 你現在在管理學院，要去捷運站。你會怎麼走？ | 會不會自己改起點和目的地；看不看得懂「全程約 10 分鐘，走路要 16 分鐘」 |
-| B | https://alexlin8888.github.io/nsysu-youbike-log/?replay=2026-11-11&t=16:40&from=lib&to= | 現在 4 點 40 分，你可以現在走，也可以晚一點走。網站告訴你什麼？ | 看不看得懂那一行字和下面的長條 |
+| B | https://alexlin8888.github.io/nsysu-youbike-log/?replay=2026-11-11&t=16:40&from=lib&to= | 現在 4 點 40 分，你可以現在走，也可以晚一點走。網站告訴你什麼？ | 看不看得懂那一行字和下面那排點；最後問他 17:40 那一排的紅點是什麼意思 |
 | C | https://alexlin8888.github.io/nsysu-youbike-log/?replay=2026-11-11&t=09:20&tab=dock&to=lib | 早上 9 點 20 分，你要騎到工學院還車。要還哪一站？那一站滿了怎麼辦？ | 會不會改目的地；看不看得懂「停滿的話，再騎 2 分鐘到…」 |
 
 做完問三題，照原話記下來：
