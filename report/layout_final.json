@@ -1,12 +1,13 @@
 {
  "fig_nsysu_tide_a.png": {
-  "after": 103
+  "after": 105
  },
  "fig_nsysu_tide_b.png": {
-  "after": 106
+  "after": 105
  },
  "fig_ntu_moves.png": {
-  "after": 111
+  "after": 108,
+  "frac": 0.9
  },
  "fig1_motivation.png": {
   "after": 6
@@ -17,32 +18,36 @@
  "fig_final_forecast.png": {
   "after": 133
  },
- "fig_moves_check.png": {
-  "after": 114
- },
  "fig_nsysu.png": {
-  "after": 122
+  "after": 120
  },
  "fig_final_time.png": {
-  "after": 139
- },
- "fig_bells.png": {
-  "after": 106
- },
- "fig_model.png": {
-  "after": 117,
-  "frac": 0.9
+  "after": 138
  },
  "fig_sim_ci.png": {
-  "after": 127
+  "after": 124,
+  "frac": 0.9
  },
  "fig_demo_app.png": {
-  "after": 145
- },
- "fig_final_sim.png": {
-  "after": 149
+  "after": 144
  },
  "Table 5": {
   "after": 159
+ },
+ "fig_architecture_final.png": {
+  "after": 22
+ },
+ "fig_method.png": {
+  "frac": 0.9
+ },
+ "fig_horizon.png": {
+  "after": 118
+ },
+ "fig_final_transfer.png": {
+  "after": 123
+ },
+ "fig_final_sim.png": {
+  "after": 150,
+  "frac": 0.9
  }
 }
