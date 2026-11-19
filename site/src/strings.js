@@ -23,14 +23,22 @@ var T = {
     weakBike: "附近都不一定有車。", weakDock: "附近都不一定有位子。",
     noneBike: "2 公里內沒有站回報資料", noneDock: "目的地附近沒有站回報資料",
     expect: "到時約剩 {b} 台", docksNow: "現在 {d} 個空位", docksNow1: "現在 1 個空位", bikesNow: "現在 {b} 台",
-    tipSoon: "{t} 前出發，約 {a} 分鐘內騎上車。{u} 出發約 {b} 分鐘。", tipCalm: "接下來一小時出發，約 {a} 分鐘內騎上車。", 
+    tipSoon: "現在出發約 {a} 分鐘騎上車。{u} 出發，10 次有 {r} 次要找超過 8 分鐘。", tipCalm: "現在出發約 {a} 分鐘騎上車，接下來一小時出發也幾乎都在 8 分鐘內。",
+    tipNowSlow: "現在出發，10 次有 {r} 次要找超過 8 分鐘。", tipLater: "{u} 出發降到 {r} 次。",
+    dotsRed: "{r}/10", dotsAria: "{t} 出發，10 次有 {g} 次第一站就有車，{y} 次要換一站，{r} 次超過 8 分鐘", dotKeyG: "第一站就有車", dotKeyY: "換一站，8 分鐘內", dotKeyR: "超過 8 分鐘",
+    usualNoteBike: "平常{d} {a}–{b}，這站 {n}% 的時間沒車。", usualNoteDock: "平常{d} {a}–{b}，這站 {n}% 的時間是滿的。", usualNoteBikeRare: "平常{d} {a}–{b}，這站很少沒車。", usualNoteDockRare: "平常{d} {a}–{b}，這站很少停滿。",
+    dayTeach: "上課日", dayOff: "假日", usualHotBike: "平常這時段常沒車", usualHotDock: "平常這時段常滿",
+    relayOnly: "只看 +5 元",
+    remindOpen: "下課前提醒我", remindPlace: "在哪棟上課", remindEnd: "幾點下課", remindDays: "星期", remindIcs: "加入手機行事曆", remindGcal: "加到 Google 日曆",
+    remindNote: "每週重複到 {d} 期末考結束，下課前 5 分鐘提醒。提醒裡附這個頁面的連結，打開時起點就是你選的大樓。", remindPick: "先選至少一天。", remindDone: "行事曆檔已下載，打開它就能加入。",
+    remindTitle: "下課查 YouBike", remindDesc: "看看現在出發要不要找很久：{u}", 
     relayTag: "+5 元", relayRetHere: "這一站你到的時候約 {o} 成還是空站，把車還在這裡可拿 5 元騎乘券。", relayRetAlt: "{n}你到的時候約 {o} 成還是空站，還到那裡可拿 5 元騎乘券，多花約 {m} 分鐘。",
     relayBorHere: "這一站你到的時候約 {o} 成還是滿站，從這裡借車可拿 5 元騎乘券。", relayBorAlt: "{n}你到的時候約 {o} 成還是滿站，從那裡借車可拿 5 元騎乘券，多走約 {m} 分鐘。",
     relayCardRet: "你到的時候約 {o} 成還是空站，把一般車還在這裡可拿 5 元騎乘券。", relayCardBor: "你到的時候約 {o} 成還是滿站，從這裡借車可拿 5 元騎乘券。",
     aboutRelay: "<h3>「+5 元」的標記</h3><p>高雄 YouBike 從 2026 年 7 月起有「友愛接力」：在滿站借車，或把一般車還到空站，各送 5 元騎乘券，每天 06:00 到 24:00。符不符合，看的是你借車或還車那一刻的站況。官方 App 顯示現在哪一站空、哪一站滿，這個頁面標出你到的時候很可能還是空站或滿站的地方。拿 12 個上課日來對，標出來的站 10 分鐘後有七成確實還是空的，只看現在是空站的是六成五。實際有沒有拿到以官方紀錄為準。</p>",
     odds: "機會約 {n} 成", tipOn: "沒車的話，再走 {m} 分鐘到{n}。", tipOnDock: "停滿的話，再騎 {m} 分鐘到{n}。", tipSure: "想穩一點可以去{n}，走 {m} 分鐘。", tipSureDock: "想穩一點可以還{n}，還完走 {m} 分鐘。",
     walkWins: "直接走比較快", walkAll: "走路 {m} 分鐘", walkVs: "借車再騎過去約 {m} 分鐘", tripRide: "借車、騎過去、還車，全程約 {a} 分鐘。走路要 {b} 分鐘。",
-    laterH: "幾點走，幾分鐘騎得上車", laterSub: "預估，單位是分鐘", nearFresh: "車數是 {t} 的即時數字",
+    laterH: "不同時間出發的找車情況", laterSub: "每排是 10 次出發", nearFresh: "車數是 {t} 的即時數字",
     fav: "我的站", near: "附近的站", nearBike: "顏色是你走到時的狀況", nearDock: "顏色是你騎到時的狀況", more: "再看 8 站", less: "收起來",
     walkK: "步行", walkDest: "到目的地", walkMin: "{m} 分", farK: "直線", walkKm: "{k} 公里",
     cBikeYes: "應該有車", cBikeMaybe: "不一定有車", cBikeNo: "很可能沒車", sGone: "現在沒車",
@@ -63,10 +71,11 @@ var T = {
     keyYes: "綠色是你到的時候應該有車。還車那一頁是應該有位子。圓圈裡的數字是現在的數量。", keyMaybe: "黃色是不一定，十次裡大概有一到四次會撲空。", keyNo: "紅色是很可能沒有。",
     keyGone: "深紅是現在就沒有，短時間內也不太會有。", keyNone: "灰色是暫停服務或沒有資料。",
     keyRing: "地圖上圓圈外緣的弧線是車柱有車的比例，藍框是校內的站。", keyRoute: "虛線是建議的卡車路線，圓圈裡的數字是停靠順序。",
-    aboutWhat: "<h3>這個頁面在做什麼</h3><p>上課日傍晚 5 點半到 6 點多，在中山校內找一台 YouBike 平均要 5 分鐘，八次有一次超過 10 分鐘。其他時段大約 2 分鐘。早上 9 點到 11 點則是校內的車柱常停滿。這個頁面告訴你現在出發幾分鐘後騎得上車、晚一點出發會不會更久，還有騎車和走路哪個快。</p>",
+    aboutWhat: "<h3>這個頁面在做什麼</h3><p>上課日傍晚 5 點半到 6 點多，在中山校內找一台 YouBike 平均要 5 分鐘，八次有一次超過 10 分鐘。其他時段大約 2 分鐘。早上 9 點到 11 點則是校內的車柱常停滿。這個頁面告訴你現在出發幾分鐘後騎得上車、晚一點出發會不會要找很久，還有騎車和走路哪個快。下課前 5 分鐘也可以用手機行事曆提醒你打開它。</p>",
     aboutProof: "<h3>我們對過的答案</h3><p>拿 12 個沒有用來估模型的上課日重播：每 10 分鐘在每一站放一個人，看他幾分鐘後騎上車，第一站撲空就走到下一站。</p>" +
       "<p>挑站這件事，頁面幫不了太多。直接走到最近的站，或是先看車數再走到最近有車的站，傍晚平均都是 3.7 分鐘。這個頁面的第一版只推薦九成以上有車的站，結果是 5.3 分鐘，多走的路比撲空的代價大。現在改成推薦預期最快的站，同樣是 3.7 分鐘。</p>" +
-      "<p>頁面多出來的是事先知道。出發前 10 到 30 分鐘，它判斷這一趟會不會超過 8 分鐘的準度（AUC）是 0.86 到 0.90，只看當下的車數是 0.69 到 0.78。傍晚從校內到捷運站，借車騎過去平均 11.6 分鐘，走路 17.3 分鐘。</p>",
+      "<p>頁面多出來的是事先知道。出發前 10 到 30 分鐘，它判斷這一趟會不會超過 8 分鐘的準度（AUC）是 0.86 到 0.90，只看當下的車數是 0.69 到 0.78。傍晚從校內到捷運站，借車騎過去平均 11.6 分鐘，走路 17.3 分鐘。</p>" +
+      "<p>「不同時間出發的找車情況」的 10 個點也對過。傍晚出發前 10 到 60 分鐘，頁面畫了 1 個紅點的出發，實際有 9% 找超過 8 分鐘；畫 3 個的是 28%，沒有紅點的是 1%。</p>",
     aboutHow: "<h3>數字怎麼來的</h3>" +
       "<p>車數和空位來自 YouBike 官方 API。紀錄器每 10 分鐘抓一次中山大學周邊 5 公里內的 {n} 個站，從 2026 年 10 月 1 日記到現在。校園到捷運之間的 19 站，頁面開著的時候每分鐘會直接向官方讀一次最新的數字。</p>" +
       "<p>「你到的時候有沒有車」把每一站當成一條生滅鏈：借走一台少一台，還進一台多一台。借還的速率用紀錄器的資料估，校園到捷運之間的 19 站在上課日每 10 分鐘估一組，因為下課那 10 分鐘借得特別快。從現在的車數往後推到你走到的那一刻，九成以上寫「應該有車」，六成到九成寫「不一定」。還車的門檻是九成五和七成。</p>" +
@@ -101,14 +110,22 @@ var T = {
     weakBike: "No station nearby is sure to have a bike.", weakDock: "No station nearby is sure to have a free dock.",
     noneBike: "No station within 2 km is reporting", noneDock: "No station near the destination is reporting",
     expect: "about {b} left by then", docksNow: "{d} free docks now", docksNow1: "1 free dock now", bikesNow: "{b} bikes now",
-    tipSoon: "Leave before {t} and you ride within about {a} min. Leaving at {u} takes about {b}.", tipCalm: "Leave any time in the next hour and you ride within about {a} min.", 
+    tipSoon: "Leave now and you ride in about {a} min. Leaving at {u}, the search takes over 8 min in {r} of 10 departures.", tipCalm: "Leave now and you ride in about {a} min; leaving any time in the next hour, it almost always takes under 8 min.",
+    tipNowSlow: "Leaving now, the search takes over 8 min in {r} of 10 departures.", tipLater: " At {u}, in {r} of 10.",
+    dotsRed: "{r}/10", dotsAria: "leaving {t}: a bike at the first station in {g} of 10 departures, another station within 8 minutes in {y}, over 8 minutes in {r}", dotKeyG: "bike at the first station", dotKeyY: "another station, within 8 min", dotKeyR: "over 8 min",
+    usualNoteBike: "On a usual {d}, {a}–{b}, this station has no bike {n}% of the time.", usualNoteDock: "On a usual {d}, {a}–{b}, this station is full {n}% of the time.", usualNoteBikeRare: "On a usual {d}, {a}–{b}, this station rarely runs out.", usualNoteDockRare: "On a usual {d}, {a}–{b}, this station rarely fills up.",
+    dayTeach: "teaching day", dayOff: "day off", usualHotBike: "often empty at this time", usualHotDock: "often full at this time",
+    relayOnly: "Only +NT$5",
+    remindOpen: "Remind me before class ends", remindPlace: "Building", remindEnd: "Class ends", remindDays: "Days", remindIcs: "Add to phone calendar", remindGcal: "Add to Google Calendar",
+    remindNote: "Repeats weekly until finals end on {d}, five minutes before class ends. The reminder links to this page, starting from the building you chose.", remindPick: "Choose at least one day.", remindDone: "Calendar file downloaded; open it to add the reminder.",
+    remindTitle: "Check YouBike before class ends", remindDesc: "See how long the search for a bike will take: {u}", 
     relayTag: "+NT$5", relayRetHere: "This station is likely still empty when you arrive (about {o} in 10). Returning here earns a NT$5 ride voucher.", relayRetAlt: "{n} is likely still empty when you arrive (about {o} in 10). Returning there earns a NT$5 ride voucher, for about {m} min more.",
     relayBorHere: "This station is likely still full when you arrive (about {o} in 10). Borrowing here earns a NT$5 ride voucher.", relayBorAlt: "{n} is likely still full when you arrive (about {o} in 10). Borrowing there earns a NT$5 ride voucher, for about {m} min more on foot.",
     relayCardRet: "Likely still empty when you arrive (about {o} in 10). Returning an ordinary bike here earns a NT$5 ride voucher.", relayCardBor: "Likely still full when you arrive (about {o} in 10). Borrowing here earns a NT$5 ride voucher.",
     aboutRelay: "<h3>The +NT$5 mark</h3><p>Since July 2026 YouBike in Kaohsiung runs a friendship relay: borrowing at a full station, or returning an ordinary bike to an empty one, earns a NT$5 ride voucher, every day from 06:00 to 24:00. The state of the station at the moment you borrow or return decides. The operator’s app shows which stations are empty or full now, and this page marks the ones likely to be so when you get there. On 12 teaching days, 71% of the stations it marked were still empty 10 minutes later, against 65% of the stations that were simply empty at the time. Whether a voucher is issued is the operator’s call.</p>",
     odds: "about {n} in 10", tipOn: "If it is empty, {n} is {m} min further on foot.", tipOnDock: "If it is full, {n} is {m} min further by bike.", tipSure: "For a surer bet, {n} is a {m} min walk.", tipSureDock: "For a surer bet, return at {n}, {m} min from where you are going.",
     walkWins: "Walking is faster", walkAll: "{m} min on foot", walkVs: "By bike about {m} min, with the walk to a bike and the return", tripRide: "Borrow, ride and return: about {a} min door to door. On foot: {b} min.",
-    laterH: "Minutes until you ride, by when you leave", laterSub: "forecast", nearFresh: "counts as of {t}",
+    laterH: "Search time by departure", laterSub: "10 departures a column", nearFresh: "counts as of {t}",
     fav: "My stations", near: "Nearby", nearBike: "colour: when you get there on foot", nearDock: "colour: when you ride in", more: "Show 8 more", less: "Show fewer",
     walkK: "walk", walkDest: "to destination", walkMin: "{m} min", farK: "away", walkKm: "{k} km",
     cBikeYes: "Should have a bike", cBikeMaybe: "May be out", cBikeNo: "Probably out", sGone: "No bikes now",
@@ -141,10 +158,11 @@ var T = {
     keyYes: "Green: there should be a bike when you get there. On the Return tab, a free dock. The number in the circle is the count right now.", keyMaybe: "Yellow: not certain. You would come up empty one to four times in ten.", keyNo: "Red: probably none.",
     keyGone: "Dark red: none right now, and little chance of one soon.", keyNone: "Grey: out of service or no data.",
     keyRing: "On the map, the arc around a circle is the share of docks holding a bike. A blue outline marks a campus station.", keyRoute: "The dotted line is the suggested truck route; the numbers are the order of its stops.",
-    aboutWhat: "<h3>What this page does</h3><p>On teaching days between 17:30 and a little after 18:00, finding a YouBike on the NSYSU campus takes 5 minutes on average, and more than 10 minutes one time in eight. At other times it takes about 2. From 09:00 to 11:00 the campus docks are often full. This page tells you how many minutes it will take to be on a bike if you leave now, whether leaving later will take longer, and whether riding beats walking.</p>",
+    aboutWhat: "<h3>What this page does</h3><p>On teaching days between 17:30 and a little after 18:00, finding a YouBike on the NSYSU campus takes 5 minutes on average, and more than 10 minutes one time in eight. At other times it takes about 2. From 09:00 to 11:00 the campus docks are often full. This page tells you how many minutes it will take to be on a bike if you leave now, whether leaving later means a long search, and whether riding beats walking. It can also put a reminder in your phone's calendar five minutes before class ends.</p>",
     aboutProof: "<h3>What we checked</h3><p>We replayed 12 teaching days that were not used to fit the model. Every 10 minutes a rider stands near each station; we count the minutes until that rider is on a bike, walking on to the next station when the first one is empty.</p>" +
       "<p>For choosing a station the page adds little. A rider who walks to the nearest station, or to the nearest one that shows a bike, needs 3.7 minutes in the evening. The first version of this page only named stations with a 90% chance, and that took 5.3 minutes: the extra walking cost more than the misses it avoided. The page now names the station with the fewest expected minutes, which also takes 3.7.</p>" +
-      "<p>What the page adds is notice. Asked 10 to 30 minutes before a rider leaves whether the search will take more than 8 minutes, it separates the two cases with an AUC of 0.86 to 0.90; the current counts alone give 0.69 to 0.78. From campus to the metro in the evening, the bike takes 11.6 minutes door to door on average and walking takes 17.3.</p>",
+      "<p>What the page adds is notice. Asked 10 to 30 minutes before a rider leaves whether the search will take more than 8 minutes, it separates the two cases with an AUC of 0.86 to 0.90; the current counts alone give 0.69 to 0.78. From campus to the metro in the evening, the bike takes 11.6 minutes door to door on average and walking takes 17.3.</p>" +
+      "<p>The ten dots were checked the same way. For evening departures 10 to 60 minutes ahead, 9% of the searches the page drew with one red dot took over 8 minutes; with three red dots, 28%; with none, 1%.</p>",
     aboutHow: "<h3>Where the numbers come from</h3>" +
       "<p>Bike and dock counts come from the official YouBike API. A logger reads the {n} stations within 5 km of NSYSU every 10 minutes and has done so since 1 October 2026. For the 19 stations between campus and the metro, the page itself reads the operator's counts once a minute while it is open.</p>" +
       "<p>Whether a station will have a bike when you arrive comes from a birth-death chain: a rental removes a bike, a return adds one. The rental and return rates are fitted to the logger's data, with one pair per 10 minutes of a teaching day for the 19 stations between campus and the metro, because the 10 minutes after a bell are much busier. The chain runs from the count now to the minute you arrive. A chance of 90% or more reads \"should have a bike\", 60% to 90% reads \"may be out\". For docks the two thresholds are 95% and 70%.</p>" +

@@ -228,20 +228,33 @@ async def check_when(browser, size):
     ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:40")
     await open_sheet(page, size)
     tip = await page.inner_text("#tip") if await page.get_attribute("#tip", "hidden") is None else ""
-    record(size, "a line under the suggestion says when to leave, or what to do after a miss", bool(re.search(r"\d\d:\d\d 前出發，約 \d+ 分鐘內騎上車。\d\d:\d\d 出發約 \d+ 分鐘。|接下來一小時出發，約 \d+ 分鐘內騎上車|沒車的話，再走 \d+ 分鐘|想穩一點|比較近", tip)), tip)
-    later = await page.evaluate("Array.from(document.querySelectorAll('#later svg text')).map(x => x.textContent)")
-    bars = await page.locator("#later svg rect").count(); head = (await page.inner_text("#laterSec h2")).replace("\n", " ")
-    nums, ticks = later[0::2], later[1::2]
-    step = [(int(b[:2]) * 60 + int(b[3:]) - int(a[:2]) * 60 - int(a[3:])) % 1440 for a, b in zip(ticks[1:], ticks[2:])] if all(re.fullmatch(r"\d\d:\d\d", x) for x in ticks[1:]) else []
-    record(size, "minutes until riding are drawn for departures over the next hour", await page.get_attribute("#laterSec", "hidden") is None and bars == 7 and "幾點走，幾分鐘騎得上車" in head and ticks[:1] == ["現在"] and step == [10] * 5 and all(re.fullmatch(r"\d+", n) and int(n) >= 1 for n in nums), f"{head} | {' '.join(nums)} | {' '.join(ticks)}")
-    m = re.search(r"(\d\d:\d\d) 前出發，約 (\d+) 分鐘內騎上車。(\d\d:\d\d) 出發約 (\d+) 分鐘", tip); calm = re.search(r"接下來一小時出發，約 (\d+) 分鐘內", tip)
+    TIP = (r"現在出發約 \d+ 分鐘騎上車，接下來一小時出發也幾乎都在 8 分鐘內。|現在出發約 \d+ 分鐘騎上車。\d\d:\d\d 出發，10 次有 \d+ 次要找超過 8 分鐘。|"
+           r"現在出發，10 次有 \d+ 次要找超過 8 分鐘。|沒車的話，再走 \d+ 分鐘|想穩一點|比較近")
+    record(size, "a line under the suggestion says when to leave, or what to do after a miss", bool(re.search(TIP, tip)), tip)
+    cols = await page.evaluate("""(() => { const svg = document.querySelector('#later svg'); if (!svg) return null;
+        const dots = Array.from(svg.querySelectorAll('circle.d')).map(c => [parseFloat(c.getAttribute('cx')), c.classList[1]]);
+        const ticks = Array.from(svg.querySelectorAll('text.tick')).map(x => [parseFloat(x.getAttribute('x')), x.textContent]);
+        const reds = Array.from(svg.querySelectorAll('text.nred')).map(x => [parseFloat(x.getAttribute('x')), x.textContent]);
+        return ticks.map(([x, label]) => { const mine = dots.filter(d => Math.abs(d[0] - x) < 8).map(d => d[1]);
+          const r = reds.find(q => Math.abs(q[0] - x) < 1); return { t: label, n: mine.length, g: mine.filter(c => c === 'g').length, y: mine.filter(c => c === 'y').length, r: mine.filter(c => c === 'r').length, label: r ? r[1] : '' }; }); })()""")
+    head = (await page.inner_text("#laterSec h2")).replace("\n", " ")
+    key = await page.locator("#later .dotkey span").all_inner_texts(); aria = await page.get_attribute("#later svg", "aria-label") or ""
     mm = lambda x: int(x[:2]) * 60 + int(x[3:])
-    if m and len(ticks) == 7:                                   # the line is a summary of the bars: same minutes, same times
-        at = [mm(ticks[1]) - 10] + [mm(x) for x in ticks[1:]]
-        before = [int(n) for n, x in zip(nums, at) if x < mm(m.group(1))]
-        record(size, "the line and the bars give the same minutes", before and max(before) == int(m.group(2)) and m.group(3) in ticks and nums[ticks.index(m.group(3))] == m.group(4) and int(m.group(4)) >= int(m.group(2)) + 2, f"{tip} | {' '.join(nums)}")
-    elif calm:
-        record(size, "the line and the bars give the same minutes", max(int(n) for n in nums) == int(calm.group(1)), f"{tip} | {' '.join(nums)}")
+    ticks = [c["t"] for c in cols or []]
+    step = [(mm(b) - mm(a)) % 1440 for a, b in zip(ticks[1:], ticks[2:])] if all(re.fullmatch(r"\d\d:\d\d", x) for x in ticks[1:]) else []
+    record(size, "ten dots for each departure over the next hour", await page.get_attribute("#laterSec", "hidden") is None and cols and len(cols) == 7 and all(c["n"] == 10 for c in cols)
+           and "不同時間出發的找車情況" in head and "每排是 10 次出發" in head and ticks[:1] == ["現在"] and step == [10] * 5, f"{head} | " + " ".join(f"{c['t']}:{c['g']}/{c['y']}/{c['r']}" for c in cols or []))
+    record(size, "columns with long searches are labelled with their count, and the key names the three colours",
+           cols and all((c["label"] == f"{c['r']}/10") if c["r"] else c["label"] == "" for c in cols) and key == ["第一站就有車", "換一站，8 分鐘內", "超過 8 分鐘"] and aria.count("10 次有") == 7,
+           " ".join(c["label"] or "-" for c in cols or []) + f" | {key}")
+    soon = re.search(r"(\d\d:\d\d) 出發，10 次有 (\d+) 次要找超過 8 分鐘", tip); slow = re.search(r"^現在出發，10 次有 (\d+) 次", tip)
+    if cols and soon:                       # the line names the first departure the dots mark with a long search
+        k = ticks.index(soon.group(1)) if soon.group(1) in ticks else -1
+        record(size, "the line and the dots agree", k > 0 and cols[k]["r"] == int(soon.group(2)) and all(c["r"] == 0 for c in cols[:k]), f"{tip} | " + " ".join(str(c["r"]) for c in cols))
+    elif cols and slow:
+        record(size, "the line and the dots agree", cols[0]["r"] == int(slow.group(1)), f"{tip} | " + " ".join(str(c["r"]) for c in cols))
+    elif cols and "幾乎都在 8 分鐘內" in tip:
+        record(size, "the line and the dots agree", all(c["r"] == 0 for c in cols), f"{tip} | " + " ".join(str(c["r"]) for c in cols))
     sub = await page.locator("#near .row .sub").first.inner_text()
     record(size, "each row says when its answer changes", bool(re.search(r"\d\d:\d\d", " ".join(await page.locator("#near .row .sub").all_inner_texts()))), sub.replace("\n", " "))
     usual = await page.get_attribute("#usualSec", "hidden") is None
@@ -253,6 +266,17 @@ async def check_when(browser, size):
     first2 = await page.locator("#near .row .nm").first.inner_text(); head2 = (await page.inner_text("#usualSec h2")).replace("\n", " ")
     record(size, "the metro station can be the start", await page.input_value("#fromSel") == "krt" and "哈瑪星" in first2 and first2 != first and "這一帶平常幾點難借" in head2 and await page.locator(".originicon").count() == 1, f"{first} -> {first2} | {head2}")
     record(size, "borrow tab runs without script errors", not page.errors, "; ".join(page.errors[:3]))
+    await ctx.close()
+    ctx, page = await new_page(browser, size, query="?replay=2026-11-11&t=17:50&from=eng")
+    await open_sheet(page, size)
+    reds = await page.evaluate("Array.from(document.querySelectorAll('#later svg text.nred')).map(x => x.textContent)")
+    tip = (await page.inner_text("#tip")).replace("\n", " ") if await page.get_attribute("#tip", "hidden") is None else ""
+    record(size, "the evening rush shows red dots", len(reds) >= 1 and all(re.fullmatch(r"\d+/10", x) for x in reds), f"{reds} | {tip}")
+    await ctx.close()
+    ctx, page = await new_page(browser, size, query="?replay=2026-11-11&t=17:50&from=eng&lang=en")
+    await open_sheet(page, size)
+    key = await page.locator("#later .dotkey span").all_inner_texts(); head = (await page.inner_text("#laterSec h2")).replace("\n", " ")
+    record(size, "English: the dots are translated", key == ["bike at the first station", "another station, within 8 min", "over 8 min"] and "Search time by departure" in head, f"{head} | {key}")
     await ctx.close()
 
 
@@ -311,6 +335,8 @@ async def check_dock(browser, size):
     free = (await page.locator("#card .fact .v").nth(1).inner_text()).strip(); says = (await page.locator("#card .says").inner_text()).replace("\n", " ")
     cap = await page.locator("#card .ahead .cap").inner_text()
     record(size, "return: the number on a row is its free docks, and the card forecasts docks", counts[0].split(" ")[0] == free and "預估空位" in cap and bool(re.search(r"位子|停滿", says)), f"{counts[0]} | card {free} | {says[:40]}")
+    usual = await page.inner_text("#card .usualnote") if await page.locator("#card .usualnote").count() else ""
+    record(size, "return: the card says how often the station is usually full then", bool(re.fullmatch(r"平常上課日 \d\d:\d\d–\d\d:\d\d，這站(很少停滿| \d+% 的時間是滿的)。", usual)), usual)
     await page.click("#cardX"); await page.wait_for_timeout(200)
     await page.locator("#whenChips .opt", has_text="30 分後").click(); await page.wait_for_timeout(350)
     pressed = await page.locator("#whenChips .opt[aria-pressed=true]").all_inner_texts()
@@ -361,6 +387,37 @@ async def check_relay(browser, size):
     tip = (await page.inner_text("#tip")).replace("\n", " ") if await page.get_attribute("#tip", "hidden") is None else ""
     docks = await page.evaluate("(() => { const r = Array.from(document.querySelectorAll('#near .row')).find(r => r.querySelector('.relay')); return r ? r.querySelector('.nm').childNodes[0].textContent : ''; })()")
     record(size, "borrow, morning: a station likely to be full on arrival carries the reward mark", tag == 1 and bool(re.search(r"約 \d 成還是滿站.*可拿 5 元騎乘券", tip)), f"{docks} | {tip}")
+    chip = page.locator("#relayOnly")
+    marked = await page.locator("#map .glyph.paid").count(); rows0 = await page.locator("#near .row").count()
+    record(size, "the reward filter is offered when a marked station is near", await chip.is_visible() and await chip.inner_text() == "只看 +5 元" and await chip.get_attribute("aria-pressed") == "false" and marked >= 1, f"{marked} marked on the map")
+    await chip.click(); await page.wait_for_timeout(450)
+    rows = await page.locator("#near .row").count(); paid = await page.locator("#near .row .relay").count()
+    dim = await page.evaluate("[document.getElementById('map').classList.contains('relayonly'), Array.from(document.querySelectorAll('#map .glyph')).filter(g => !g.classList.contains('paid')).slice(0, 20).every(g => parseFloat(getComputedStyle(g).opacity) < 0.5)]")
+    record(size, "the filter keeps only the marked stations in the list and dims the rest of the map", rows >= 1 and rows == paid and await chip.get_attribute("aria-pressed") == "true" and await page.get_attribute("#more", "hidden") is not None and dim == [True, True], f"{rows0} rows -> {rows} ({paid} marked), map {dim}")
+    await chip.click(); await page.wait_for_timeout(450)
+    record(size, "pressing the filter again brings the list back", await page.locator("#near .row").count() == rows0 and not await page.evaluate("document.getElementById('map').classList.contains('relayonly')"), str(await page.locator("#near .row").count()))
+    await ctx.close()
+    # a mark does not blink: on from a 6-in-10 chance, kept down to 5 in 10, off below that
+    A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+    now = datetime.now(TZ); start = 600 if not (600 <= now.hour * 60 + now.minute <= 640) else 840
+
+    def wavering(data):
+        fresh(data); data["t_min"] = start; data["in_window"] = True
+        if not data.get("ahead"):
+            return
+        i = next(n for n, x in enumerate(data["stations"]) if x["sno"] == "501209052")
+        data["bikes"][i] = 1; data["docks"][i] = data["stations"][i]["cap"] - 1
+        if data.get("base"):
+            data["base"][i] = start
+        ch = "".join(A64[round(p * 63)] for p in (0.35, 0.45, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55))
+        data["ahead"]["bike"][i] = ch; data["ahead"]["bikes"][i] = "1" * 9; data["ahead"]["dock"][i] = "_" * 9
+    ctx, page = await new_page(browser, size, state_patch=wavering, query="?tab=dock&to=lib&fresh=0")
+    await open_sheet(page, size)
+    seen = []
+    for chip_text in ("10 分後", "20 分後", "30 分後", "20 分後"):
+        await page.locator("#whenChips .opt", has_text=chip_text).click(); await page.wait_for_timeout(350)
+        seen.append(await page.evaluate("Array.from(document.querySelectorAll('#near .row')).some(r => r.querySelector('.relay') && r.querySelector('.nm').childNodes[0].textContent === '中山大學圖資大樓')"))
+    record(size, "a reward mark stays on while the chance dips a little, and goes off below half", seen == [True, True, False, False], f"10/20/30/20 min: {seen}")
     await ctx.close()
     # the reward runs from 06:00: the library station, empty and forecast to stay so, is marked at 07:00 and not at 05:00
     seen = {}
@@ -383,9 +440,72 @@ async def check_relay(browser, size):
     ctx, page = await new_page(browser, size, query=f"?replay={day}&t=18:00&tab=dock&to=lib&lang=en")
     await open_sheet(page, size)
     tags = set(await page.locator("#near .row .relay").all_inner_texts()); tip = (await page.inner_text("#tip")).replace("\n", " ")
-    record(size, "English: the mark and its line are translated", tags == {"+NT$5"} and "NT$5 ride voucher" in tip and not re.search(r"[\u4e00-\u9fff]", tip), f"{tags} | {tip}")
+    record(size, "English: the mark and its line are translated", tags == {"+NT$5"} and "NT$5 ride voucher" in tip and not re.search(r"[\u4e00-\u9fff]", tip) and await page.inner_text("#relayOnly") == "Only +NT$5", f"{tags} | {tip}")
     await page.click("#tabAbout"); await page.wait_for_timeout(300)
     record(size, "about tab explains the reward", "friendship relay" in await page.inner_text("#aboutWhat"))
+    await ctx.close()
+
+
+async def check_remind(browser, size):
+    """Class-end reminders: a weekly calendar event five minutes before class ends that opens the page at that building."""
+    ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:40&from=ee")
+    await page.evaluate("localStorage.removeItem('btb-remind')"); await page.reload(wait_until="domcontentloaded"); await ready(page, replay=True)
+    await open_sheet(page, size)
+    box = page.locator("#remindBox")
+    record(size, "reminders are offered, folded, on the borrow tab", await box.is_visible() and await page.inner_text("#remindOpen") == "下課前提醒我" and await box.get_attribute("open") is None)
+    await page.click("#remindOpen"); await page.wait_for_timeout(300)
+    bells = await page.evaluate("Array.from(document.querySelectorAll('#remEnd option')).map(o => o.textContent)")
+    days = await page.locator("#remDays button").all_inner_texts()
+    record(size, "the form starts at the chosen building and lists the class ends", await page.input_value("#remPlace") == "ee" and len(bells) >= 10 and all(re.fullmatch(r"\d\d:\d\d", b) for b in bells) and days == ["一", "二", "三", "四", "五"], f"{await page.input_value('#remPlace')} | {bells[:4]} | {days}")
+    await page.select_option("#remPlace", "eng"); await page.select_option("#remEnd", "1020")
+    for d in "12345":
+        on = await page.get_attribute(f"#remDays button[data-d='{d}']", "aria-pressed") == "true"
+        if on != (d in "13"):
+            await page.click(f"#remDays button[data-d='{d}']")
+    async with page.expect_download() as dl:
+        await page.click("#remIcs")
+    path = await (await dl.value).path()
+    raw = open(path, "rb").read(); text = raw.decode("utf-8"); flat = text.replace("\r\n ", "")
+    lines = text.split("\r\n")
+    record(size, "the calendar file repeats weekly to the end of finals, five minutes before class ends", "RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261224T155959Z" in flat and re.search(r"DTSTART;TZID=Asia/Taipei:\d{8}T165500", flat) is not None
+           and "TRIGGER:PT0M" in flat and "URL:https://alexlin8888.github.io/nsysu-youbike-log/?from=eng" in flat and "BEGIN:VTIMEZONE" in flat, " | ".join(x for x in flat.split("\r\n") if x.startswith(("DTSTART", "RRULE", "URL"))))
+    record(size, "the calendar file keeps to the format: CRLF lines of at most 75 bytes", b"\n" not in raw.replace(b"\r\n", b"") and all(len(x.encode()) <= 75 for x in lines) and text.endswith("END:VCALENDAR\r\n"), str(max(len(x.encode()) for x in lines)))
+    href = await page.get_attribute("#remGcal", "href")
+    saved = json.loads(await page.evaluate("localStorage.getItem('btb-remind')") or "{}")
+    record(size, "the Google Calendar link carries the same rule, and the choice is remembered", "ctz=Asia/Taipei" in href and "RRULE%3AFREQ%3DWEEKLY%3BBYDAY%3DMO%2CWE" in href and re.search(r"dates=\d{8}T165500/\d{8}T170000", href) is not None and saved == {"place": "eng", "days": [1, 3], "end": 1020}, f"{saved} | {href[:120]}")
+    for d in "13":
+        await page.click(f"#remDays button[data-d='{d}']")
+    record(size, "with no day chosen nothing can be added", await page.is_disabled("#remIcs") and await page.get_attribute("#remGcal", "hidden") is not None and await page.inner_text("#remNote") == "先選至少一天。")
+    await page.click("#tabDock"); await page.wait_for_timeout(300)
+    record(size, "reminders stay on the borrow tab", not await box.is_visible())
+    record(size, "reminders run without script errors", not page.errors, "; ".join(page.errors[:3]))
+    await ctx.close()
+
+
+async def check_offline(browser, size):
+    """The installed app: a service worker keeps the last copy of the page and its data, so it opens with no network."""
+    ctx = await browser.new_context(viewport={"width": SIZES[size][0], "height": SIZES[size][1]}, locale="zh-TW", service_workers="allow")
+    page = await ctx.new_page(); errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    await page.route("https://tile.openstreetmap.org/**", lambda r: r.fulfill(status=200, content_type="image/png", body=PIXEL))
+    await page.route("https://apis.youbike.com.tw/**", lambda r: r.abort())
+    await page.goto(BASE + "?sw=1", wait_until="domcontentloaded"); await ready(page)
+    scope = await page.evaluate("navigator.serviceWorker.ready.then(r => r.scope)")
+    for _ in range(40):
+        if await page.evaluate("!!navigator.serviceWorker.controller"):
+            break
+        await page.wait_for_timeout(250)
+    await page.wait_for_timeout(600)
+    cached = await page.evaluate("caches.keys().then(k => Promise.all(k.map(n => caches.open(n).then(c => c.keys()).then(r => [n, r.map(x => new URL(x.url).pathname)]))))")
+    names = [n for n, _ in cached]; files = sorted({f for _, fs in cached for f in fs})
+    record(size, "the service worker keeps the page and its data", len(names) == 1 and names[0].startswith("btb-") and any(f.endswith("/state.json") for f in files) and any(f.endswith("leaflet.js") for f in files), f"{scope} | {names} | {files}")
+    await ctx.set_offline(True)
+    await page.reload(wait_until="domcontentloaded"); await page.wait_for_timeout(2500)
+    rows = await page.locator("#near .row").count(); glyphs = await page.locator(".glyph").count()
+    err = await page.inner_text("#err") if await page.get_attribute("#err", "hidden") is None else ""
+    record(size, "with no network the app still opens with the last counts, and says they are old", rows >= 1 and glyphs >= 300 and await page.inner_text("#statusText") != "–" and bool(re.search(r"讀不到新資料，先顯示 \d\d:\d\d 那一筆", err)), f"{rows} rows, {glyphs} marks, status {await page.inner_text('#statusText')} | {err}")
+    await ctx.set_offline(False)
+    record(size, "the service worker runs without script errors", not errors, "; ".join(errors[:3]))
     await ctx.close()
 
 
@@ -591,7 +711,7 @@ async def check_about_lang(browser, size):
     await page.click("#tabAbout"); await page.wait_for_timeout(400)
     await open_sheet(page, size)
     what = await page.inner_text("#aboutWhat")
-    record(size, "about tab explains the colours and the numbers", await page.locator("#aboutKey li").count() == 7 and "LightGBM" in await page.inner_text("#aboutHow") and "3.7 分鐘" in what and "0.86" in what and "93%" not in what)
+    record(size, "about tab explains the colours and the numbers", await page.locator("#aboutKey li").count() == 7 and "LightGBM" in await page.inner_text("#aboutHow") and "3.7 分鐘" in what and "0.86" in what and "93%" not in what and "10 個點也對過" in what and "9%" in what)
     rec = (await page.inner_text("#aboutTrack")).replace("\n", " ") if await page.get_attribute("#aboutTrack", "hidden") is None else ""
     record(size, "about tab shows the record of the page's advice, teaching days only", "從 11/18 起" in rec and "目前有 1 個上課日" in rec and "120 次。照建議平均 3.7 分鐘騎上車，看官方 App 的車數是 3.8 分鐘，走到最近的站是 3.9 分鐘" in rec
            and "出發前 20 分鐘預告的時間，平均差 1.5 分鐘" in rec and "60 次。照建議平均多花 1.4 分鐘" in rec, rec[:260])
@@ -710,7 +830,13 @@ async def check_sheet(browser, size):
     top0 = await page.evaluate("document.getElementById('scroll').scrollTop")
     await swipe(page, w / 2, h * 0.7, h * 0.3); top1 = await page.evaluate("document.getElementById('scroll').scrollTop")
     record(size, "swiping up opens the sheet, then the list scrolls", s_up == "full" and top0 == 0 and top1 > 40, f"{s_up}, scrollTop {top0} -> {top1}")
-    await page.evaluate("document.getElementById('scroll').scrollTop = 0")
+    last = None                                 # let the fling of the last swipe run out before going back to the top
+    for _ in range(20):
+        now = await page.evaluate("document.getElementById('scroll').scrollTop")
+        if now == last:
+            break
+        last = now; await page.wait_for_timeout(150)
+    await page.evaluate("document.getElementById('scroll').scrollTop = 0"); await page.wait_for_timeout(100)
     await swipe(page, w / 2, h * 0.35, h * 0.35 + 240); s_down = await sheet_state(page)
     record(size, "pulling down from the top lowers it", s_down in ("half", "peek"), s_down)
     await page.evaluate("document.getElementById('grip').click()") if await sheet_state(page) == "peek" else None
@@ -743,7 +869,7 @@ async def check_sheet(browser, size):
 async def check_assets(browser, size):
     ctx, page = await new_page(browser, size)
     base = BASE.rsplit("/", 1)[0] + "/"
-    out = await page.evaluate("""async (base) => { const r = {}; for (const f of ['manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'vendor/leaflet.js', 'replays.json', 'outlook.json', 'places.json']) { const x = await fetch(base + f); r[f] = x.status; } const m = await (await fetch(base + 'manifest.webmanifest')).json(); r.name = m.short_name; r.icons = m.icons.length; r.display = m.display; return r; }""", base)
+    out = await page.evaluate("""async (base) => { const r = {}; for (const f of ['manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'vendor/leaflet.js', 'replays.json', 'outlook.json', 'places.json']) { const x = await fetch(base + f); r[f] = x.status; } const m = await (await fetch(base + 'manifest.webmanifest')).json(); r.name = m.short_name; r.icons = m.icons.length; r.display = m.display; return r; }""", base)
     record(size, "manifest, icons, the map library and the data files are served", all(v == 200 for k, v in out.items() if isinstance(v, int) and k != "icons") and out["display"] == "standalone" and out["icons"] == 3, json.dumps(out))
     head = await page.evaluate("[document.querySelector('link[rel=manifest]') !== null, document.querySelector('meta[name=theme-color]').content, document.querySelector('meta[name=viewport]').content, document.title]")
     record(size, "page declares its manifest, theme colour and viewport", head[0] and head[1] == "#10202f" and "viewport-fit=cover" in head[2], str(head))
@@ -760,7 +886,7 @@ async def main():
         await ctx.close()
         print("replay day used for the plan checks:", REPLAY_DAY, flush=True)
         for size in SIZES:
-            for check in (check_load, check_rider, check_when, check_trip, check_dock, check_relay, check_search, check_origin, check_fresh, check_ops, check_replay, check_about_lang, check_states, check_keyboard_a11y):
+            for check in (check_load, check_rider, check_when, check_trip, check_dock, check_relay, check_remind, check_search, check_origin, check_fresh, check_ops, check_replay, check_about_lang, check_states, check_keyboard_a11y):
                 try:
                     await check(browser, size)
                 except Exception as exc:  # noqa: BLE001 - a crashed check is a failed check
@@ -770,10 +896,11 @@ async def main():
                     await check_sheet(browser, size)
                 except Exception as exc:  # noqa: BLE001
                     record(size, "check_sheet crashed", False, str(exc).splitlines()[0][:200])
-        try:
-            await check_assets(browser, next(iter(SIZES)))
-        except Exception as exc:  # noqa: BLE001
-            record(next(iter(SIZES)), "check_assets crashed", False, str(exc).splitlines()[0][:200])
+        for check in (check_assets, check_offline):
+            try:
+                await check(browser, next(iter(SIZES)))
+            except Exception as exc:  # noqa: BLE001
+                record(next(iter(SIZES)), check.__name__ + " crashed", False, str(exc).splitlines()[0][:200])
         await browser.close()
     failed = [r for r in results if not r[2]]
     print(f"\n{len(results) - len(failed)} passed, {len(failed)} failed")

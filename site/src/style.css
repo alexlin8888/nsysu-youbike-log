@@ -184,8 +184,8 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .card .hd { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
 .card .nm { font-weight: 700; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; }
 .card .alt { color: var(--ink-2); font-size: 12.5px; line-height: 1.35; }
-.card .x { border: 0; background: var(--surface-3); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); align-self: start; }
-.card .x:hover { color: var(--ink); background: var(--line-2); }
+.card button.x { border: 0; background: var(--surface-3); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); align-self: start; }
+.card button.x:hover { color: var(--ink); background: var(--line-2); }
 .card .says { margin-top: 10px; font-size: 14px; display: flex; flex-wrap: wrap; column-gap: 12px; row-gap: 2px; align-items: baseline; }
 .card .tag { font-size: 12px; color: var(--ink-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
 .card .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -382,10 +382,10 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .trip .sel { display: grid; gap: 3px; min-width: 0; }
 .trip .sel[hidden] + .sel, .trip .sel:only-child { grid-column: 1 / -1; }
 .trip .k { font-size: 12px; color: var(--ink-2); padding-left: 2px; }
-.trip select { appearance: none; -webkit-appearance: none; width: 100%; min-height: 40px; padding: 7px 30px 7px 12px; border-radius: 12px; border: 1px solid var(--line-2); background-color: var(--surface); color: var(--ink);
+.trip select, .remform select { appearance: none; -webkit-appearance: none; width: 100%; min-height: 40px; padding: 7px 30px 7px 12px; border-radius: 12px; border: 1px solid var(--line-2); background-color: var(--surface); color: var(--ink);
   font: inherit; font-size: 14.5px; font-weight: 600; text-overflow: ellipsis;
   background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 16px) 17px, calc(100% - 11px) 17px; background-size: 5px 5px; background-repeat: no-repeat; }
-.trip select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.trip select:focus-visible, .remform select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .pick.poor { background: var(--out-soft); } .pick.poor .why { color: var(--out); }
 .pick.walkit { background: var(--surface-2); cursor: default; }
 .pick.walkit .why { color: var(--ink-2); } .pick.walkit .badge { color: var(--ink-2); }
@@ -398,3 +398,30 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .relayline { color: var(--ink); }
 .relaynote { margin-top: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
 .relaynote .relay { margin-left: 0; margin-right: 6px; }
+
+/* ten dots per departure: the key under the chart */
+.dotkey { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: 12px; color: var(--ink-2); }
+.dotkey span { display: inline-flex; align-items: center; gap: 6px; }
+.dotkey i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.dotkey i.ok { background: var(--ok-fill); } .dotkey i.low { background: var(--low-fill); } .dotkey i.out { background: var(--out-fill); }
+/* how full a station usually is at this time */
+.usualnote { margin-top: 6px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+/* the reward on the map, and the filter that leaves only those stations bright */
+.glyph .rmark { position: absolute; left: -10px; top: -7px; padding: 0 3px; border-radius: 4px; font-size: 10px; font-weight: 700; line-height: 14px; color: var(--accent); background: var(--surface); border: 1px solid var(--accent); pointer-events: none; }
+#map.relayonly .glyph:not(.paid) { opacity: 0.3; }
+h2 .h2r { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.opt.chip { min-height: 30px; padding: 3px 11px; font-size: 12.5px; }
+/* class-end reminders */
+.remind { margin: 2px 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.remind summary { cursor: pointer; padding: 10px 14px; font-size: 13.5px; color: var(--ink); min-height: 44px; display: flex; align-items: center; list-style: none; }
+.remind summary::-webkit-details-marker { display: none; }
+.remind summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(-45deg); margin-right: 10px; transition: transform .15s; }
+.remind[open] summary::before { transform: rotate(45deg); }
+.remform { padding: 0 14px 12px; display: grid; gap: 10px; }
+.remform .sel { display: grid; gap: 4px; }
+.remform .sel .k, .remform .origin .k { font-size: 12.5px; color: var(--ink-2); }
+.remform select { min-height: 40px; }
+.remgo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.remform .note { margin: 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .remind summary::before { transition: none; } }
+

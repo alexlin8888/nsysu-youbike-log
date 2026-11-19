@@ -22,7 +22,10 @@
   var when = { rider: { kind: "now" }, dock: { kind: "plus", min: 10 } }, usual = null;      // when the rider leaves (borrow) or rides in (return)
   var PL = null, fresh = null, merged = null, track = null, placesKey = "";                   // places.json; counts read from the operator a minute ago; the live view with them; track.json
   var A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";               // state.json packs a chance or a count into one character
-  var SURE = { bike: 0.9, dock: 0.95 }, MAYBE = { bike: 0.6, dock: 0.7 }, G = 12, MARGIN = 0.5, RELAY = 0.6; // the chances behind "should" and "may"; G: minutes charged if the second station fails too; MARGIN: minutes given up for a surer station
+  var SURE = { bike: 0.9, dock: 0.95 }, MAYBE = { bike: 0.6, dock: 0.7 }, G = 12, MARGIN = 0.5, RELAY = 0.6, RELAY_OFF = 0.5; // the chances behind "should" and "may"; G: minutes charged if the second station fails too; MARGIN: minutes given up for a surer station; RELAY(_OFF): the chance that turns a reward mark on (off)
+  var SLOW = 8, THETA = 0.6;                                                                   // the dots: "over SLOW minutes" is a long search; THETA couples the stations' emptiness (analysis/code/final_spread.py)
+  var REM_END = "2026-12-24", SITE = "https://alexlin8888.github.io/nsysu-youbike-log/";      // reminders repeat weekly to the last day of finals (NSYSU calendar, term 115-1)
+  var relayMem = {}, relayOnly = false, colsMemo = null, remKey = "";
   var API = "https://apis.youbike.com.tw/tw2/parkingInfo";                                    // the operator's own counts for a list of stations
   var map, attrib, glyphLayer, routeLayer, originLayer, markers = {};
   var sheetState = "half", sheetPx = { peek: 158, half: 320, full: 600 }, drag = null, swallowClick = false, toastTimer = null;
@@ -106,7 +109,27 @@
     var c = chance(v, i, kind === "dock" ? "bike" : "dock", at); return c == null ? null : 1 - c;
   }
   function tenth(p) { return Math.max(1, Math.min(9, Math.round(p * 10))); }
-  function relayTag(v, i, kind, at) { var p = relayP(v, i, kind, at); return p != null && p >= RELAY ? "<span class=\"relay\">" + t("relayTag") + "</span>" : ""; }
+  // A mark goes on at RELAY and stays until the chance falls below RELAY_OFF, so a count read a minute later does not
+  // make it blink on and off while the rider is on the way.
+  function relayOn(v, i, kind, at) {
+    var p = relayP(v, i, kind, at), key = kind + v.stations[i].sno;
+    if (p == null) { delete relayMem[key]; return false; }
+    var on = relayMem[key] ? p >= RELAY_OFF : p >= RELAY;
+    if (on) relayMem[key] = true; else delete relayMem[key];
+    return on;
+  }
+  function relayTag(v, i, kind, at) { return relayOn(v, i, kind, at) ? "<span class=\"relay\">" + t("relayTag") + "</span>" : ""; }
+  // How often this station was empty (full) in this half hour of a usual teaching day or day off (docs/outlook.json)
+  function usualShare(v, s, kind, at) {
+    var o = usual && usual.stations && usual.stations[s.sno], d = o && o[v.offday ? "off" : "teaching"], arr = d && d[kind === "bike" ? "no_bike" : "no_dock"];
+    var b = Math.floor((at % 1440 - 360) / 30); if (!arr || b < 0 || b >= arr.length || arr.charAt(b) === " ") return null;
+    return { p: A64.indexOf(arr.charAt(b)) / 63, a: 360 + 30 * b };
+  }
+  function usualNote(v, s, kind, at) {
+    var u = usualShare(v, s, kind, at); if (!u) return "";
+    var key = (kind === "bike" ? "usualNoteBike" : "usualNoteDock") + (u.p < 0.05 ? "Rare" : "");
+    return t(key, { d: t(v.offday ? "dayOff" : "dayTeach"), a: hm(u.a), b: hm(u.a + 30), n: Math.round(100 * u.p) });
+  }
   // when the answer changes: "likely out by 17:20", or for an empty station "a bike likely back by 18:10"
   function turnText(v, i, kind, cls) {
     var a = aheadOf(v, i, kind), h = have(v, i, kind), bike = kind === "bike", k; if (!a || h == null) return "";
@@ -260,7 +283,8 @@
   function glyphHtml(s, v, i, sel) {
     var big = map.getZoom() >= 15, R = glyphR(s.cap), S = 2 * R + 6, c = S / 2, observed = v.bikes[i] != null, fill = fillOf(v, i);
     var star = favs.indexOf(s.sno) >= 0 && map.getZoom() >= 14 ? "<span class=\"star\">★</span>" : "";
-    var open = "<div class=\"glyph" + (sel ? " sel" : "") + "\"><svg width=\"" + S + "\" height=\"" + S + "\" viewBox=\"0 0 " + S + " " + S + "\">";
+    var rl = (tab === "rider" || tab === "dock") && observed && relayOn(v, i, need(), arriveMin(v, i));
+    var open = "<div class=\"glyph" + (sel ? " sel" : "") + (rl ? " paid" : "") + "\"><svg width=\"" + S + "\" height=\"" + S + "\" viewBox=\"0 0 " + S + " " + S + "\">";
     if (!big) {
       // zoomed out: a dot sized by the station; stations with nothing to report stay small and faint
       var calm = !observed || (tab === "ops" && fill === tok("--r0")), r = calm ? R * 0.8 : R;
@@ -276,10 +300,11 @@
     var label = isCampus(s) && SHORT[s.sno] ? "<span class=\"lbl\">" + SHORT[s.sno][lang === "zh" ? 0 : 1] + "</span>" : "";
     return open + "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + (rr + 1.5) + "\" fill=\"" + tok("--surface") + "\"/>" +
       "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + (isCampus(s) ? tok("--accent") : tok("--line-2")) + "\" stroke-width=\"" + (isCampus(s) ? 2.5 : 1.5) + "\"" + (observed ? "" : " stroke-dasharray=\"3 3\"") + "/>" + arc +
-      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + fill + "\" fill-opacity=\"" + (observed ? 1 : 0.7) + "\"/>" + num + "</svg>" + star + label + "</div>";
+      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + fill + "\" fill-opacity=\"" + (observed ? 1 : 0.7) + "\"/>" + num + "</svg>" + star + (rl ? "<span class=\"rmark\">+5</span>" : "") + label + "</div>";
   }
   function drawStations(v) {
     glyphLayer.clearLayers(); markers = {};
+    $("map").classList.toggle("relayonly", relayOnly && (tab === "rider" || tab === "dock"));
     if (!fitted) { fitted = true; if (tab === "ops") fitArea(v); else fitCampus(v, false); }
     v.stations.forEach(function (s, i) {
       var S = 2 * glyphR(s.cap) + 6;
@@ -521,6 +546,7 @@
     var sub = "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
     if (x.p < SURE[kind] && x.p > 0.05) sub += "<span>" + odds(x.p) + "</span>";
     if (kind === "dock") sub += "<span>" + t(v.docks && v.docks[x.i] === 1 ? "docksNow1" : "docksNow", { d: v.docks && v.docks[x.i] != null ? v.docks[x.i] : "–" }) + "</span>";
+    var us = usualShare(v, s, kind, x.at); if (us && us.p >= 0.4) sub += "<span>" + t(kind === "dock" ? "usualHotDock" : "usualHotBike") + "</span>";
     else { var eb = expectAt(v, x.i, x.at); sub += "<span>" + (eb != null && x.p >= SURE[kind] ? t("expect", { b: eb }) : t("bikesNow", { b: v.bikes[x.i] })) + "</span>"; }
     el.innerHTML = badgeAt(v, x.i, kind, x.at) + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(s)) + relayTag(v, x.i, kind, x.at) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(cell, cellLabel);
     el.addEventListener("click", function () { select(x.i); focusStation(s); });
@@ -538,9 +564,9 @@
   }
   // one line about the reward: the suggested station if it is likely to pay, else the likeliest station that costs at most three minutes more
   function relayLine(v, pl, kind, best) {
-    var dock = kind === "dock", p0 = relayP(v, best.i, kind, best.at), top = null;
-    if (p0 != null && p0 >= RELAY) return t(dock ? "relayRetHere" : "relayBorHere", { o: tenth(p0) });
-    pl.cand.forEach(function (x) { if (x === best || x.e > best.e + 3) return; var p = relayP(v, x.i, kind, x.at); if (p != null && p >= RELAY && (!top || p > top.p)) top = { x: x, p: p }; });
+    var dock = kind === "dock", top = null;
+    if (relayOn(v, best.i, kind, best.at)) return t(dock ? "relayRetHere" : "relayBorHere", { o: tenth(relayP(v, best.i, kind, best.at)) });
+    pl.cand.forEach(function (x) { if (x === best || x.e > best.e + 3 || !relayOn(v, x.i, kind, x.at)) return; var p = relayP(v, x.i, kind, x.at); if (!top || p > top.p) top = { x: x, p: p }; });
     return top ? t(dock ? "relayRetAlt" : "relayBorAlt", { n: shortName(v.stations[top.x.i]), m: Math.max(1, Math.round(top.x.e - best.e)), o: tenth(top.p) }) : "";
   }
   function renderWhen(v) {
@@ -584,45 +610,86 @@
         if (trip.rideIt) lines.push(t("tripRide", { a: Math.round(trip.total), b: trip.walk }));
       }
       lines = lines.concat(notes(v, { best: bx, sure: pb.sure, skipped: bx === pb.best ? pb.skipped : null }, "bike"));
-      if (!lines.length && w.kind === "now") { var lt = leaveTip(v); if (lt) lines.push(lt); }
+      if (!lines.length && w.kind === "now" && !(trip && !trip.rideIt)) { var lt = leaveTip(v); if (lt) lines.push(lt); }
       relay = (trip && trip.dock ? relayLine(v, trip.dplan, "dock", trip.dock) : "") || relayLine(v, pb, "bike", bx);
     }
     if (lines.length || relay) { tip.innerHTML = lines.map(esc).join("<br>") + (relay ? (lines.length ? "<br>" : "") + "<span class=\"relayline\">" + esc(relay) + "</span>" : ""); tip.hidden = false; }
   }
-  // minutes until the rider is on a bike when leaving at `leave`; with a destination, at the station the trip borrows from
-  function minutesAt(v, leave) {
-    if (goal) { var tr = planTrip(v, origin, goal, leave); if (tr && tr.dock) return tr.bike.e; }
-    var pl = planBike(v, origin, leave); return pl ? pl.best.e : null;
+  // How the search for a bike goes when leaving at `leave`, in three shares: the first station has a bike, another
+  // station is needed but the rider is on a bike within SLOW minutes, or it takes longer. Leaving now, the rider follows
+  // the suggestion: its chance, then the station the rule would go on to, then one more. Leaving later, the rider will
+  // look again before going: the nearest station that shows a bike then, with the chance that the first n stations are
+  // all empty taken as (product of their chances of being empty) ^ THETA, because campus stations empty together.
+  // analysis/code/final_spread.py checks both against the held-out days.
+  function spread(v, from, leave) {
+    var pl = planBike(v, from, leave); if (!pl) return null;
+    var green = 0, yellow = 0, c = pl.cand;
+    if (leave <= nowMin(v)) {
+      var b = pl.best, m1 = b.leg;
+      if (m1 <= SLOW) green = b.p;
+      if (b.on) {
+        var m2 = m1 + b.on.hop, t2 = b.at + b.on.hop, third = null;
+        if (m2 <= SLOW) yellow += (1 - b.p) * b.on.p;
+        c.forEach(function (y) { if (y === b || y.i === b.on.i) return; var h = walkSS(v, b.on.i, y.i), p3 = chance(v, y.i, "bike", t2 + h), cost = h + (1 - p3) * G; if (!third || cost < third.cost - 1e-9) third = { hop: h, p: p3, cost: cost }; });
+        if (third && m2 + third.hop <= SLOW) yellow += (1 - b.p) * (1 - b.on.p) * third.p;
+      }
+    } else {
+      var order = c.slice().sort(function (x, y) { return x.leg - y.leg || x.km - y.km; }), prod = 1, before = 1;
+      order.forEach(function (x) {
+        var s0 = chance(v, x.i, "bike", leave); if (s0 == null) return;
+        prod *= 1 - s0; var after = Math.pow(prod, THETA), pick = before - after; before = after;
+        if (s0 <= 0 || pick <= 0 || x.leg > SLOW) return;
+        var r = Math.min(1, chance(v, x.i, "bike", leave + x.leg) / s0), k2 = null;
+        green += pick * r;
+        order.forEach(function (y) { if (y !== x && (!k2 || walkSS(v, x.i, y.i) < walkSS(v, x.i, k2.i))) k2 = y; });
+        if (k2) { var h2 = walkSS(v, x.i, k2.i); if (x.leg + h2 <= SLOW) yellow += pick * (1 - r) * chance(v, k2.i, "bike", leave + x.leg + h2); }
+      });
+    }
+    green = Math.max(0, Math.min(1, green)); yellow = Math.max(0, Math.min(1 - green, yellow));
+    return { g: green, y: yellow, r: 1 - green - yellow, e: pl.best.e };
   }
-  // "Leave before 17:35 and you ride within about 3 min. Leaving at 17:40 takes about 5." The same numbers as the bars below it.
+  function dotsOf(sp) { var r = Math.round(10 * sp.r), g = Math.min(10 - r, Math.round(10 * sp.g)); return { g: g, y: 10 - r - g, r: r }; }
+  // the seven departures of the chart (now and every 10 minutes for an hour), computed once per view
+  function columns(v) {
+    if (!v.ahead || !v.in_window) return null;
+    var n = nowMin(v), key = v.snapshot_at + "|" + (v.freshMin || "") + "|" + n + "|" + origin.lat + "," + origin.lng + "|" + (PL ? 1 : 0);
+    if (colsMemo && colsMemo.key === key) return colsMemo.cols;
+    var cols = [];
+    for (var d = 0; d <= 60; d += 10) { var sp = spread(v, origin, n + d); if (!sp) { cols = null; break; } cols.push({ at: n + d, sp: sp, k: dotsOf(sp) }); }
+    colsMemo = { key: key, cols: cols };
+    return cols;
+  }
+  // one line that says what the dots say: minutes for leaving now, and the first departure with a long search
   function leaveTip(v) {
-    if (!v.ahead) return "";
-    var n = nowMin(v), es = [], d, r = function (x) { return Math.max(1, Math.round(x)); };
-    for (d = 0; d <= 60; d += 10) { var e = minutesAt(v, n + d); if (e == null) break; es.push(e); }
-    if (!es.length) return "";
-    var last = 0; while (last + 1 < es.length && es[last + 1] <= es[0] + 2) last++;          // departures that cost at most two minutes more than leaving now
-    var top = Math.max.apply(null, es.slice(0, last + 1));
-    if (last + 1 >= es.length) return t("tipCalm", { a: r(top) });
-    var worst = last + 1; for (d = last + 2; d < es.length; d++) if (es[d] > es[worst] + 1e-9) worst = d;
-    if (r(es[worst]) - r(top) < 2) return t("tipCalm", { a: r(es[worst]) });                // a one-minute difference is not worth a deadline
-    return t("tipSoon", { t: hm((Math.floor((n + 10 * last + 5) / 5) * 5) % 1440), a: r(top), u: hm((n + 10 * worst) % 1440), b: r(es[worst]) });
+    var cols = columns(v); if (!cols) return "";
+    var a = Math.max(1, Math.round(cols[0].sp.e)), first = -1, k, best = 0;
+    for (k = 0; k < cols.length; k++) if (cols[k].k.r >= 1) { first = k; break; }
+    if (first < 0) return t("tipCalm", { a: a });
+    if (first > 0) return t("tipSoon", { a: a, u: hm(cols[first].at % 1440), r: cols[first].k.r });
+    for (k = 1; k < cols.length; k++) if (cols[k].k.r < cols[best].k.r) best = k;
+    return t("tipNowSlow", { r: cols[0].k.r }) + (best && cols[best].k.r <= cols[0].k.r - 2 ? t("tipLater", { u: hm(cols[best].at % 1440), r: cols[best].k.r }) : "");
   }
-  // how long it takes to be on a bike for departures over the next hour: the bars a rider reads to decide when to go
+  // ten dots per departure (Kay et al. 2016; Fernandes et al. 2018): green, yellow and red stacked from the bottom
   function renderLater(v) {
-    var sec = $("laterSec");
-    if (tab !== "rider" || !v.ahead || !v.in_window) { sec.hidden = true; return; }
-    var n = nowMin(v), bars = [], top = 0;
-    for (var d = 0; d <= 60; d += 10) { var e = minutesAt(v, n + d); if (e == null) { sec.hidden = true; return; } bars.push([n + d, e]); top = Math.max(top, e); }
+    var sec = $("laterSec"), cols = tab === "rider" ? columns(v) : null;
+    if (!cols) { sec.hidden = true; return; }
     sec.hidden = false;
     $("hLater").textContent = t("laterH"); $("hLaterSub").textContent = t("laterSub");
-    var W = 340, H = 74, bw = W / bars.length, cap = Math.max(8, Math.ceil(top)), h = "";
-    bars.forEach(function (b, k) {
-      var hh = Math.max(3, 40 * Math.min(1, b[1] / cap)), col = b[1] <= 4 ? "--ok-fill" : b[1] <= 8 ? "--low-fill" : "--out-fill";
-      h += "<rect x=\"" + (k * bw + 5).toFixed(1) + "\" y=\"" + (56 - hh).toFixed(1) + "\" width=\"" + (bw - 10).toFixed(1) + "\" height=\"" + hh.toFixed(1) + "\" rx=\"3\" fill=\"" + tok(col) + "\"/>" +
-        "<text x=\"" + (k * bw + bw / 2).toFixed(1) + "\" y=\"" + (51 - hh).toFixed(1) + "\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"600\" fill=\"" + tok("--ink") + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + Math.max(1, Math.round(b[1])) + "</text>" +
-        "<text x=\"" + (k * bw + bw / 2).toFixed(1) + "\" y=\"70\" text-anchor=\"middle\" font-size=\"10.5\" fill=\"" + tok("--ink-3") + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + (k === 0 ? t("wNow") : hm(b[0] % 1440)) + "</text>";
+    var W = 340, H = 94, bw = W / cols.length, R = 4.3, gap = 10.6, h = "", aria = [];
+    var label = function (x, y, s2, bold) { return "<text class=\"" + (bold ? "nred" : "tick") + "\" x=\"" + x.toFixed(1) + "\" y=\"" + y + "\" text-anchor=\"middle\" font-size=\"" + (bold ? 11.5 : 10.5) + "\"" + (bold ? " font-weight=\"600\"" : "") + " fill=\"" + tok(bold ? "--ink" : "--ink-3") + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + s2 + "</text>"; };
+    cols.forEach(function (col, k) {
+      var seq = [], q, cx = k * bw + bw / 2, when = k === 0 ? t("wNow") : hm(col.at % 1440);
+      for (q = 0; q < col.k.g; q++) seq.push("g");
+      for (q = 0; q < col.k.y; q++) seq.push("y");
+      for (q = 0; q < col.k.r; q++) seq.push("r");
+      seq.forEach(function (c2, q2) { var fill = { g: "--ok-fill", y: "--low-fill", r: "--out-fill" }[c2]; h += "<circle class=\"d " + c2 + "\" cx=\"" + (cx + (q2 % 2 ? gap / 2 : -gap / 2)).toFixed(1) + "\" cy=\"" + (70 - Math.floor(q2 / 2) * gap).toFixed(1) + "\" r=\"" + R + "\" fill=\"" + tok(fill) + "\" stroke=\"" + tok("--surface") + "\" stroke-width=\"1\"/>"; });
+      if (col.k.r) h += label(cx, 13, t("dotsRed", { r: col.k.r }), true);
+      h += label(cx, 90, when, false);
+      aria.push(t("dotsAria", { t: when, g: col.k.g, y: col.k.y, r: col.k.r }));
     });
-    $("later").innerHTML = "<svg viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"" + t("laterH") + "\">" + h + "</svg>";
+    var key = function (cls, k2) { return "<span><i class=\"" + cls + "\"></i>" + t(k2) + "</span>"; };
+    $("later").innerHTML = "<svg viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"" + esc(t("laterH") + (lang === "zh" ? "：" : ": ") + aria.join(lang === "zh" ? "；" : "; ")) + "\">" + h + "</svg>" +
+      "<div class=\"dotkey\">" + key("ok", "dotKeyG") + key("low", "dotKeyY") + key("out", "dotKeyR") + "</div>";
   }
   // The usual day around the starting point (docs/outlook.json): when is it hard to borrow, or to return?
   function renderUsual(v) {
@@ -640,6 +707,76 @@
     if (m >= 360 && m <= 1380) { var x = ((m - 360) / 30 * bw).toFixed(1); h += "<line x1=\"" + x + "\" x2=\"" + x + "\" y1=\"0\" y2=\"42\" stroke=\"" + tok("--accent") + "\" stroke-width=\"2\"/>"; }
     $("usual").innerHTML = "<svg viewBox=\"0 0 " + W + " " + H + "\" aria-hidden=\"true\">" + h + "</svg>";
   }
+  // ---------- class-end reminders ----------
+  // A weekly calendar event five minutes before a class ends, with a link that opens the page set to that building. The
+  // page has no server, so the phone's own calendar does the reminding.
+  function remState(v) {
+    var r = load("btb-remind", null) || {}, n = taipeiNow(), wd = n.getDay(), nb = null, m = n.getHours() * 60 + n.getMinutes();
+    v.meta.bells.forEach(function (b) { if (!nb && mins(b) > m) nb = mins(b); });
+    var campus = function (id) { var p = id && PL && PL.byId[id]; return !!p && p.group === "campus"; };      // classes are on campus
+    if (!campus(r.place)) r.place = origin.kind === "place" && campus(origin.id) ? origin.id : "lib";
+    if (!Array.isArray(r.days)) r.days = wd >= 1 && wd <= 5 ? [wd] : [1];
+    if (typeof r.end !== "number" || v.meta.bells.map(mins).indexOf(r.end) < 0) r.end = nb || mins(v.meta.bells[v.meta.bells.length - 1]);
+    return r;
+  }
+  function renderRemind(v) {
+    var box = $("remindBox");
+    box.hidden = tab !== "rider" || !PL || !v.meta.bells || !v.meta.bells.length; if (box.hidden) return;
+    var r = remState(v), key = lang + "|" + v.meta.bells.join(",") + "|" + PL.places.length;
+    $("remindOpen").textContent = t("remindOpen");
+    if (key !== remKey) {
+      remKey = key;
+      $("remPlaceK").textContent = t("remindPlace"); $("remEndK").textContent = t("remindEnd"); $("remDaysK").textContent = t("remindDays"); $("remIcs").textContent = t("remindIcs");
+      $("remPlace").innerHTML = PL.places.filter(function (p) { return p.group === "campus"; }).map(function (p) { return "<option value=\"" + p.id + "\">" + esc(placeLabel(p)) + "</option>"; }).join("");
+      $("remEnd").innerHTML = v.meta.bells.map(function (b) { return "<option value=\"" + mins(b) + "\">" + b + "</option>"; }).join("");
+      $("remDays").innerHTML = [1, 2, 3, 4, 5].map(function (d) { return "<button type=\"button\" class=\"opt\" data-d=\"" + d + "\" aria-pressed=\"false\">" + T[lang].weekdays[d] + "</button>"; }).join("");
+    }
+    $("remPlace").value = r.place; $("remEnd").value = String(r.end);
+    Array.prototype.forEach.call($("remDays").querySelectorAll("button"), function (b) { b.setAttribute("aria-pressed", r.days.indexOf(parseInt(b.getAttribute("data-d"), 10)) >= 0 ? "true" : "false"); });
+    var g = $("remGcal"), on = r.days.length > 0;
+    $("remIcs").disabled = !on; g.hidden = !on; g.textContent = t("remindGcal"); if (on) g.href = gcalLink(r);
+    $("remNote").textContent = on ? t("remindNote", { d: parseInt(REM_END.slice(5, 7), 10) + "/" + parseInt(REM_END.slice(8, 10), 10) }) : t("remindPick");
+  }
+  function remLink(r) { var base = /^https:/.test(location.protocol) && !/claude\.ai$/.test(location.hostname) ? location.origin + location.pathname : SITE; return base + "?from=" + encodeURIComponent(r.place); }
+  function ymd(d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
+  function hhmm(m) { return pad(Math.floor(m / 60)) + pad(m % 60); }
+  // the first date on one of the chosen weekdays on which the reminder is still ahead
+  function firstDay(days, startMin) {
+    var n = taipeiNow(), best = null;
+    days.forEach(function (d) { var x = new Date(n.getFullYear(), n.getMonth(), n.getDate()), k = (d - x.getDay() + 7) % 7; if (k === 0 && n.getHours() * 60 + n.getMinutes() >= startMin) k = 7; x.setDate(x.getDate() + k); if (!best || x < best) best = x; });
+    return best;
+  }
+  function byDay(days) { return days.slice().sort().map(function (d) { return ["SU", "MO", "TU", "WE", "TH", "FR", "SA"][d]; }).join(","); }
+  function untilUtc() {
+    var end = new Date(parseInt(REM_END.slice(0, 4), 10), parseInt(REM_END.slice(5, 7), 10) - 1, parseInt(REM_END.slice(8, 10), 10)), n = taipeiNow();
+    if (end < n) { end = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 18 * 7); }             // after this term: eighteen weeks from today
+    return ymd(end) + "T155959Z";                                                                       // 23:59:59 in Taipei
+  }
+  function gcalLink(r) {
+    var st = r.end - 5, day = ymd(firstDay(r.days, st));
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(t("remindTitle")) + "&dates=" + day + "T" + hhmm(st) + "00/" + day + "T" + hhmm(r.end) + "00&ctz=Asia/Taipei" +
+      "&recur=" + encodeURIComponent("RRULE:FREQ=WEEKLY;BYDAY=" + byDay(r.days) + ";UNTIL=" + untilUtc()) + "&details=" + encodeURIComponent(t("remindDesc", { u: remLink(r) }));
+  }
+  function icsEsc(s) { return String(s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n"); }
+  // lines longer than 75 bytes are folded, never inside a character
+  function icsFold(line) {
+    var enc = window.TextEncoder ? new TextEncoder() : null, out = "", n = 0;
+    Array.from(line).forEach(function (ch) { var b = enc ? enc.encode(ch).length : (ch.charCodeAt(0) > 127 ? 3 : 1); if (n + b > 75) { out += "\r\n "; n = 1; } out += ch; n += b; });
+    return out;
+  }
+  function icsText(r) {
+    var now = new Date(), stamp = now.getUTCFullYear() + pad(now.getUTCMonth() + 1) + pad(now.getUTCDate()) + "T" + pad(now.getUTCHours()) + pad(now.getUTCMinutes()) + pad(now.getUTCSeconds()) + "Z", link = remLink(r);
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Beat the Bell//NSYSU YouBike//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+      "BEGIN:VTIMEZONE", "TZID:Asia/Taipei", "BEGIN:STANDARD", "DTSTART:19700101T000000", "TZOFFSETFROM:+0800", "TZOFFSETTO:+0800", "TZNAME:CST", "END:STANDARD", "END:VTIMEZONE"];
+    var st = r.end - 5, day = ymd(firstDay(r.days, st)), bd = byDay(r.days);
+    L.push("BEGIN:VEVENT", "UID:btb-" + bd.replace(/,/g, "") + "-" + hhmm(r.end) + "-" + r.place + "@alexlin8888.github.io", "DTSTAMP:" + stamp,
+      "DTSTART;TZID=Asia/Taipei:" + day + "T" + hhmm(st) + "00", "DTEND;TZID=Asia/Taipei:" + day + "T" + hhmm(r.end) + "00",
+      "RRULE:FREQ=WEEKLY;BYDAY=" + bd + ";UNTIL=" + untilUtc(),
+      "SUMMARY:" + icsEsc(t("remindTitle")), "DESCRIPTION:" + icsEsc(t("remindDesc", { u: link })), "URL:" + link,
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(t("remindTitle")), "TRIGGER:PT0M", "END:VALARM", "END:VEVENT", "END:VCALENDAR");
+    return L.map(icsFold).join("\r\n") + "\r\n";
+  }
+  function remSave(change) { var v = view(); if (!v) return; var r = remState(v); change(r); store("btb-remind", r); renderRemind(v); }
   function renderRider(v) {
     var dock = tab === "dock";
     $("q").placeholder = t("search"); $("q").setAttribute("aria-label", t("search"));
@@ -652,9 +789,13 @@
     fi.forEach(function (i) { fl.appendChild(stationRow(v, i)); });
     $("hFavSub").textContent = fi.length ? String(fi.length) : "";
     var ord = ordered(v), nl = $("near"); nl.innerHTML = "";
-    ord.slice(0, nearN).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
-    $("more").textContent = nearN > 8 ? t("less") : t("more");
-    renderBest(v); renderLater(v); renderUsual(v);
+    var paid = ord.filter(function (x) { return x[2] <= 1.5 && v.bikes[x[1]] != null && relayOn(v, x[1], need(), arriveMin(v, x[1])); }), ro = $("relayOnly");
+    if (relayOnly && !paid.length) relayOnly = false;
+    ro.hidden = !paid.length; ro.textContent = t("relayOnly"); ro.setAttribute("aria-pressed", relayOnly ? "true" : "false");
+    (relayOnly ? paid : ord.slice(0, nearN)).forEach(function (x) { nl.appendChild(stationRow(v, x[1])); });
+    $("map").classList.toggle("relayonly", relayOnly);
+    $("more").hidden = relayOnly; $("more").textContent = nearN > 8 ? t("less") : t("more");
+    renderBest(v); renderLater(v); renderUsual(v); renderRemind(v);
   }
   function searchStations(q) {
     var v = view(), box = $("qres"); if (!v || !q.trim()) { box.hidden = true; return; }
@@ -702,11 +843,12 @@
     var foot = [];
     if (v.age && v.age[i] != null && v.age[i] > 20) foot.push(t("stale2", { m: v.age[i] }));
     if (s.excluded) foot.push(t("excluded"));
-    var docks = v.docks && v.docks[i] != null ? v.docks[i] : null, rp = observed ? relayP(v, i, kind, arriveMin(v, i)) : null;
+    var docks = v.docks && v.docks[i] != null ? v.docks[i] : null, rp = observed && relayOn(v, i, kind, arriveMin(v, i)) ? relayP(v, i, kind, arriveMin(v, i)) : null, un = observed ? usualNote(v, s, kind, arriveMin(v, i)) : "";
     $("card").innerHTML = "<div class=\"hd\">" + badge(v, i) + "<div><div class=\"nm\">" + esc(nameOf(s)) + "</div><div class=\"alt\">" + esc(altName(s)) + "</div></div><button class=\"x\" id=\"cardX\" type=\"button\" aria-label=\"" + t("close") + "\">" + ICON.close + "</button></div>" +
       "<div class=\"says\">" + (o.text ? "<span class=\"state " + o.cls + "\">" + (observed && o.cls !== "x" ? t("fArrive") + sep() : "") + o.text + "</span>" : "") + (turn ? "<span>" + turn + "</span>" : "") +
       (isCampus(s) ? "<span class=\"tag\">" + t("inCampus") + "</span>" : (s.group === "gateway" ? "<span class=\"tag\">" + t("nearCampus") + "</span>" : "")) + (isFav ? "<span class=\"tag\">★ " + t("fav") + "</span>" : "") + "</div>" +
-      (rp != null && rp >= RELAY ? "<div class=\"relaynote\"><span class=\"relay\">" + t("relayTag") + "</span>" + t(kind === "dock" ? "relayCardRet" : "relayCardBor", { o: tenth(rp) }) + "</div>" : "") +
+      (rp != null ? "<div class=\"relaynote\"><span class=\"relay\">" + t("relayTag") + "</span>" + t(kind === "dock" ? "relayCardRet" : "relayCardBor", { o: tenth(rp) }) + "</div>" : "") +
+      (un ? "<div class=\"usualnote\">" + un + "</div>" : "") +
       "<div class=\"facts two\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + "<small>/ " + s.cap + "</small>" : "–") + "</div><div class=\"k\">" + t("fBikes") + "</div></div>" +
       "<div class=\"fact\"><div class=\"v\">" + (docks != null ? docks : "–") + "</div><div class=\"k\">" + t("fDocks") + "</div></div></div>" + (observed ? aheadStrip(v, i, kind) : "") +
       "<div class=\"chart\"><div class=\"cap\">" + t("chartCap") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(lang === "zh" ? "；" : "; ") + "</div>" : "") +
@@ -889,8 +1031,14 @@
   // ---------- data ----------
   function loadLive() {
     var url = /claude\.ai$/.test(location.hostname) || location.protocol === "file:" ? "state.json" : "state.json?t=" + Math.floor(Date.now() / 60000);
-    return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (s) { live = s; merged = null; if (errKind === "load") showErr(null); if (mode === "live") render(); loadFresh(); })
+    var cached = false;                                                                        // served by sw.js from its last copy
+    return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); cached = !!r.headers.get("X-BTB-Cache"); return r.json(); })
+      .then(function (s) {
+        live = s; merged = null;
+        if (cached) showErr("load", t("stale", { t: s.snapshot_at.slice(11) })); else if (errKind === "load") showErr(null);
+        if (mode === "live") { render(); if (cached) $("status").classList.add("stale"); }
+        loadFresh();
+      })
       .catch(function (e) {
         if (live) { showErr("load", t("stale", { t: live.snapshot_at.slice(11) })); if (mode === "live") { render(); $("status").classList.add("stale"); } }
         else { showErr("load", t("loadFail", { e: e.message })); $("statusText").textContent = "–"; }
@@ -970,6 +1118,16 @@
   $("toSel").addEventListener("change", function (e) { choosePlace(tab === "dock" ? "dest" : "goal", e.target.value); });
   $("fab").addEventListener("click", function () { if (tab !== "rider" && tab !== "dock") setTab("rider"); locate(tab === "dock" ? "dest" : "origin"); });
   $("more").addEventListener("click", function () { nearN = nearN > 8 ? 8 : 16; var v = view(); if (v) renderRider(v); });
+  $("relayOnly").addEventListener("click", function () { relayOnly = !relayOnly; var v = view(); if (v) { renderRider(v); drawStations(v); } });
+  $("remPlace").addEventListener("change", function (e) { remSave(function (r) { r.place = e.target.value; }); });
+  $("remEnd").addEventListener("change", function (e) { remSave(function (r) { r.end = parseInt(e.target.value, 10); }); });
+  $("remDays").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; var d = parseInt(b.getAttribute("data-d"), 10); remSave(function (r) { var k = r.days.indexOf(d); if (k >= 0) r.days.splice(k, 1); else r.days.push(d); }); });
+  $("remIcs").addEventListener("click", function () {
+    var v = view(); if (!v) return; var r = remState(v); if (!r.days.length) return;
+    var url = URL.createObjectURL(new Blob([icsText(r)], { type: "text/calendar;charset=utf-8" })), a = document.createElement("a");
+    a.href = url; a.download = "beat-the-bell-reminders.ics"; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500); toast(t("remindDone"));
+  });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (picking) setPicking(null); else if (selected != null) select(null); } });
 
   // ---------- start ----------
@@ -996,4 +1154,7 @@
   setInterval(function () { if (mode === "live") loadLive(); }, 60000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden && mode === "live") loadFresh(); });
   setInterval(function () { var v = view(); if (v && mode === "live") { renderBell(v); renderStatus(v); } }, 15000);
+  // the installed app opens from its own copy and shows the last data it had when the network is gone (sw.js)
+  // (a preview without its own origin refuses service workers; ?sw=1 turns it on over http for the checks, ?sw=0 off)
+  if ("serviceWorker" in navigator && qs.sw !== "0" && (location.protocol === "https:" || qs.sw === "1")) { try { navigator.serviceWorker.register("sw.js").catch(function () {}); } catch (e) {} }
 })();

@@ -58,6 +58,16 @@
             <h2><span id="hLater"></span><span class="sub" id="hLaterSub"></span></h2>
             <div class="laterbar" id="later"></div>
           </section>
+          <details class="remind" id="remindBox" hidden>
+            <summary id="remindOpen"></summary>
+            <div class="remform">
+              <label class="sel"><span class="k" id="remPlaceK"></span><select id="remPlace"></select></label>
+              <label class="sel"><span class="k" id="remEndK"></span><select id="remEnd"></select></label>
+              <div class="origin" role="group"><span class="k" id="remDaysK"></span><span class="opts" id="remDays"></span></div>
+              <div class="remgo"><button class="btn primary" id="remIcs" type="button"></button><a class="btn" id="remGcal" target="_blank" rel="noopener" hidden></a></div>
+              <p class="note" id="remNote"></p>
+            </div>
+          </details>
           <section class="usual" id="usualSec" hidden>
             <h2><span id="hUsual"></span><span class="sub" id="hUsualSub"></span></h2>
             <div class="usualbar" id="usual"></div>
@@ -67,7 +77,7 @@
             <ol class="rows" id="favs"></ol>
           </section>
           <section>
-            <h2><span id="hNear"></span><span class="sub" id="hNearSub"></span></h2>
+            <h2><span id="hNear"></span><span class="h2r"><span class="sub" id="hNearSub"></span><button class="opt chip" id="relayOnly" type="button" aria-pressed="false" hidden></button></span></h2>
             <ol class="rows" id="near"></ol>
             <button class="more" id="more" type="button"></button>
           </section>
