@@ -3,7 +3,7 @@
 // with no signal at all (the page then says how old its counts are). Replays, map tiles and the operator's counts
 // are left to the network. site/build.py writes this file to docs/sw.js with the version of the page in CACHE.
 var CACHE = "btb-__VERSION__";
-var SHELL = ["./", "vendor/leaflet.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "places.json", "outlook.json", "state.json"];
+var SHELL = ["./", "vendor/leaflet.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "places.json", "outlook.json", "policy.json", "state.json"];
 var WAIT = 4000;   // milliseconds to wait for the network before the last copy is used
 
 self.addEventListener("install", function (e) {

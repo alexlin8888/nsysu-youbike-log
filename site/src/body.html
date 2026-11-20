@@ -25,6 +25,9 @@
       <button role="tab" id="tabDock" type="button" aria-selected="false" aria-controls="paneRider">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20.5V10a7 7 0 0 1 14 0v10.5"/><path d="M12 7.5v9M8.6 13.2l3.4 3.4 3.4-3.4"/></svg>
         <span id="tabDockT">還車</span></button>
+      <button role="tab" id="tabPolicy" type="button" aria-selected="false" aria-controls="panePolicy">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16"/><circle cx="9" cy="6.5" r="2" fill="var(--surface)"/><circle cx="15.5" cy="12" r="2" fill="var(--surface)"/><circle cx="7.5" cy="17.5" r="2" fill="var(--surface)"/></svg>
+        <span id="tabPolicyT">政策</span></button>
       <button role="tab" id="tabOps" type="button" aria-selected="false" aria-controls="paneOps">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9.5h-11zM13.5 9.5h4.2l3.3 3.5V16h-7.5"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
         <span id="tabOpsT">調度</span></button>
@@ -80,6 +83,31 @@
             <h2><span id="hNear"></span><span class="h2r"><span class="sub" id="hNearSub"></span><button class="opt chip" id="relayOnly" type="button" aria-pressed="false" hidden></button></span></h2>
             <ol class="rows" id="near"></ol>
             <button class="more" id="more" type="button"></button>
+          </section>
+        </div>
+
+        <div id="panePolicy" class="pane policy" role="tabpanel" aria-labelledby="tabPolicy" hidden>
+          <section>
+            <h2><span id="hPolWhy"></span><span class="sub" id="hPolWhySub"></span></h2>
+            <p class="lead" id="polWhy"></p>
+            <div class="polchart" id="polChart"></div>
+          </section>
+          <section>
+            <h2><span id="hPolIdea"></span><span class="ptag" id="polIdeaTag"></span></h2>
+            <p class="lead" id="polIdea"></p>
+            <ul class="polfacts" id="polFacts"></ul>
+            <div class="polnow" id="polNow"></div>
+          </section>
+          <section>
+            <h2><span id="hPolSim"></span><span class="sub" id="hPolSimSub"></span></h2>
+            <div class="sim" id="simEve"></div>
+            <div class="sim" id="simMorn"></div>
+            <p class="note" id="polSimNote"></p>
+          </section>
+          <section>
+            <h2 id="hPolAsk"></h2>
+            <ol class="asks" id="polAsks"></ol>
+            <a class="btn" id="polBrief" href="policy_brief.pdf" target="_blank" rel="noopener"></a>
           </section>
         </div>
 

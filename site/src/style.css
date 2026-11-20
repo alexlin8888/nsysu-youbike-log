@@ -105,8 +105,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* ---------- tabs: a segmented control in the side column, a bottom bar on phones ---------- */
 .tabs { display: flex; gap: 2px; margin: 12px var(--pad) 0; margin-left: max(var(--pad), var(--safe-l)); background: var(--surface-3); border-radius: 12px; padding: 3px; }
-.tabs button { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; background: transparent; border-radius: 9px; min-height: 36px; padding: 6px 8px;
-  font-size: 14px; color: var(--ink-2); }
+.tabs button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; background: transparent; border-radius: 9px; min-height: 50px; padding: 6px 4px;
+  font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }   /* icon above label: five tabs fit the side column in either language */
 .tabs button svg { flex: none; }
 .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(16, 32, 47, 0.16); }
 
@@ -428,3 +428,48 @@ h2 .h2r { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .remform .note { margin: 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { .remind summary::before { transition: none; } }
 
+
+/* ---------- the Policy tab ---------- */
+.policy .lead { font-size: 14.5px; line-height: 1.75; margin: 4px 0 12px; max-width: 34em; }
+.ptag { font-size: 11.5px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; padding: 0 6px; line-height: 1.6; }
+.polchart svg { display: block; width: 100%; height: auto; }
+.polchart .dotkey { margin-top: 6px; }
+.polfacts { list-style: none; padding: 0; margin: 4px 0 6px; }
+.polfacts li { padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.65; }
+.polfacts li:last-child { border-bottom: 1px solid var(--line); }
+.polfacts b { font-weight: 700; }
+.polnow h3, .sim h3 { font-size: 14.5px; font-weight: 700; margin: 16px 0 2px; }
+.polnow .sub { font-size: 12.5px; color: var(--ink-3); margin: 0 0 6px; }
+.tablewrap { overflow-x: auto; margin: 0 calc(-1 * var(--pad)); padding: 0 var(--pad); }
+.poltab { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.poltab th, .poltab td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.poltab thead th { font-size: 11.5px; font-weight: 500; color: var(--ink-3); padding-top: 4px; white-space: normal; vertical-align: bottom; line-height: 1.3; }
+.poltab th:first-child, .poltab td:first-child { padding-left: 0; }
+.poltab .n { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.poltab tbody th { font-weight: 600; }
+.poltab td.pay { color: var(--accent); font-weight: 700; }
+.poltab td.no { color: var(--ink-3); }
+.poltab tbody tr { cursor: pointer; }
+.poltab tbody tr:hover { background: var(--surface-2); }
+.polsum { font-size: 14px; font-weight: 600; margin: 10px 0 0; }
+.sim { border: 1px solid var(--line); border-radius: 14px; padding: 2px 14px 12px; margin: 10px 0 12px; background: var(--surface); }
+.simrow { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 0; }
+.simrow .k { font-size: 12.5px; color: var(--ink-2); }
+.simrow .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.simout { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.simout .big { font: 700 28px/1.1 var(--font-num); color: var(--accent); }
+.simout .big.asis { color: var(--ink-2); font-size: 22px; }
+.simout .unit { font-size: 12.5px; color: var(--ink-3); margin: 6px 0 4px; }
+.simbar { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) 2.6em; align-items: center; gap: 8px; margin: 3px 0; }
+.simbar .k { font-size: 12.5px; color: var(--ink-2); }
+.simbar .track { height: 10px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.simbar .track i { display: block; height: 100%; border-radius: 3px; }
+.simbar.now .track i { background: var(--ink-3); }
+.simbar.try .track i { background: var(--accent); }
+.simbar .v { font: 600 14px/1 var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+.simout .meta { font-size: 12.5px; color: var(--ink-2); margin-top: 6px; min-height: 1em; }
+.sim .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.6; }
+.asks { padding-left: 1.3em; margin: 6px 0 14px; }
+.asks li { margin: 9px 0; font-size: 14px; line-height: 1.7; max-width: 34em; }
+.asks b { font-weight: 700; }
+.legend .rm { display: inline-block; font-size: 10px; font-weight: 700; line-height: 1.4; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 3px; flex: none; }

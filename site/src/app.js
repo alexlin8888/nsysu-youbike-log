@@ -20,6 +20,7 @@
   var selected = null, fitted = false, nearN = 8, pendingSno = null, wantSlot = null, errKind = null, daysKey = "";
   var origin = HOME, goal = null, dest = HOME, picking = null, favs = [];                     // borrow: from origin, optionally on to goal; return: at dest. picking: which of them the next map click sets
   var when = { rider: { kind: "now" }, dock: { kind: "plus", min: 10 } }, usual = null;      // when the rider leaves (borrow) or rides in (return)
+  var policy = null, polSel = { er: 0, et: 0, es: 0, mr: 0, mt: 0 };                          // policy.json (final_policy.py); the what-if chosen on the Policy tab
   var PL = null, fresh = null, merged = null, track = null, placesKey = "";                   // places.json; counts read from the operator a minute ago; the live view with them; track.json
   var A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";               // state.json packs a chance or a count into one character
   var SURE = { bike: 0.9, dock: 0.95 }, MAYBE = { bike: 0.6, dock: 0.7 }, G = 12, MARGIN = 0.5, RELAY = 0.6, RELAY_OFF = 0.5; // the chances behind "should" and "may"; G: minutes charged if the second station fails too; MARGIN: minutes given up for a surer station; RELAY(_OFF): the chance that turns a reward mark on (off)
@@ -145,9 +146,16 @@
   function ramp(p) { if (p == null) return tok("--r0"); return tok(p < 0.1 ? "--r0" : p < 0.3 ? "--r1" : p < 0.5 ? "--r2" : p < 0.75 ? "--r3" : "--r4"); }
   function rampU(u) { if (u == null) return tok("--r0"); return tok(u < 0.5 ? "--r0" : u < 2 ? "--r1" : u < 5 ? "--r2" : u < 10 ? "--r3" : "--r4"); }
   function keyOf() { return horizon === 30 ? "p30" : horizon === 60 ? "p60" : "unmet"; }
+  // The Policy tab: before noon the voucher for borrowing at a rack about to fill, after it the one for returning to a rack
+  // about to run empty. polChance: the chance demo_state.py wrote for that, or null outside the campus corridor.
+  function polMorning(v) { return v.t_min < 12 * 60; }
+  function polChance(v, i) { var r = v.reward; if (!r || v.bikes[i] == null) return null; var x = (polMorning(v) ? r.full : r.empty)[i]; return x == null ? null : x; }
+  function polPaysNow(v, i) { return polMorning(v) ? v.docks && v.docks[i] === 0 : v.bikes[i] === 0; }
+  function polPays(v, i) { var c = polChance(v, i); return c != null && (polPaysNow(v, i) || c >= 0.5); }
   function fillOf(v, i) {
     if (v.bikes[i] == null) return tok("--r0");
     if (tab === "ops") return horizon === 90 ? rampU(v.unmet ? v.unmet[i] : null) : ramp(v[keyOf()][i]);
+    if (tab === "policy") return ramp(polChance(v, i));
     return tok(FILL[look(v, i).cls]);
   }
   function inkOn(hex) {
@@ -159,18 +167,110 @@
   function badge(v, i) { return "<span class=\"badge " + look(v, i).cls + "\">" + countOf(v, i) + "</span>"; }
   function badgeAt(v, i, kind, at) { var h = have(v, i, kind); return "<span class=\"badge " + verdict(v, i, kind, at).cls + "\">" + (v.bikes[i] == null || h == null ? "–" : h) + "</span>"; }
 
+  // ---------- the Policy tab: why the voucher comes too late, the predictive voucher, what-ifs, what we suggest ----------
+  // policy.json comes from analysis/code/final_reward.py and final_policy.py (12 held-out teaching days, the chain of the page)
+  var REWARD_STEPS = [0, 0.25, 0.5, 1];
+  function polRow(win, a, b, c) {
+    var g = policy[win].grid, k;
+    for (k = 0; k < g.length; k++) if (g[k][0] === REWARD_STEPS[a] && g[k][1] === b && (win === "morning" || g[k][2] === c)) return g[k];
+    return null;
+  }
+  function polCut(win, a, b, c) { var r = polRow(win, a, b, c); return r ? 1 - r[win === "evening" ? 3 : 2] / policy[win].base : 0; }
+  function pct(x) { return Math.round(100 * x); }
+  function polChart(rows) {
+    // bars: bikes returned to campus per half hour, split by what each voucher rule pays; under them, how often the racks are empty
+    var W = 340, top = 20, bh = 90, gap = 3, n = rows.length, bw = (W - gap * (n - 1)) / n, max = 0, h = "", yH = top + bh + 13, yC = top + bh + 30, yS = top + bh + 36;
+    rows.forEach(function (r) { max = Math.max(max, r[2]); });
+    max = 25 * Math.ceil(max / 25);   // gridlines every 25 bikes, labelled at the right end where the evening bars are low
+    var font = " font-family=\"Barlow Semi Condensed, sans-serif\"";
+    for (var g = 25; g <= max; g += 25) {
+      var gy = (top + bh - bh * g / max).toFixed(1);
+      h += "<line x1=\"0\" x2=\"" + W + "\" y1=\"" + gy + "\" y2=\"" + gy + "\" stroke=\"" + tok("--line") + "\" stroke-width=\"1\"/>" +
+        "<text x=\"" + W + "\" y=\"" + (gy - 3) + "\" text-anchor=\"end\" font-size=\"9.5\" fill=\"" + tok("--ink-3") + "\"" + font + ">" + g + "</text>";
+    }
+    rows.forEach(function (r, k) {
+      var x = k * (bw + gap), y = top + bh;
+      var part = function (val, fill) { if (val <= 0) return ""; var hh = bh * val / max; y -= hh; return "<rect x=\"" + x.toFixed(1) + "\" y=\"" + y.toFixed(1) + "\" width=\"" + bw.toFixed(1) + "\" height=\"" + Math.max(0.6, hh - 0.8).toFixed(1) + "\" rx=\"1.5\" fill=\"" + tok(fill) + "\"/>"; };
+      h += part(r[3], "--ink-2") + part(Math.max(0, r[4] - r[3]), "--accent") + part(Math.max(0, r[2] - r[4]), "--line-2");
+      var e = r[1], cell = e < 0.1 ? "--r0" : e < 0.3 ? "--r1" : e < 0.45 ? "--r2" : "--r3";
+      h += "<rect x=\"" + x.toFixed(1) + "\" y=\"" + yS + "\" width=\"" + bw.toFixed(1) + "\" height=\"18\" rx=\"2\" fill=\"" + tok(cell) + "\"/>" +
+        "<text x=\"" + (x + bw / 2).toFixed(1) + "\" y=\"" + (yS + 12.5) + "\" text-anchor=\"middle\" font-size=\"9.5\" fill=\"" + inkOn(tok(cell)) + "\"" + font + ">" + pct(e) + "</text>";
+      if (r[0].slice(3) === "00") h += "<text x=\"" + x.toFixed(1) + "\" y=\"" + yH + "\" font-size=\"10\" fill=\"" + tok("--ink-3") + "\"" + font + ">" + r[0] + "</text>";
+    });
+    var bell = rows.map(function (r) { return r[0]; }).indexOf("17:00");
+    if (bell > 0) { var bx = (bell * (bw + gap) - gap / 2).toFixed(1); h += "<line x1=\"" + bx + "\" x2=\"" + bx + "\" y1=\"" + (top - 2) + "\" y2=\"" + (yS + 18) + "\" stroke=\"" + tok("--ink") + "\" stroke-width=\"1.2\" stroke-dasharray=\"3 3\"/>"; }
+    var cap = function (y, s2) { return "<text x=\"0\" y=\"" + y + "\" font-size=\"11\" fill=\"" + tok("--ink-2") + "\">" + esc(s2) + "</text>"; };
+    var aria = rows.map(function (r) { return r[0] + " " + Math.round(r[2]) + ", " + pct(r[1]) + "%"; }).join("; ");
+    return "<svg viewBox=\"0 0 " + W + " " + (yS + 20) + "\" role=\"img\" aria-label=\"" + esc(t("polChartRet") + " / " + t("polChartEmpty") + ": " + aria) + "\">" + cap(11, t("polChartRet")) + cap(yC, t("polChartEmpty") + " (%)") + h + "</svg>" +
+      "<div class=\"dotkey\"><span><i style=\"background:var(--ink-2)\"></i>" + t("polKeyNow") + "</span><span><i style=\"background:var(--accent)\"></i>" + t("polKeyPred") + "</span><span><i style=\"background:var(--line-2)\"></i>" + t("polKeyNone") + "</span></div>";
+  }
+  function polNow(v) {
+    var head = "<h3>" + t("polNowH", { t: v.snapshot_at.slice(11) }) + "</h3>";
+    if (v.offday) return head + "<p class=\"note\">" + t("polNowOff") + "</p>";
+    if (!v.reward) return head + "<p class=\"note\">" + t(v.t_min < 6 * 60 || v.t_min >= 23 * 60 ? "polNowNight" : "polNowOld") + "</p>";
+    var morn = polMorning(v), rows = "", a = 0, b = 0, list = [];
+    v.stations.forEach(function (s, i) { if (isCampus(s) && polChance(v, i) != null) list.push(i); });
+    list.sort(function (x, y) { return polChance(v, y) - polChance(v, x); });
+    list.forEach(function (i) {
+      var now = polPaysNow(v, i), pays = polPays(v, i), ch = polChance(v, i); if (now) a++; if (pays) b++;
+      var cell = function (on) { return "<td class=\"" + (on ? "pay" : "no") + "\">" + t(on ? "polPay" : "polNoPay") + "</td>"; };
+      rows += "<tr data-i=\"" + i + "\"><th scope=\"row\">" + esc(shortName(v.stations[i])) + "</th><td class=\"n\">" + (morn ? v.docks[i] : v.bikes[i]) + "</td><td class=\"n\">" + pct(ch) + "%</td>" + cell(now) + cell(pays) + "</tr>";
+    });
+    var sum = b === 0 ? t(morn ? "polNowNoneM" : "polNowNone") : t("polNowSum", { a: a, b: b });
+    return head + "<p class=\"sub\">" + t(morn ? "polNowMorn" : "polNowEve") + "</p><div class=\"tablewrap\"><table class=\"poltab\"><thead><tr><th scope=\"col\">" + t("polNowSt") + "</th><th scope=\"col\" class=\"n\">" + t(morn ? "polNowDocks" : "polNowBikes") + "</th><th scope=\"col\" class=\"n\">" + t(morn ? "polNowChF" : "polNowChE") +
+      "</th><th scope=\"col\">" + t("polNowRule") + "</th><th scope=\"col\">" + t("polNowPred") + "</th></tr></thead><tbody>" + rows + "</tbody></table></div><p class=\"polsum\">" + sum + "</p>";
+  }
+  function simSeg(key, label, opts) {
+    return "<div class=\"simrow\"><span class=\"k\">" + t(label) + "</span><span class=\"opts\" role=\"group\" aria-label=\"" + esc(t(label)) + "\" data-k=\"" + key + "\">" +
+      opts.map(function (o, k) { return "<button class=\"opt chip\" type=\"button\" data-v=\"" + k + "\" aria-pressed=\"" + (polSel[key] === k ? "true" : "false") + "\">" + t(o) + "</button>"; }).join("") + "</span></div>";
+  }
+  function simOut(win) {
+    var e = win === "evening", r = e ? polRow("evening", polSel.er, polSel.et, polSel.es) : polRow("morning", polSel.mr, polSel.mt), r0 = e ? polRow("evening", 0, 0, 0) : polRow("morning", 0, 0);
+    if (!r || !r0) return "";
+    var lost = r[e ? 3 : 2], base = policy[win].base, cut = 1 - lost / base, more = Math.round(r[e ? 4 : 3] - r0[e ? 4 : 3]), same = cut < 0.005;
+    // today's count and the count with the chosen measures as two bars on one scale; a voucher costs NT$5
+    var bar = function (label, val, cls) {
+      return "<div class=\"simbar " + cls + "\"><span class=\"k\">" + t(label) + "</span><span class=\"track\"><i style=\"width:" + (100 * val / base).toFixed(1) + "%\"></i></span><span class=\"v\">" + Math.round(val) + "</span></div>";
+    };
+    return "<div class=\"simout\" aria-live=\"polite\"><div class=\"big" + (same ? " asis" : "") + "\">" + (same ? t("simAsIs") : t("simCut", { p: pct(cut) })) + "</div>" +
+      "<div class=\"unit\">" + t(e ? "simUnit" : "simUnitM") + "</div>" + bar("simNow", base, "now") + (same ? "" : bar("simTry", lost, "try")) +
+      "<div class=\"meta\">" + (same ? t("simPick") : (e ? polSel.er : polSel.mr) > 0 ? t("simVouch", { n: more, c: 5 * more }) : "") + "</div></div>";
+  }
+  function renderPolicy(v) {
+    $("hPolWhy").textContent = t("polWhyH"); $("hPolIdea").textContent = t("polIdeaH"); $("polIdeaTag").textContent = t("polIdeaTag");
+    $("hPolSim").textContent = t("polSimH"); $("hPolAsk").textContent = t("polAskH"); $("polBrief").textContent = t("polBrief"); $("polIdea").textContent = t("polIdea");
+    if (!policy) { $("polWhy").textContent = t("loading"); return; }
+    var P = policy, all = 0, pre = 0, prePaid = 0, peak = [];
+    P.timing.forEach(function (r) { all += r[2]; if (mins(r[0]) < 17 * 60) { pre += r[2]; prePaid += r[3]; } if (r[0] === "17:30" || r[0] === "18:00") peak.push(r[1]); });
+    $("hPolWhySub").textContent = t("polWhySub", { n: P.days }); $("hPolSimSub").textContent = t("polSimSub", { n: P.days });
+    // the two half hours from 17:30 to 18:30, in which campus stations are empty more than half of the time
+    $("polWhy").textContent = t("polWhy", { e: pct(peak.reduce(function (s2, x) { return s2 + x; }, 0) / Math.max(1, peak.length)), a: pct(pre / all), b: pct(prePaid / pre) });
+    $("polChart").innerHTML = polChart(P.timing);
+    var w = P.warning;
+    $("polFacts").innerHTML = "<li>" + t("polFactCatch", { n: P.days, a: pct(w.flagged), m: w.lead_median }) + "</li><li>" + t("polFactRight", { p: pct(w.precision), b: pct(w.base) }) + "</li><li>" +
+      t("polFactWorth", { v: w.worth.toFixed(2), w: (w.worth_now != null ? w.worth_now : w.worth).toFixed(2), u: (w.worth_unpaid != null ? w.worth_unpaid : 0).toFixed(2) }) + "</li>";
+    $("polNow").innerHTML = polNow(v);
+    Array.prototype.forEach.call($("polNow").querySelectorAll("tr[data-i]"), function (tr) { tr.addEventListener("click", function () { var i = +tr.getAttribute("data-i"); select(i); focusStation(view().stations[i]); }); });
+    $("simEve").innerHTML = "<h3>" + t("simEveH") + "</h3>" + simSeg("er", "simReward", ["simR0", "simR1", "simR2", "simR3"]) + simSeg("et", "simTruck", ["simT0", "simT1", "simT2"]) + simSeg("es", "simStag", ["simS0", "simS1"]) + simOut("evening") +
+      "<p class=\"note\">" + t("simRef", { a: pct(P.sim.evening[0]), b: pct(P.sim.evening[1]) }) + "</p>";
+    $("simMorn").innerHTML = "<h3>" + t("simMornH") + "</h3>" + simSeg("mr", "simRewardM", ["simR0", "simR1", "simR2", "simR3"]) + simSeg("mt", "simTruckM", ["simM0", "simM1"]) + simOut("morning");
+    $("polSimNote").textContent = t("polSimNote");
+    var r2 = polRow("evening", 2, 0, 0), r0 = polRow("evening", 0, 0, 0), extra = Math.round(r2[4] - r0[4]);
+    $("polAsks").innerHTML = "<li>" + t("ask1", { a: pct(polCut("evening", 2, 0, 0)), n: extra, c: 5 * extra }) + "</li><li>" + t("ask2", { b: pct(polCut("evening", 0, 2, 0)), c: pct(polCut("morning", 0, 1)), d: pct(polCut("evening", 2, 2, 0)) }) + "</li><li>" + t("ask3", { e: pct(polCut("evening", 0, 0, 1)) }) + "</li>";
+  }
+
   // ---------- current view: live state or one replay slot, in one shape ----------
   function view() {
     if (mode === "replay" && replay) {
       var sl = replay.slots[slot];
-      return { meta: replay, stations: replay.stations, snapshot_at: sl.snapshot_at, t_min: sl.t_min, offday: replay.offday, in_window: true, next_bell: sl.next_bell, ahead: sl.ahead || null,
+      return { meta: replay, stations: replay.stations, snapshot_at: sl.snapshot_at, t_min: sl.t_min, offday: replay.offday, in_window: true, next_bell: sl.next_bell, ahead: sl.ahead || null, reward: sl.reward || null,
                totals: sl.totals, plans: sl.plans, bikes: sl.bikes, docks: sl.docks || null, status: null, age: null, p30: sl.p30, p60: sl.p60, unmet: sl.unmet,
                history: function (i) { return replay.slots.slice(0, slot + 1).map(function (x) { return [x.t_min, x.bikes[i]]; }); } };
     }
     if (!live) return null;
     var key = live.snapshot_at + "|" + (fresh ? fresh.min : "");
     if (merged && merged.key === key) return merged.v;
-    var v = { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell, ahead: live.ahead || null,
+    var v = { meta: live, stations: live.stations, snapshot_at: live.snapshot_at, t_min: live.t_min, offday: live.offday, in_window: live.in_window, next_bell: live.next_bell, ahead: live.ahead || null, reward: live.reward || null,
               totals: live.totals, plans: live.plans, bikes: live.bikes, docks: live.docks, status: live.status, age: live.age, p30: live.p30, p60: live.p60, unmet: live.unmet,
               history: function (i) { var t0 = mins(live.history.from), st = live.history.step; return (live.history.bikes[i] || []).map(function (b, k) { return [t0 + k * st, b]; }); } };
     // Counts read from the operator a moment ago replace the snapshot's for the stations around campus. state.json carries
@@ -287,11 +387,11 @@
   function glyphHtml(s, v, i, sel) {
     var big = map.getZoom() >= 15, R = glyphR(s.cap), S = 2 * R + 6, c = S / 2, observed = v.bikes[i] != null, fill = fillOf(v, i);
     var star = favs.indexOf(s.sno) >= 0 && map.getZoom() >= 14 ? "<span class=\"star\">★</span>" : "";
-    var rl = (tab === "rider" || tab === "dock") && observed && relayOn(v, i, need(), arriveMin(v, i));
+    var rl = (tab === "rider" || tab === "dock") ? observed && relayOn(v, i, need(), arriveMin(v, i)) : tab === "policy" && observed && polPays(v, i);
     var open = "<div class=\"glyph" + (sel ? " sel" : "") + (rl ? " paid" : "") + "\"><svg width=\"" + S + "\" height=\"" + S + "\" viewBox=\"0 0 " + S + " " + S + "\">";
     if (!big) {
       // zoomed out: a dot sized by the station; stations with nothing to report stay small and faint
-      var calm = !observed || (tab === "ops" && fill === tok("--r0")), r = calm ? R * 0.8 : R;
+      var calm = !observed || ((tab === "ops" || tab === "policy") && fill === tok("--r0")), r = calm ? R * 0.8 : R;
       return open + "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + r.toFixed(1) + "\" fill=\"" + fill + "\" fill-opacity=\"" + (observed ? 1 : 0.6) + "\" stroke=\"" + (isCampus(s) ? tok("--accent") : calm ? tok("--line-2") : tok("--surface")) + "\" stroke-width=\"" + (isCampus(s) ? 2 : 1.2) + "\"" + (observed ? "" : " stroke-dasharray=\"2 2\"") + "/></svg>" + star + "</div>";
     }
     var rr = R - 3.5, frac = observed && s.cap > 0 ? Math.max(0, Math.min(1, v.bikes[i] / s.cap)) : 0, arc = "";
@@ -974,6 +1074,11 @@
   }
   function renderLegend(v) {
     var el = $("legend");
+    if (tab === "policy") {
+      el.innerHTML = "<div class=\"ttl\">" + t(polMorning(v) ? "legPolF" : "legPolE") + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\"><span>0%</span><span>50%</span><span>100%</span></div>" +
+        "<div class=\"it\"><span class=\"rm\">+5</span>" + t("legPolPaid") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
+      return;
+    }
     if (tab === "ops") {
       var ends = horizon === 90 ? "<span>0</span><span>5</span><span>10+</span>" : "<span>0%</span><span>50%</span><span>100%</span>";
       el.innerHTML = "<div class=\"ttl\">" + (horizon === 90 ? t("legU", { h: v.meta.horizon_min }) : t("legP", { h: horizon })) + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\">" + ends + "</div>" +
@@ -1003,7 +1108,7 @@
   function renderChrome() {
     document.title = t("docTitle"); $("where").textContent = t("where");
     $("mLive").textContent = t("live"); $("mReplay").textContent = t("replay"); $("modeSeg").setAttribute("aria-label", t("modeLabel"));
-    $("tabRiderT").textContent = t("tabRider"); $("tabDockT").textContent = t("tabDock"); $("tabOpsT").textContent = t("tabOps"); $("tabAboutT").textContent = t("tabAbout");
+    $("tabRiderT").textContent = t("tabRider"); $("tabDockT").textContent = t("tabDock"); $("tabPolicyT").textContent = t("tabPolicy"); $("tabOpsT").textContent = t("tabOps"); $("tabAboutT").textContent = t("tabAbout");
     $("grip").setAttribute("aria-label", t("gripLabel")); $("fab").setAttribute("aria-label", t("fabLabel")); $("fab").title = t("fabLabel");
     $("slider").setAttribute("aria-label", t("sliderLabel")); $("replayDay").setAttribute("aria-label", t("dayLabel")); $("horizonSeg").setAttribute("aria-label", t("horizonLabel"));
     $("map").setAttribute("aria-label", t("mapLabel")); $("langSeg").setAttribute("aria-label", t("langK"));
@@ -1013,22 +1118,23 @@
   }
   function applyTab() {
     shell.setAttribute("data-tab", tab);
-    [["rider", "tabRider"], ["dock", "tabDock"], ["ops", "tabOps"], ["about", "tabAbout"]].forEach(function (x) {
+    [["rider", "tabRider"], ["dock", "tabDock"], ["policy", "tabPolicy"], ["ops", "tabOps"], ["about", "tabAbout"]].forEach(function (x) {
       $(x[1]).setAttribute("aria-selected", tab === x[0] ? "true" : "false"); $(x[1]).tabIndex = tab === x[0] ? 0 : -1; });
-    $("paneRider").hidden = tab !== "rider" && tab !== "dock"; $("paneOps").hidden = tab !== "ops"; $("paneAbout").hidden = tab !== "about";
+    $("paneRider").hidden = tab !== "rider" && tab !== "dock"; $("panePolicy").hidden = tab !== "policy"; $("paneOps").hidden = tab !== "ops"; $("paneAbout").hidden = tab !== "about";
     $("paneRider").setAttribute("aria-labelledby", tab === "dock" ? "tabDock" : "tabRider");
   }
   function setTab(x) {
     var was = tab; tab = x; store("btb-tab", x); applyTab();
     if (picking) setPicking(null);
     if (x === "ops" && was !== "ops") { var v = view(); if (v && map.getZoom() >= 15 && selected == null) fitArea(v); }
+    if (x === "policy" && was === "ops") { var w = view(); if (w && selected == null) fitCampus(w, true); }
     if (isPhone()) setSheet(sheetState === "peek" ? "half" : sheetState);
     scroller.scrollTop = 0; render();
   }
   function render() {
     var v = view(); renderChrome(); renderAbout(v); if (!v) return;
     renderStatus(v); renderBell(v); renderCard(v); renderLegend(v);
-    if (tab === "rider" || tab === "dock") renderRider(v); else if (tab === "ops") { renderKpis(v); renderPlans(v); renderRisk(v); }
+    if (tab === "rider" || tab === "dock") renderRider(v); else if (tab === "ops") { renderKpis(v); renderPlans(v); renderRisk(v); } else if (tab === "policy") renderPolicy(v);
     drawStations(v); drawRoute(v); drawOrigin();
     if (mode === "replay") {
       var sl = $("slider"); sl.max = replay.slots.length - 1; sl.value = slot; $("sliderT").textContent = replay.slots[slot].snapshot_at.slice(11);
@@ -1117,11 +1223,17 @@
   $("lEn").addEventListener("click", function () { setLang("en"); });
   $("tabRider").addEventListener("click", function () { setTab("rider"); });
   $("tabDock").addEventListener("click", function () { setTab("dock"); });
+  $("tabPolicy").addEventListener("click", function () { setTab("policy"); });
   $("tabOps").addEventListener("click", function () { setTab("ops"); });
   $("tabAbout").addEventListener("click", function () { setTab("about"); });
   $("tabs").addEventListener("keydown", function (e) {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    var order = ["rider", "dock", "ops", "about"], k = (order.indexOf(tab) + (e.key === "ArrowRight" ? 1 : 3)) % 4; setTab(order[k]); $({ rider: "tabRider", dock: "tabDock", ops: "tabOps", about: "tabAbout" }[order[k]]).focus();
+    var order = ["rider", "dock", "policy", "ops", "about"], k = (order.indexOf(tab) + (e.key === "ArrowRight" ? 1 : order.length - 1)) % order.length; setTab(order[k]);
+    $({ rider: "tabRider", dock: "tabDock", policy: "tabPolicy", ops: "tabOps", about: "tabAbout" }[order[k]]).focus();
+  });
+  $("panePolicy").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-v]"), g = b && b.closest("[data-k]"); if (!g) return;
+    polSel[g.getAttribute("data-k")] = parseInt(b.getAttribute("data-v"), 10); var v = view(); if (v) renderPolicy(v);
   });
   $("h30").addEventListener("click", function () { setH(30); });
   $("h60").addEventListener("click", function () { setH(60); });
@@ -1152,7 +1264,7 @@
   var qs = {}; location.search.replace(/^\?/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) qs[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ""); });
   var savedLang = qs.lang || load("btb-lang", null);
   if (savedLang === "en") { lang = "en"; $("lZh").setAttribute("aria-pressed", "false"); $("lEn").setAttribute("aria-pressed", "true"); root.lang = "en"; }
-  var savedTab = qs.tab || load("btb-tab", "rider"); tab = savedTab === "ops" || savedTab === "about" || savedTab === "dock" ? savedTab : "rider"; applyTab();
+  var savedTab = qs.tab || load("btb-tab", "rider"); tab = ["ops", "about", "dock", "policy"].indexOf(savedTab) >= 0 ? savedTab : "rider"; applyTab();
   if (/^#\d{6,}$/.test(location.hash)) pendingSno = location.hash.slice(1);
   if (/^\d\d:\d\d$/.test(qs.t || "")) wantSlot = mins(qs.t);
 
@@ -1167,6 +1279,7 @@
     origin = at(qs.from) || at(load("btb-origin", null)) || origin; goal = at(qs.to) || (qs.to === "" ? null : at(load("btb-goal", null))); dest = at(qs.to) || at(load("btb-dest", null)) || dest;
     if (view()) render(); else syncPlaces();
   }).catch(function () {});
+  fetch("policy.json", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { policy = j; if (tab === "policy") render(); }).catch(function () {});
   fetch("track.json", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { track = j; renderTrack(); }).catch(function () {});
   loadDays().then(function () { if (/^\d{4}-\d\d-\d\d$/.test(qs.replay || "") && replayDays.indexOf(qs.replay) >= 0) { replayDay = qs.replay; fillDays(); setMode("replay"); } });
   setInterval(function () { if (mode === "live") loadLive(); }, 60000);

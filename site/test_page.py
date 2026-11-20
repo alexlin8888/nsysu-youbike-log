@@ -661,6 +661,67 @@ async def check_ops(browser, size):
     await ctx.close()
 
 
+async def check_policy(browser, size):
+    # The Policy tab on a replay moment with stations about to run empty (Wed 11 Nov, 16:30; the day is pinned in replays_keep.txt)
+    ctx, page = await new_page(browser, size, query="?replay=2026-11-11&t=16:30&tab=policy")
+    await page.wait_for_timeout(1200)
+    await open_sheet(page, size)
+    why = await page.inner_text("#polWhy")
+    record(size, "policy tab opens by link and says why the voucher comes too late", await page.get_attribute("#tabPolicy", "aria-selected") == "true" and await page.get_attribute("#panePolicy", "hidden") is None
+           and re.search(r"\d+% 在 17:00 前就到了", why) is not None and "友愛接力" in why and "17:30 到 18:30" in why, why[:90])
+    rects = await page.locator("#polChart svg rect").count(); grid = await page.locator("#polChart svg line").count()
+    record(size, "the chart draws twelve half hours with gridlines and a key", rects >= 24 and grid >= 2 and await page.locator("#polChart .dotkey span").count() == 3, f"{rects} rects, {grid} lines")
+    facts = [f.replace("\n", " ") for f in await page.locator("#polFacts li").all_inner_texts()]
+    record(size, "three measured facts about the predictive rule", len(facts) == 3 and all(re.search(r"\d", f) for f in facts), " / ".join(f[:30] for f in facts))
+    head = await page.inner_text("#polNow h3")
+    chances = [int(x.strip("%")) for x in await page.locator("#polNow tbody td:nth-child(3)").all_inner_texts()]
+    stock = [int(x) for x in await page.locator("#polNow tbody td:nth-child(2)").all_inner_texts()]
+    pred = [c == "送 5 元" for c in await page.locator("#polNow tbody td:nth-child(5)").all_inner_texts()]
+    now = [c == "送 5 元" for c in await page.locator("#polNow tbody td:nth-child(4)").all_inner_texts()]
+    record(size, "the table lists the eight campus stations, likeliest to empty first", head == "16:30 的校內站" and len(chances) == 8 and chances == sorted(chances, reverse=True), f"{head} {chances}")
+    rule_ok = all(p == (s == 0 or c >= 50) for p, s, c in zip(pred, stock, chances)) and all(n == (s == 0) for n, s in zip(now, stock))
+    summ = await page.inner_text("#polNow .polsum")
+    record(size, "each rule pays where it should and the summary counts it", rule_ok and any(pred) and summ == f"現行規則付給 {sum(now)} 站，預測型付給 {sum(pred)} 站。", f"{summ} | pred {pred}")
+    marks = await page.locator(".glyph.paid").count()
+    record(size, "the map marks the stations the predictive rule pays", marks >= sum(pred), f"{marks} marks, {sum(pred)} campus rows")
+    b0 = await page.inner_text("#simEve .simout .big"); hint = await page.inner_text("#simEve .simout .meta")
+    await page.click("#simEve [data-k=er] [data-v='2']"); await page.wait_for_timeout(300)
+    b1 = await page.inner_text("#simEve .simout .big"); v1 = await page.locator("#simEve .simbar .v").all_inner_texts(); meta1 = await page.inner_text("#simEve .simout .meta")
+    await page.click("#simEve [data-k=et] [data-v='2']"); await page.wait_for_timeout(300)
+    b2 = await page.inner_text("#simEve .simout .big")
+    cut = lambda s: int(re.search(r"\d+", s).group()) if re.fullmatch(r"少 \d+%", s) else -1
+    record(size, "what-if starts at today, and each measure adds to the cut", b0 == "現況" and "選上面" in hint and 0 < cut(b1) < cut(b2) and len(v1) == 2 and int(v1[1]) < int(v1[0])
+           and re.search(r"多發約 \d+ 張（面額約 \d+ 元）", meta1) is not None and await page.get_attribute("#simEve [data-k=er] [data-v='2']", "aria-pressed") == "true", f"{b0} -> {b1} -> {b2}; {v1}; {meta1}")
+    await page.click("#simMorn [data-k=mt] [data-v='1']"); await page.wait_for_timeout(300)
+    record(size, "the morning card answers its own levers", cut(await page.inner_text("#simMorn .simout .big")) > 0 and await page.inner_text("#simEve .simout .big") == b2)
+    asks = [a.replace("\n", " ") for a in await page.locator("#polAsks li").all_inner_texts()]
+    brief = await page.evaluate("fetch(document.getElementById('polBrief').href, { method: 'HEAD' }).then(r => [r.status, r.headers.get('content-type')])")
+    record(size, "three suggestions with numbers and a brief to download", len(asks) == 3 and all(re.search(r"\d+%", a) for a in asks) and brief[0] == 200 and "pdf" in (brief[1] or ""), f"{[a[:16] for a in asks]} {brief}")
+    if not is_phone(size) and SIZES[size][0] >= 1100:
+        leg = (await page.inner_text("#legend")).replace("\n", " ")
+        record(size, "the legend explains the policy map", "40 分鐘內借空的機率" in leg and "+5" in leg, leg[:60])
+    await page.locator("#polNow tbody tr").first.click(); await page.wait_for_timeout(500)
+    record(size, "a table row opens its station", await page.get_attribute("#cardWrap", "hidden") is None and not page.errors, "; ".join(page.errors[:2]))
+    await ctx.close()
+    # the morning reads the other voucher: borrowing at a rack about to fill
+    ctx, page = await new_page(browser, size, query="?replay=2026-11-11&t=09:10&tab=policy")
+    await page.wait_for_timeout(1200)
+    await open_sheet(page, size)
+    cols = await page.inner_text("#polNow thead")
+    pred = sum(c == "送 5 元" for c in await page.locator("#polNow tbody td:nth-child(5)").all_inner_texts())
+    now = sum(c == "送 5 元" for c in await page.locator("#polNow tbody td:nth-child(4)").all_inner_texts())
+    record(size, "in the morning the table is about full racks", "空位" in cols and "40 分內會滿" in cols and pred >= now >= 1, f"{cols.replace(chr(10), ' ')} | today {now}, predictive {pred}")
+    await ctx.close()
+    # English, and nothing wider than the screen
+    ctx, page = await new_page(browser, size, query="?replay=2026-11-11&t=16:30&tab=policy&lang=en")
+    await page.wait_for_timeout(1200)
+    await open_sheet(page, size)
+    left = await page.evaluate("Array.from(document.querySelectorAll('#panePolicy *, #legend *')).filter(e => e.children.length === 0 && /[\\u4e00-\\u9fff]/.test(e.textContent)).map(e => e.textContent.trim()).filter(Boolean).slice(0, 4)")
+    over = await page.evaluate("[document.documentElement.scrollWidth, window.innerWidth, (() => { const w = document.querySelector('#polNow .tablewrap'); return w ? w.scrollWidth - w.clientWidth : 0; })()]")
+    record(size, "English policy tab, no wider than the screen", not left and await page.inner_text("#tabPolicyT") == "Policy" and over[0] <= over[1] and over[2] <= 1, f"{left} {over}")
+    await ctx.close()
+
+
 async def check_replay(browser, size):
     ctx, page = await new_page(browser, size, state_patch=fresh, perms=["clipboard-read", "clipboard-write"])
     await page.click("#mReplay"); await page.wait_for_timeout(1500)
@@ -725,13 +786,13 @@ async def check_about_lang(browser, size):
            and "出發前 20 分鐘預估的找車時間，平均誤差 1.5 分鐘" in rec and "共檢查 60 次。還車平均多花的時間：照網站建議 1.4 分鐘" in rec
            and "早上在山下借車 共檢查 80 次。照網站建議、看官方 App 找最近有車的站、直接走到最近的站，平均都約 2.9 分鐘借到車" in rec.replace("，共", " 共"), rec[:260])
     await page.click("#lEn"); await page.wait_for_timeout(400)
-    en = [await page.inner_text(i) for i in ("#tabRiderT", "#tabDockT", "#tabOpsT", "#tabAboutT", "#mLive")]
+    en = [await page.inner_text(i) for i in ("#tabRiderT", "#tabDockT", "#tabPolicyT", "#tabOpsT", "#tabAboutT", "#mLive")]
     left_about = await page.evaluate("Array.from(document.querySelectorAll('#paneAbout section:not(.langrow) *')).filter(e => e.children.length === 0 && /[\\u4e00-\\u9fff]/.test(e.textContent)).map(e => e.textContent.trim()).filter(Boolean).slice(0, 4)")
     leftover = []
     for tab_id in ("#tabRider", "#tabDock"):
         await page.click(tab_id); await page.wait_for_timeout(300)
         leftover += await page.evaluate("Array.from(document.querySelectorAll('#paneRider *, .tabs *, .top *, #legend *')).filter(e => e.children.length === 0 && /[\\u4e00-\\u9fff]/.test(e.textContent)).map(e => e.textContent.trim()).filter(Boolean).slice(0, 6)")
-    record(size, "English: tabs, header, borrow, return and about are translated", en == ["Borrow", "Return", "Dispatch", "About", "Live"] and not leftover and not left_about, f"{en} leftover {leftover} {left_about}")
+    record(size, "English: tabs, header, borrow, return and about are translated", en == ["Borrow", "Return", "Policy", "Dispatch", "About", "Live"] and not leftover and not left_about, f"{en} leftover {leftover} {left_about}")
     await reload(page)
     record(size, "language choice is remembered", await page.inner_text("#tabRiderT") == "Borrow" and await page.evaluate("document.documentElement.lang") == "en")
     await page.click("#tabAbout"); await page.wait_for_timeout(300); await open_sheet(page, size)
@@ -836,12 +897,13 @@ async def check_keyboard_a11y(browser, size):
     ctx, page = await new_page(browser, size, state_patch=fresh)
     unnamed = await page.evaluate("""Array.from(document.querySelectorAll('button, a, input, select')).filter(e => e.offsetParent !== null && !(e.textContent.trim() || e.getAttribute('aria-label') || e.getAttribute('title') || e.getAttribute('placeholder'))).map(e => e.id || e.className)""")
     record(size, "every control has a name for screen readers", not unnamed, str(unnamed))
-    await page.focus("#tabRider"); await page.keyboard.press("ArrowRight"); await page.wait_for_timeout(250)
-    dock = await page.get_attribute("#tabDock", "aria-selected")
-    await page.keyboard.press("ArrowRight"); await page.wait_for_timeout(250)
-    ops = await page.get_attribute("#tabOps", "aria-selected")
-    await page.keyboard.press("ArrowLeft"); await page.wait_for_timeout(200); await page.keyboard.press("ArrowLeft"); await page.wait_for_timeout(250)
-    record(size, "arrow keys move between the four tabs", dock == "true" and ops == "true" and await page.get_attribute("#tabRider", "aria-selected") == "true")
+    await page.focus("#tabRider"); seen = []
+    for _ in range(4):
+        await page.keyboard.press("ArrowRight"); await page.wait_for_timeout(250)
+        seen.append(await page.evaluate("document.querySelector('.tabs [aria-selected=true]').id"))
+    for _ in range(4):
+        await page.keyboard.press("ArrowLeft"); await page.wait_for_timeout(200)
+    record(size, "arrow keys move through the five tabs in order", seen == ["tabDock", "tabPolicy", "tabOps", "tabAbout"] and await page.get_attribute("#tabRider", "aria-selected") == "true", str(seen))
     await open_sheet(page, size)
     await page.locator("#near .row").first.focus(); await page.keyboard.press("Enter"); await page.wait_for_timeout(400)
     record(size, "Enter on a focused row opens the station", await page.get_attribute("#cardWrap", "hidden") is None)
@@ -904,7 +966,7 @@ async def check_sheet(browser, size):
 async def check_assets(browser, size):
     ctx, page = await new_page(browser, size)
     base = BASE.rsplit("/", 1)[0] + "/"
-    out = await page.evaluate("""async (base) => { const r = {}; for (const f of ['manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'vendor/leaflet.js', 'replays.json', 'outlook.json', 'places.json']) { const x = await fetch(base + f); r[f] = x.status; } const m = await (await fetch(base + 'manifest.webmanifest')).json(); r.name = m.short_name; r.icons = m.icons.length; r.display = m.display; return r; }""", base)
+    out = await page.evaluate("""async (base) => { const r = {}; for (const f of ['manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'vendor/leaflet.js', 'replays.json', 'outlook.json', 'places.json', 'policy.json']) { const x = await fetch(base + f); r[f] = x.status; } const m = await (await fetch(base + 'manifest.webmanifest')).json(); r.name = m.short_name; r.icons = m.icons.length; r.display = m.display; return r; }""", base)
     record(size, "manifest, icons, the map library and the data files are served", all(v == 200 for k, v in out.items() if isinstance(v, int) and k != "icons") and out["display"] == "standalone" and out["icons"] == 3, json.dumps(out))
     head = await page.evaluate("[document.querySelector('link[rel=manifest]') !== null, document.querySelector('meta[name=theme-color]').content, document.querySelector('meta[name=viewport]').content, document.title]")
     record(size, "page declares its manifest, theme colour and viewport", head[0] and head[1] == "#10202f" and "viewport-fit=cover" in head[2], str(head))
@@ -921,7 +983,7 @@ async def main():
         await ctx.close()
         print("replay day used for the plan checks:", REPLAY_DAY, flush=True)
         for size in SIZES:
-            for check in (check_load, check_rider, check_when, check_trip, check_dock, check_relay, check_remind, check_search, check_origin, check_fresh, check_ops, check_replay, check_about_lang, check_labels, check_states, check_keyboard_a11y):
+            for check in (check_load, check_rider, check_when, check_trip, check_dock, check_relay, check_remind, check_search, check_origin, check_fresh, check_ops, check_policy, check_replay, check_about_lang, check_labels, check_states, check_keyboard_a11y):
                 try:
                     await check(browser, size)
                 except Exception as exc:  # noqa: BLE001 - a crashed check is a failed check
