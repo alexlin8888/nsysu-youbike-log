@@ -185,7 +185,8 @@ async def check_rider(browser, size):
         cells = await page.evaluate("Array.from(document.querySelectorAll('#card .ahead .cell')).map(c => c.querySelector('b').textContent + '@' + c.querySelector('span').textContent)")
         record(size, "card lists the next 90 minutes in five steps", (len(cells) == 5 and all(re.fullmatch(r"\d+@\d\d:\d\d", c) for c in cells)) if has_ahead else not cells, " ".join(cells) if has_ahead else "snapshot without a forecast block")
         chart = await page.locator("#card .chart svg path").count(); dashed = await page.locator("#card .chart svg path[stroke-dasharray]").count()
-        record(size, "card draws today's stock and the forecast", chart >= 2 and dashed == (1 if has_ahead else 0), f"{chart} paths, {dashed} dashed")
+        night = datetime.now(TZ).hour < 6 or (datetime.now(TZ).hour == 6 and datetime.now(TZ).minute < 10)   # today's line starts at 06:00
+        record(size, "card draws today's stock and the forecast", (chart >= 2 or night and chart == 0) and dashed == (1 if has_ahead else 0), f"{chart} paths, {dashed} dashed")
         box = await page.locator("#card").bounding_box()
         record(size, "card fits the panel width", box["x"] >= 0 and box["x"] + box["width"] <= SIZES[size][0] + 1, str(box))
         # favourite on, visible in the list, survives a reload, favourite off
