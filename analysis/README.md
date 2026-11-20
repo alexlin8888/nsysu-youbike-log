@@ -55,6 +55,7 @@
 | `final_spread.py` | 期末報告：頁面上每個出發時間的 10 個點（第一站就有車／換一站 8 分鐘內／超過 8 分鐘）準不準。現在出發照建議的站算；晚一點出發假設出發時再看一次車數，各站一起空的程度用 θ 調整（θ = 0.6，留一個測試日選出）。出發前 0–60 分鐘的預告對照實際，算可靠度與 Brier 分數，基準是平常那個時段的比例和常數 |
 | `final_docks.py` | 期末報告：早上校內個別站停滿，車柱挪一挪有沒有用。生滅鏈從每三小時的實際車數往後推，算每站每天預期借不到、還不了的次數；容量正負 12 個車柱，一次移一個車柱的貪婪搜尋，以及體育館移 0–10 個車柱到工學院 |
 | `final_labels.py` | 期末報告：頁面上四種站的標示（有車／車不多／快沒車／現在沒車，還車是有空位／空位不多／快停滿／現在停滿）各有多少比例說對。12 個測試日、校園到捷運之間 19 站、07:00–21:50，每個快照往後 1 到 30 分鐘到站，用頁面同一套機率分類，再查紀錄器到站那一刻有沒有車。「有車」99%、「車不多」81%、「快沒車」62%、「現在沒車」22% 在到站前補進車 |
+| `final_policy.py` | 期末報告（初步試算）：查車資訊救不了整個校園一起沒車，所以改問學校、市府或營運商能改什麼。8 個校內站、12 個測試日，用生滅鏈比較：一半的課提早或延後 10 分鐘下課、16:00–17:00 多 20 或 40 人把車騎回校內（類似友愛騎乘券或 Citi Bike 的 Bike Angels）、16:50 補 20 台或 16:50 與 17:50 各補 20 台；早上比較體育館移 4 個車柱給工學院、9–11 點多 20 或 40 人從滿站借走、9 點載走 20 台。絕對數字偏粗，只看相對效果 |
 | `final_rider.py` | 期末報告的第一版檢驗，只看第一站：照頁面的建議走，到站時真的有車（有位子）的比例。三個難用的時段各自重播 12 個測試日，對照最近的站、看現在車數挑站（至少 K 台）與生滅鏈門檻；另外輸出三個時段沒車、沒位子的比例（`hard_hours.csv`） |
 | `final_avail.py` | 期末報告：生滅鏈的「k 步後有車／有位子」機率，對照保序校正與疊在鏈上的 LightGBM（兩個區塊交叉擬合）；輸出 `avail_oof.npz` 給 `final_rider.py --avail` |
 | `nsysu_sim.py` | 期末報告：中山的卡車模擬。需求由後段資料估的速率抽 Poisson，規劃器用前段資料估的速率；早上與傍晚各一個班次，比較不派車、1–3 台只補校園走廊的車、1 或 3 台不限區域的車 |
@@ -104,6 +105,7 @@ python code/final_relay.py ../data results/final/rates_fit_to_1029 results/final
 python code/final_city.py ../data results/final/city
 python code/final_spread.py ../data results/final/rates_fit_to_1029 ../docs/places.json results/final/spread
 python code/final_labels.py ../data results/final/rates_fit_to_1029 results/final/labels
+python code/final_policy.py ../data results/final/rates_fit_to_1029 results/final/policy
 python code/final_docks.py ../data results/final/rates_fit_to_1029 results/final/docks
 python code/demo_places.py ../data ../docs/places.json                            # 需要網路；地點或站有變動時才重跑
 python code/final_time.py ../data results/final/rates_fit_to_1029 ../docs/places.json results/final/time

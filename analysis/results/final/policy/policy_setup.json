@@ -1,0 +1,49 @@
+{
+ "fit_end": "2026-10-29",
+ "test_days": [
+  "2026-10-30",
+  "2026-11-02",
+  "2026-11-03",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06",
+  "2026-11-09",
+  "2026-11-10",
+  "2026-11-11",
+  "2026-11-12",
+  "2026-11-13",
+  "2026-11-16"
+ ],
+ "stations": [
+  "Library",
+  "Xiziwan Hall",
+  "Engineering",
+  "Materials",
+  "Social Sci.",
+  "Gymnasium",
+  "Marine Eng.",
+  "Marine Res."
+ ],
+ "weights_evening": {
+  "Library": 0.163,
+  "Xiziwan Hall": 0.081,
+  "Engineering": 0.088,
+  "Materials": 0.151,
+  "Social Sci.": 0.169,
+  "Gymnasium": 0.191,
+  "Marine Eng.": 0.102,
+  "Marine Res.": 0.055
+ },
+ "weights_morning": {
+  "Library": 0.032,
+  "Xiziwan Hall": 0.047,
+  "Engineering": 0.13,
+  "Materials": 0.177,
+  "Social Sci.": 0.165,
+  "Gymnasium": 0.103,
+  "Marine Eng.": 0.238,
+  "Marine Res.": 0.108
+ },
+ "baseline_evening": 191.10546687756403,
+ "baseline_morning": 75.35739472367446
+}
