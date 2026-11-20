@@ -96,6 +96,12 @@ def fresh(data):
     data["snapshot_at"] = (datetime.now(TZ) - timedelta(minutes=3)).strftime("%Y-%m-%d %H:%M")
 
 
+def with_forecast(data):
+    """The logger writes no forecast block between 23:00 and 06:00; a check that plants its own chances gets an empty one."""
+    if not data.get("ahead"):
+        data["ahead"] = {k: [""] * len(data["stations"]) for k in ("bike", "bikes", "dock", "docks")}
+
+
 def is_phone(size):
     return SIZES[size][0] < 768
 
@@ -217,7 +223,7 @@ async def check_when(browser, size):
     why1 = await page.locator("#best .why").first.inner_text()
     colours1 = await page.evaluate("Array.from(document.querySelectorAll('#near .badge')).map(b => b.className).join(' ')")
     pressed = await page.locator("#whenChips .opt[aria-pressed=true]").all_inner_texts()
-    record(size, "choosing the class end re-reads every station for that time", why0 == "建議借車站" and why1 == "17:00 下課後的建議借車站" and pressed == ["17:00 下課"] and colours0 != colours1, f"{why0} -> {why1}")
+    record(size, "choosing the class end re-reads every station for that time", why0 == "去這站借" and why1 == "17:00 下課後去這站借" and pressed == ["17:00 下課"] and colours0 != colours1, f"{why0} -> {why1}")
     name = await page.locator("#best button.pick .nm").first.inner_text()
     box = await page.locator("#best button.pick").first.bounding_box()
     record(size, "the suggestion fits its column", box is not None and box["x"] >= 0 and box["x"] + box["width"] <= SIZES[size][0] + 0.5, f"x {box['x']:.0f}, width {box['width']:.0f}")
@@ -228,8 +234,8 @@ async def check_when(browser, size):
     ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:40")
     await open_sheet(page, size)
     tip = await page.inner_text("#tip") if await page.get_attribute("#tip", "hidden") is None else ""
-    TIP = (r"現在出發，約 \d+ 分鐘借到車。一小時內出發，找車都不太會超過 8 分鐘。|現在出發，約 \d+ 分鐘借到車。\d\d:\d\d 出發，有 \d+% 機率要找超過 8 分鐘。|"
-           r"現在出發，有 \d+% 機率要找超過 8 分鐘。|沒車的話，再走 \d+ 分鐘|比較保險的選擇|比較近")
+    TIP = (r"現在出發，\d+ 分鐘借到車；一小時內出發都借得到。|現在出發，\d+ 分鐘借到車。最晚 \d\d:\d\d 出發，\d\d:\d\d 以後要找比較久。|現在就走：\d+ 分鐘借到車，\d\d:\d\d 以後要找比較久。|"
+           r"現在附近車少，找車會比較久。|沒車就再走 \d+ 分鐘|最穩的是|比較近")
     record(size, "a line under the suggestion says when to leave, or what to do after a miss", bool(re.search(TIP, tip)), tip)
     cols = await page.evaluate("""(() => { const svg = document.querySelector('#later svg'); if (!svg) return null;
         const dots = Array.from(svg.querySelectorAll('circle.d')).map(c => [parseFloat(c.getAttribute('cx')), c.classList[1]]);
@@ -247,13 +253,14 @@ async def check_when(browser, size):
     record(size, "columns with long searches are labelled with their count, and the key names the three colours",
            cols and all((c["label"] == f"{10 * c['r']}%") if c["r"] else c["label"] == "" for c in cols) and key == ["到第一站就借到", "換一站，8 分鐘內借到", "要找超過 8 分鐘"] and aria.count("出發：") == 7,
            " ".join(c["label"] or "-" for c in cols or []) + f" | {key}")
-    soon = re.search(r"(\d\d:\d\d) 出發，有 (\d+)% 機率要找超過 8 分鐘", tip); slow = re.search(r"^現在出發，有 (\d+)% 機率", tip)
-    if cols and soon:                       # the line names the first departure the dots mark with a long search
-        k = ticks.index(soon.group(1)) if soon.group(1) in ticks else -1
-        record(size, "the line and the dots agree", k > 0 and 10 * cols[k]["r"] == int(soon.group(2)) and all(c["r"] == 0 for c in cols[:k]), f"{tip} | " + " ".join(str(c["r"]) for c in cols))
+    soon = re.search(r"(?:最晚 (\d\d:\d\d) 出發，)?(\d\d:\d\d) 以後要找比較久", tip); slow = tip.startswith("現在附近車少")
+    if cols and soon:                       # "leave by" names the last departure before the dots mark a long search
+        k = ticks.index(soon.group(2)) if soon.group(2) in ticks else -1
+        by_ok = soon.group(1) is None and k == 1 or soon.group(1) is not None and k > 1 and ticks[k - 1] == soon.group(1)
+        record(size, "the line and the dots agree", k > 0 and by_ok and cols[k]["r"] >= 1 and all(c["r"] == 0 for c in cols[:k]), f"{tip} | " + " ".join(str(c["r"]) for c in cols))
     elif cols and slow:
-        record(size, "the line and the dots agree", 10 * cols[0]["r"] == int(slow.group(1)), f"{tip} | " + " ".join(str(c["r"]) for c in cols))
-    elif cols and "都不太會超過 8 分鐘" in tip:
+        record(size, "the line and the dots agree", cols[0]["r"] >= 1, f"{tip} | " + " ".join(str(c["r"]) for c in cols))
+    elif cols and "一小時內出發都借得到" in tip:
         record(size, "the line and the dots agree", all(c["r"] == 0 for c in cols), f"{tip} | " + " ".join(str(c["r"]) for c in cols))
     sub = await page.locator("#near .row .sub").first.inner_text()
     record(size, "each row says when its answer changes", bool(re.search(r"\d\d:\d\d", " ".join(await page.locator("#near .row .sub").all_inner_texts()))), sub.replace("\n", " "))
@@ -287,9 +294,9 @@ async def check_trip(browser, size):
     vals = [await page.input_value("#fromSel"), await page.input_value("#toSel")]
     whys = await page.locator("#best button.pick .why").all_inner_texts(); names = await page.locator("#best button.pick .nm").all_inner_texts()
     tip = await page.inner_text("#tip") if await page.get_attribute("#tip", "hidden") is None else ""
-    m = re.search(r"全程約 (\d+) 分鐘；走路要 (\d+) 分鐘", tip)
+    m = re.search(r"全程 (\d+) 分鐘；走路要 (\d+) 分鐘", tip)
     record(size, "a link sets the start and the destination", vals == ["cm", "krt"], str(vals))
-    record(size, "a trip names a station to borrow at and one to return at", whys == ["建議借車站", "建議還車站"] and len(set(names)) == 2, " / ".join(f"{a}: {b}" for a, b in zip(whys, names)))
+    record(size, "a trip names a station to borrow at and one to return at", whys == ["去這站借", "還到這站"] and len(set(names)) == 2, " / ".join(f"{a}: {b}" for a, b in zip(whys, names)))
     record(size, "the trip is timed door to door against walking", m is not None and 3 <= int(m.group(1)) < int(m.group(2)) <= 40, tip)
     cells = await page.locator("#best button.pick .walk").all_inner_texts()
     back = int(re.search(r"\d+", cells[1]).group()) if len(cells) == 2 else 99
@@ -302,7 +309,7 @@ async def check_trip(browser, size):
     # the destination can be dropped again
     await page.select_option("#toSel", ""); await page.wait_for_timeout(400)
     whys = await page.locator("#best button.pick .why").all_inner_texts(); tip = await page.inner_text("#tip") if await page.get_attribute("#tip", "hidden") is None else ""
-    record(size, "without a destination only the borrowing station is named", whys == ["建議借車站"] and "全程" not in tip and await page.locator(".originicon").count() == 1, f"{whys} | {tip}")
+    record(size, "without a destination only the borrowing station is named", whys == ["去這站借"] and "全程" not in tip and await page.locator(".originicon").count() == 1, f"{whys} | {tip}")
     record(size, "trip view runs without script errors", not page.errors, "; ".join(page.errors[:3]))
     await ctx.close()
     # two buildings next to each other: walking wins, and no ride is proposed that ends where it started
@@ -326,7 +333,7 @@ async def check_dock(browser, size):
     record(size, "return: asks where to and when", await page.get_attribute("#tabDock", "aria-selected") == "true" and await page.get_attribute("#paneRider", "hidden") is None and labels == ["目的地", "抵達時間"] and one and chips == ["現在", "10 分後", "20 分後", "30 分後"] and pressed == ["10 分後"], f"{labels} {chips} {pressed}")
     why = await page.locator("#best .why").first.inner_text(); sub = (await page.locator("#best .pick .sub").first.inner_text()).replace("\n", " ")
     cls = await page.locator("#best .pick .badge").first.get_attribute("class")
-    record(size, "return: one station is suggested, with its free docks", await page.locator("#best button.pick").count() == 1 and why == "建議還車站" and "空位" in sub and " x" not in cls, f"{sub} [{cls}]")
+    record(size, "return: one station is suggested, with its free docks", await page.locator("#best button.pick").count() == 1 and why == "還到這站" and "空位" in sub and " x" not in cls, f"{sub} [{cls}]")
     hard = await page.locator("#near .badge.x, #near .badge.r, #near .badge.y").count()
     rows = await page.locator("#near .row").count(); lab = await page.locator("#near .row .walk small").first.inner_text()
     record(size, "return: the list is ordered from the destination and marks the stations filling up", rows == 8 and lab == "走到目的地" and hard >= 1, f"{rows} rows, {hard} filling up, '{lab}'")
@@ -351,7 +358,7 @@ async def check_dock(browser, size):
     first = await page.locator("#near .row .nm").first.inner_text()
     tip = await page.inner_text("#tip") if await page.get_attribute("#tip", "hidden") is None else ""
     weak = "weak" in (await page.locator("#best button.pick").first.get_attribute("class")) or "poor" in (await page.locator("#best button.pick").first.get_attribute("class"))
-    record(size, "return: an uncertain station comes with the next one to try", (bool(re.search(r"停滿的話，再騎 \d+ 分鐘到|想穩一點可以還", tip)) if weak else True) and await page.input_value("#toSel") == "eng", f"{first} | {'uncertain' if weak else 'sure'} | {tip}")
+    record(size, "return: an uncertain station comes with the next one to try", (bool(re.search(r"停滿就再騎 \d+ 分鐘到|最穩的是還到", tip)) if weak else True) and await page.input_value("#toSel") == "eng", f"{first} | {'uncertain' if weak else 'sure'} | {tip}")
     # the borrow tab keeps its own places and time
     await page.click("#tabRider"); await page.wait_for_timeout(400)
     await open_sheet(page, size)
@@ -370,14 +377,14 @@ async def check_relay(browser, size):
     tags = await page.locator("#near .row .relay").all_inner_texts()
     rows = await page.evaluate("Array.from(document.querySelectorAll('#near .row')).filter(r => r.querySelector('.relay')).map(r => r.querySelector('.nm').childNodes[0].textContent)")
     tip = (await page.inner_text("#tip")).replace("\n", " ") if await page.get_attribute("#tip", "hidden") is None else ""
-    record(size, "return, evening: stations likely to be empty on arrival carry the reward mark", len(tags) >= 1 and set(tags) == {"+5 元"} and bool(re.search(r"有 \d0% 機率是空站.*可得 5 元騎乘券", tip)), f"{len(tags)} marked: {' / '.join(rows[:3])} | {tip}")
+    record(size, "return, evening: stations likely to be empty on arrival carry the reward mark", len(tags) >= 1 and set(tags) == {"+5 元"} and bool(re.search(r"騎到時還是空站.*可拿 5 元騎乘券", tip)), f"{len(tags)} marked: {' / '.join(rows[:3])} | {tip}")
     boxes = await page.evaluate("Array.from(document.querySelectorAll('.relay')).map(e => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right)]; })")
     record(size, "the mark stays inside its row", all(a >= 0 and b <= SIZES[size][0] for a, b in boxes) and (await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")), str(boxes[:4]))
     if rows:
         await page.locator("#near .row", has=page.locator(".relay")).first.click(); await page.wait_for_timeout(450)
         note = (await page.inner_text("#card .relaynote")).replace("\n", " ") if await page.locator("#card .relaynote").count() else ""
         bikes = (await page.locator("#card .fact .v").first.inner_text()).replace("\n", "").replace(" ", "")
-        record(size, "the card of a marked station explains the reward", "機率是空站" in note and "5 元騎乘券" in note, f"{bikes} bikes | {note}")
+        record(size, "the card of a marked station explains the reward", "還是空站" in note and "5 元騎乘券" in note, f"{bikes} bikes | {note}")
     record(size, "reward marks (return) run without script errors", not page.errors, "; ".join(page.errors[:3]))
     await ctx.close()
     # a morning rental on campus: the racks are full, and borrowing from a full one pays
@@ -386,7 +393,7 @@ async def check_relay(browser, size):
     tag = await page.locator("#best button.pick .relay").count()
     tip = (await page.inner_text("#tip")).replace("\n", " ") if await page.get_attribute("#tip", "hidden") is None else ""
     docks = await page.evaluate("(() => { const r = Array.from(document.querySelectorAll('#near .row')).find(r => r.querySelector('.relay')); return r ? r.querySelector('.nm').childNodes[0].textContent : ''; })()")
-    record(size, "borrow, morning: a station likely to be full on arrival carries the reward mark", tag == 1 and bool(re.search(r"有 \d0% 機率是滿站.*可得 5 元騎乘券", tip)), f"{docks} | {tip}")
+    record(size, "borrow, morning: a station likely to be full on arrival carries the reward mark", tag == 1 and bool(re.search(r"走到時還是滿站.*可拿 5 元騎乘券", tip)), f"{docks} | {tip}")
     chip = page.locator("#relayOnly")
     marked = await page.locator("#map .glyph.paid").count(); rows0 = await page.locator("#near .row").count()
     record(size, "the reward filter is offered when a marked station is near", await chip.is_visible() and await chip.inner_text() == "只看 +5 元的站" and await chip.get_attribute("aria-pressed") == "false" and marked >= 1, f"{marked} marked on the map")
@@ -402,9 +409,7 @@ async def check_relay(browser, size):
     now = datetime.now(TZ); start = 600 if not (600 <= now.hour * 60 + now.minute <= 640) else 840
 
     def wavering(data):
-        fresh(data); data["t_min"] = start; data["in_window"] = True
-        if not data.get("ahead"):
-            return
+        fresh(data); data["t_min"] = start; data["in_window"] = True; with_forecast(data)
         i = next(n for n, x in enumerate(data["stations"]) if x["sno"] == "501209052")
         data["bikes"][i] = 1; data["docks"][i] = data["stations"][i]["cap"] - 1
         if data.get("base"):
@@ -423,9 +428,7 @@ async def check_relay(browser, size):
     seen = {}
     for minute in (420, 300):
         def emptied(data, minute=minute):
-            fresh(data); data["t_min"] = minute; data["in_window"] = True
-            if not data.get("ahead"):
-                return
+            fresh(data); data["t_min"] = minute; data["in_window"] = True; with_forecast(data)
             i = next(n for n, x in enumerate(data["stations"]) if x["sno"] == "501209052")
             data["bikes"][i] = 0; data["docks"][i] = data["stations"][i]["cap"]
             for key, ch in (("bike", "0"), ("bikes", "0"), ("dock", "_")):
@@ -605,7 +608,7 @@ async def check_fresh(browser, size):
     record(size, "fresh counts are announced with their time", bool(re.search(r"車數更新於 \d\d:\d\d", sub)) and bool(re.search(r"\d\d:\d\d 更新", status)) and "stale" not in (await page.get_attribute("#status", "class")), f"{sub} | {status}")
     rows = await page.evaluate("Object.fromEntries(Array.from(document.querySelectorAll('#near .row')).map(r => [r.querySelector('.nm').textContent.replace('★', ''), [r.querySelector('.badge').textContent, r.querySelector('.badge').className, r.querySelector('.sub').textContent]]))")
     lib, eng = rows.get("中山大學圖資大樓"), rows.get("中山大學工學院")
-    record(size, "a station that has just emptied reads empty at once", lib is not None and lib[0] == "0" and (" x" in lib[1] or " r" in lib[1]) and bool(re.search(r"現在沒車|很可能沒車", lib[2])), str(lib))
+    record(size, "a station that has just emptied reads empty at once", lib is not None and lib[0] == "0" and (" x" in lib[1] or " r" in lib[1]) and bool(re.search(r"現在沒車|快沒車", lib[2])), str(lib))
     record(size, "a station's new count replaces the snapshot's", eng is not None and eng[0] == "7", str(eng))
     best = await page.locator("#best button.pick .nm").first.inner_text()
     record(size, "the suggestion moves off the station that emptied", best != "中山大學圖資大樓", best)
@@ -647,7 +650,7 @@ async def check_ops(browser, size):
     await page.click("#h60"); await page.wait_for_timeout(300)
     h_60 = await page.inner_text("#hRisk"); head_60 = await page.inner_text("#riskHead")
     record(size, "30 / 60 min / shortfall switch re-ranks the list and renames its column", h_u == "借不到車最多的站" and "預估借不到車人次" in head_u and vals_u == sorted(vals_u, reverse=True)
-           and h_60 == "最可能沒車的站" and "60 分鐘內沒車的機率" in head_60 and await page.get_attribute("#h60", "aria-pressed") == "true", f"{h_u} / {head_u} | {h_60} / {head_60}")
+           and h_60 == "沒車風險最高的站" and "60 分鐘內沒車的機率" in head_60 and await page.get_attribute("#h60", "aria-pressed") == "true", f"{h_u} / {head_u} | {h_60} / {head_60}")
     await page.locator("#risk li").first.click(); await page.wait_for_timeout(500)
     record(size, "a risk row opens its station", await page.get_attribute("#cardWrap", "hidden") is None)
     plan_or_note = await page.locator("#plans .stop").count() + await page.locator("#plans .empty").count()
@@ -759,11 +762,11 @@ async def check_about_lang(browser, size):
 
 
 async def check_labels(browser, size):
-    # "likely" only at the two ends; in between the chance itself, so a 55% station is never called "likely none"
-    ok_bike = {"g": r"很可能有車", "y": r"有車機率約 [1-9]0%", "r": r"有車機率約 [1-9]0%|很可能沒車", "x": r"現在沒車"}
-    ok_dock = {"g": r"很可能有空位", "y": r"有空位機率約 [1-9]0%", "r": r"有空位機率約 [1-9]0%|很可能停滿", "x": r"現在停滿"}
-    for q, ok, cap, want in ((f"?replay={REPLAY_DAY}&t=17:40&from=eng&to=", ok_bike, "數字是現在的車數，顏色是走到時有車的機率", ["90% 以上", "60%–90%", "不到 60%", "現在沒車"]),
-                             (f"?replay={REPLAY_DAY}&t=09:20&tab=dock&to=eng", ok_dock, "數字是現在的空位，顏色是騎到時有空位的機率", ["95% 以上", "70%–95%", "不到 70%", "現在停滿"])):
+    # four plain states, one per colour, and no hedging words on the main screen (the measured accuracy is on the About tab)
+    ok_bike = {"g": r"有車|到時有車", "y": r"車不多|現在沒車", "r": r"快沒車", "x": r"現在沒車"}
+    ok_dock = {"g": r"有空位|到時有空位", "y": r"空位不多|現在停滿", "r": r"快停滿", "x": r"現在停滿"}
+    for q, ok, cap, want in ((f"?replay={REPLAY_DAY}&t=17:40&from=eng&to=", ok_bike, "數字是現在的車數，顏色是走到時好不好借", ["有車", "車不多", "快沒車", "現在沒車"]),
+                             (f"?replay={REPLAY_DAY}&t=09:20&tab=dock&to=eng", ok_dock, "數字是現在的空位，顏色是騎到時好不好還", ["有空位", "空位不多", "快停滿", "現在停滿"])):
         which = "return" if "dock" in q else "borrow"
         ctx, page = await new_page(browser, size, query=q)
         await page.wait_for_timeout(1200)
@@ -771,9 +774,12 @@ async def check_labels(browser, size):
         rows = await page.evaluate("Array.from(document.querySelectorAll('#near .row, #best .pick')).map(r => { const s = r.querySelector('.state'); return s ? [s.className.replace('state', '').trim(), s.textContent, r.querySelector('.sub').textContent] : null; }).filter(Boolean)")
         bad = [r for r in rows if r[0] in ok and not re.fullmatch(ok[r[0]], r[1])]
         record(size, f"each status states its chance ({which})", len(rows) >= 6 and not bad and len({r[0] for r in rows}) >= 2, f"{bad[:3]} of {len(rows)}: {sorted({r[0] for r in rows})}")
-        clash = [r for r in rows if "很可能有" in r[1] and "平常這時段常" in r[2]]
-        edge = [r for r in rows if re.search(r"預估到 \d\d:\d\d|\d\d:\d\d 前都沒", r[2])]
+        clash = [r for r in rows if r[0] == "g" and "平常這時段常" in r[2]]
+        edge = [r for r in rows if re.search(r"到 \d\d:\d\d 都|\d\d:\d\d 前都沒", r[2])]
         record(size, f"no line contradicts its status or reads the forecast's end as a change ({which})", not clash and not edge, str((clash + edge)[:2]))
+        said = " ".join([await page.inner_text("#best"), await page.inner_text("#tip") if await page.get_attribute("#tip", "hidden") is None else "", await page.inner_text("#near")])
+        hedges = [w for w in ("很可能", "不一定", "機率", "可能", "預估", "約 ") if w in said]
+        record(size, f"the main screen states things plainly ({which})", not hedges, str(hedges))
         record(size, f"the list says what the number and the colour mean ({which})", await page.inner_text("#hNearSub") == cap, await page.inner_text("#hNearSub"))
         if not is_phone(size) and SIZES[size][0] >= 1100:
             leg = (await page.inner_text("#legend")).replace("\n", " ")

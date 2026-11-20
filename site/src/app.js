@@ -94,11 +94,11 @@
     if (v.bikes[i] == null) return { cls: "n", text: v.status && v.status[i] === 2 ? t("sOos") : t("sNone") };
     var c = chance(v, i, kind, at), h = have(v, i, kind), bike = kind === "bike";
     if (c == null) return { cls: "n", text: "" };
-    if (c >= SURE[kind]) return { cls: "g", text: t(bike ? "cBikeYes" : "cDockYes") };
-    var cls = c >= MAYBE[kind] ? "y" : h === 0 ? "x" : "r";
-    if (cls === "x") return { cls: cls, text: t(bike ? "sGone" : "sFullNow") };
-    // between the two ends the chance itself is the honest label: "likely none" would be wrong at 55%
-    return { cls: cls, text: c <= 0.05 ? t(bike ? "cBikeNo" : "cDockNo") : odds(c, kind) };
+    // four plain states, as Bicing's app shows high / medium / low; how often each turned out right is on the About tab
+    // (analysis/code/final_labels.py: 99% / 81% / 62% of riders found a bike, 22% where there was none at first)
+    if (c >= SURE[kind]) return { cls: "g", text: t(h === 0 ? (bike ? "cBikeBack" : "cDockBack") : (bike ? "cBikeYes" : "cDockYes")) };
+    if (c >= MAYBE[kind]) return { cls: "y", text: t(h === 0 ? (bike ? "sGone" : "sFullNow") : (bike ? "cBikeLow" : "cDockLow")) };
+    return h === 0 ? { cls: "x", text: t(bike ? "sGone" : "sFullNow") } : { cls: "r", text: t(bike ? "cBikeNo" : "cDockNo") };
   }
   function look(v, i) { return verdict(v, i, need(), arriveMin(v, i)); }
   // The operator's reward ("friendship relay", in Kaohsiung since 1 July 2026): a NT$5 ride voucher for borrowing at a station
@@ -544,7 +544,6 @@
     return best;
   }
   // a chance as a percentage, rounded to tens (the forecast is not finer than that)
-  function odds(p, kind) { var b = kind === "bike"; return p >= 0.95 ? t(b ? "oddsBikeHi" : "oddsDockHi") : t(b ? "oddsBike" : "oddsDock", { p: 10 * Math.max(1, Math.min(9, Math.round(p * 10))) }); }
   function pickRow(v, x, kind, why, cellLabel, cell) {
     var s = v.stations[x.i], o = verdict(v, x.i, kind, x.at), el = document.createElement("button");
     el.type = "button"; el.className = "pick" + (x.p >= SURE[kind] ? "" : x.p >= MAYBE[kind] ? " weak" : " poor");
@@ -568,8 +567,8 @@
       if (b.on) out.push(t(dock ? "tipOnDock" : "tipOn", { m: b.on.hop, n: shortName(v.stations[b.on.i]) }));
       if (pl.sure && pl.sure !== b) out.push(t(dock ? "tipSureDock" : "tipSure", { n: shortName(v.stations[pl.sure.i]), m: dock ? pl.sure.tail : pl.sure.leg }));
     } else if (pl.skipped) {
-      var sk = pl.skipped, skn = shortName(v.stations[sk.i]);
-      out.push(sk.p <= 0.05 ? t(dock ? "skipDock" : "skipBike", { n: skn }) : t(dock ? "skipDockP" : "skipBikeP", { n: skn, p: 10 * tenth(sk.p) }));
+      var sk = pl.skipped, skn = shortName(v.stations[sk.i]), gone = have(v, sk.i, kind) === 0;
+      out.push(t(dock ? (gone ? "skipDockGone" : "skipDock") : (gone ? "skipBikeGone" : "skipBike"), { n: skn }));
     }
     return out;
   }
@@ -675,10 +674,12 @@
     var cols = columns(v); if (!cols) return "";
     var a = Math.max(1, Math.round(cols[0].sp.e)), first = -1, k, best = 0;
     for (k = 0; k < cols.length; k++) if (cols[k].k.r >= 1) { first = k; break; }
+    // advice, not odds: the latest departure before the dots show a long search ("leave by", as route planners say)
     if (first < 0) return t("tipCalm", { a: a });
-    if (first > 0) return t("tipSoon", { a: a, u: hm(cols[first].at % 1440), p: 10 * cols[first].k.r });
+    if (first === 1) return t("tipSoon1", { a: a, u: hm(cols[1].at % 1440) });
+    if (first > 1) return t("tipSoon", { a: a, u: hm(cols[first].at % 1440), v: hm(cols[first - 1].at % 1440) });
     for (k = 1; k < cols.length; k++) if (cols[k].k.r < cols[best].k.r) best = k;
-    return t("tipNowSlow", { p: 10 * cols[0].k.r }) + (best && cols[best].k.r <= cols[0].k.r - 2 ? t("tipLater", { u: hm(cols[best].at % 1440), p: 10 * cols[best].k.r }) : "");
+    return t("tipNowSlow") + (best && cols[best].k.r <= cols[0].k.r - 2 ? t("tipLater", { u: hm(cols[best].at % 1440) }) : "");
   }
   // ten dots per departure (Kay et al. 2016; Fernandes et al. 2018): green, yellow and red stacked from the bottom
   function renderLater(v) {
@@ -980,10 +981,8 @@
       return;
     }
     var it = function (c, k) { return "<div class=\"it\"><span class=\"sw\" style=\"background:var(" + c + ")\"></span>" + t(k) + "</div>"; };
-    var kind = need(), bike = kind === "bike", hi = Math.round(100 * SURE[kind]), lo = Math.round(100 * MAYBE[kind]);
-    var band = function (c, text) { return "<div class=\"it\"><span class=\"sw\" style=\"background:var(" + c + ")\"></span>" + text + "</div>"; };
-    // the colours are bands of the chance, and the legend says which
-    el.innerHTML = "<div class=\"ttl\">" + t(bike ? "legBike" : "legDock") + "</div>" + band("--ok-fill", t("bandHi", { a: hi })) + band("--low-fill", t("bandMid", { a: lo, b: hi })) + band("--out-fill", t("bandLo", { a: lo })) + it("--gone", bike ? "sGone" : "sFullNow") +
+    var bike = need() === "bike";
+    el.innerHTML = "<div class=\"ttl\">" + t(bike ? "legBike" : "legDock") + "</div>" + it("--ok-fill", bike ? "cBikeYes" : "cDockYes") + it("--low-fill", bike ? "cBikeLow" : "cDockLow") + it("--out-fill", bike ? "cBikeNo" : "cDockNo") + it("--gone", bike ? "sGone" : "sFullNow") +
       "<div class=\"it gap\">" + t(bike ? "legNumBike" : "legNumDock") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
   }
   function dayLabel(d) {
