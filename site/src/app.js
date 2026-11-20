@@ -401,7 +401,7 @@
       ml.textContent = st || t("overNote", { t: last }); mleft.textContent = t("overBig"); mleft.classList.add("calm");
     } else {
       lbl.textContent = t("bellNext"); at.textContent = nb.time; left.textContent = untilText(nb.minutes, true); note.textContent = st || t("nowIs", { t: hm(m) });
-      ml.textContent = st || (t("bellNext") + " " + nb.time); mleft.innerHTML = (st ? "<small class=\"bt\">" + t("wBell", { t: nb.time }) + "</small>" : "") + untilText(nb.minutes, false);
+      ml.textContent = st || (t("bellNext") + " " + nb.time); mleft.innerHTML = (st ? "<small class=\"bt\">" + t("bellUntil", { t: nb.time }) + "</small>" : "") + untilText(nb.minutes, false);
     }
     var lo = 6 * 60, hi = 23 * 60, h = "<div class=\"axis\"></div>", nbm = nb ? mins(nb.time) : null;
     var x = function (mm) { return (100 * (mm - lo) / (hi - lo)).toFixed(2) + "%"; };
@@ -539,15 +539,18 @@
     best.plan = pb; best.walk = walkPP(from, to); best.rideIt = best.dock != null && best.total + 1 < best.walk;
     return best;
   }
-  function odds(p) { return t("odds", { n: Math.max(1, Math.min(9, Math.round(p * 10))) }); }
+  // a chance as a percentage, rounded to tens (the forecast is not finer than that)
+  function odds(p, kind) { var b = kind === "bike"; return p >= 0.95 ? t(b ? "oddsBikeHi" : "oddsDockHi") : t(b ? "oddsBike" : "oddsDock", { p: 10 * Math.max(1, Math.min(9, Math.round(p * 10))) }); }
   function pickRow(v, x, kind, why, cellLabel, cell) {
     var s = v.stations[x.i], o = verdict(v, x.i, kind, x.at), el = document.createElement("button");
     el.type = "button"; el.className = "pick" + (x.p >= SURE[kind] ? "" : x.p >= MAYBE[kind] ? " weak" : " poor");
-    var sub = "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
-    if (x.p < SURE[kind] && x.p > 0.05) sub += "<span>" + odds(x.p) + "</span>";
+    // when the station is not sure, the chance itself says more than "may be out"
+    var sub = "<span class=\"state " + o.cls + "\">" + (x.p < SURE[kind] && x.p > 0.05 ? odds(x.p, kind) : o.text) + "</span>";
     if (kind === "dock") sub += "<span>" + t(v.docks && v.docks[x.i] === 1 ? "docksNow1" : "docksNow", { d: v.docks && v.docks[x.i] != null ? v.docks[x.i] : "–" }) + "</span>";
-    var us = usualShare(v, s, kind, x.at); if (us && us.p >= 0.4) sub += "<span>" + t(kind === "dock" ? "usualHotDock" : "usualHotBike") + "</span>";
-    else { var eb = expectAt(v, x.i, x.at); sub += "<span>" + (eb != null && x.p >= SURE[kind] ? t("expect", { b: eb }) : t("bikesNow", { b: v.bikes[x.i] })) + "</span>"; }
+    var us = usualShare(v, s, kind, x.at), eb = expectAt(v, x.i, x.at);
+    if (us && us.p >= 0.4) sub += "<span>" + t(kind === "dock" ? "usualHotDock" : "usualHotBike") + "</span>";
+    else if (kind === "dock") { if (eb != null && x.p >= SURE[kind]) sub += "<span>" + t("expectDock", { d: Math.max(0, s.cap - eb) }) + "</span>"; }
+    else sub += "<span>" + (eb != null && x.p >= SURE[kind] ? t("expect", { b: eb }) : t("bikesNow", { b: v.bikes[x.i] })) + "</span>";
     el.innerHTML = badgeAt(v, x.i, kind, x.at) + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(s)) + relayTag(v, x.i, kind, x.at) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(cell, cellLabel);
     el.addEventListener("click", function () { select(x.i); focusStation(s); });
     return el;
@@ -565,9 +568,9 @@
   // one line about the reward: the suggested station if it is likely to pay, else the likeliest station that costs at most three minutes more
   function relayLine(v, pl, kind, best) {
     var dock = kind === "dock", top = null;
-    if (relayOn(v, best.i, kind, best.at)) return t(dock ? "relayRetHere" : "relayBorHere", { o: tenth(relayP(v, best.i, kind, best.at)) });
+    if (relayOn(v, best.i, kind, best.at)) return t(dock ? "relayRetHere" : "relayBorHere", { p: 10 * tenth(relayP(v, best.i, kind, best.at)) });
     pl.cand.forEach(function (x) { if (x === best || x.e > best.e + 3 || !relayOn(v, x.i, kind, x.at)) return; var p = relayP(v, x.i, kind, x.at); if (!top || p > top.p) top = { x: x, p: p }; });
-    return top ? t(dock ? "relayRetAlt" : "relayBorAlt", { n: shortName(v.stations[top.x.i]), m: Math.max(1, Math.round(top.x.e - best.e)), o: tenth(top.p) }) : "";
+    return top ? t(dock ? "relayRetAlt" : "relayBorAlt", { n: shortName(v.stations[top.x.i]), m: Math.max(1, Math.round(top.x.e - best.e)), p: 10 * tenth(top.p) }) : "";
   }
   function renderWhen(v) {
     var el = $("whenChips"), dock = tab === "dock", key = dock ? "dock" : "rider", w = when[key], n = nowMin(v), opts = [];
@@ -665,9 +668,9 @@
     var a = Math.max(1, Math.round(cols[0].sp.e)), first = -1, k, best = 0;
     for (k = 0; k < cols.length; k++) if (cols[k].k.r >= 1) { first = k; break; }
     if (first < 0) return t("tipCalm", { a: a });
-    if (first > 0) return t("tipSoon", { a: a, u: hm(cols[first].at % 1440), r: cols[first].k.r });
+    if (first > 0) return t("tipSoon", { a: a, u: hm(cols[first].at % 1440), p: 10 * cols[first].k.r });
     for (k = 1; k < cols.length; k++) if (cols[k].k.r < cols[best].k.r) best = k;
-    return t("tipNowSlow", { r: cols[0].k.r }) + (best && cols[best].k.r <= cols[0].k.r - 2 ? t("tipLater", { u: hm(cols[best].at % 1440), r: cols[best].k.r }) : "");
+    return t("tipNowSlow", { p: 10 * cols[0].k.r }) + (best && cols[best].k.r <= cols[0].k.r - 2 ? t("tipLater", { u: hm(cols[best].at % 1440), p: 10 * cols[best].k.r }) : "");
   }
   // ten dots per departure (Kay et al. 2016; Fernandes et al. 2018): green, yellow and red stacked from the bottom
   function renderLater(v) {
@@ -683,9 +686,9 @@
       for (q = 0; q < col.k.y; q++) seq.push("y");
       for (q = 0; q < col.k.r; q++) seq.push("r");
       seq.forEach(function (c2, q2) { var fill = { g: "--ok-fill", y: "--low-fill", r: "--out-fill" }[c2]; h += "<circle class=\"d " + c2 + "\" cx=\"" + (cx + (q2 % 2 ? gap / 2 : -gap / 2)).toFixed(1) + "\" cy=\"" + (70 - Math.floor(q2 / 2) * gap).toFixed(1) + "\" r=\"" + R + "\" fill=\"" + tok(fill) + "\" stroke=\"" + tok("--surface") + "\" stroke-width=\"1\"/>"; });
-      if (col.k.r) h += label(cx, 13, t("dotsRed", { r: col.k.r }), true);
+      if (col.k.r) h += label(cx, 13, t("dotsRed", { p: 10 * col.k.r }), true);
       h += label(cx, 90, when, false);
-      aria.push(t("dotsAria", { t: when, g: col.k.g, y: col.k.y, r: col.k.r }));
+      aria.push(t("dotsAria", { t: when, g: 10 * col.k.g, y: 10 * col.k.y, r: 10 * col.k.r }));
     });
     var key = function (cls, k2) { return "<span><i class=\"" + cls + "\"></i>" + t(k2) + "</span>"; };
     $("later").innerHTML = "<svg viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"" + esc(t("laterH") + (lang === "zh" ? "：" : ": ") + aria.join(lang === "zh" ? "；" : "; ")) + "\">" + h + "</svg>" +
@@ -700,7 +703,7 @@
     sec.hidden = false;
     var a = -1, b = -1; arr.forEach(function (x, k) { if (x >= 0.25) { if (a < 0) a = k; b = k; } });
     $("hUsual").textContent = t("usual" + (bike ? "Bike" : "Dock") + (grp === "campus" ? "Campus" : "Gate"));
-    $("hUsualSub").textContent = t(v.offday ? "usualOff" : "usualTeach") + sep() + (a < 0 ? t("usualEasy") : t("usualPeak", { a: hm(360 + 30 * a), b: hm(360 + 30 * (b + 1)) }));
+    $("hUsualSub").textContent = t(v.offday ? "usualOff" : "usualTeach") + sep() + (a < 0 ? t(bike ? "usualEasyBike" : "usualEasyDock") : t("usualPeak", { a: hm(360 + 30 * a), b: hm(360 + 30 * (b + 1)) }));
     var W = 340, H = 56, bw = W / arr.length, m = nowMin(v), h = "";
     arr.forEach(function (x, k) { var hh = Math.max(2, Math.min(1, x / 0.6) * 38); h += "<rect x=\"" + (k * bw + 1).toFixed(1) + "\" y=\"" + (40 - hh).toFixed(1) + "\" width=\"" + (bw - 2).toFixed(1) + "\" height=\"" + hh.toFixed(1) + "\" rx=\"2\" fill=\"" + tok(x >= 0.4 ? "--out-fill" : x >= 0.2 ? "--low-fill" : "--line-2") + "\"/>"; });
     [6, 9, 12, 15, 18, 21].forEach(function (hr) { h += "<text x=\"" + ((hr * 60 - 360) / 30 * bw + 1).toFixed(1) + "\" y=\"53\" font-size=\"10.5\" fill=\"" + tok("--ink-3") + "\" font-family=\"Barlow Semi Condensed, sans-serif\">" + pad(hr) + "</text>"; });
@@ -845,11 +848,11 @@
     if (s.excluded) foot.push(t("excluded"));
     var docks = v.docks && v.docks[i] != null ? v.docks[i] : null, rp = observed && relayOn(v, i, kind, arriveMin(v, i)) ? relayP(v, i, kind, arriveMin(v, i)) : null, un = observed ? usualNote(v, s, kind, arriveMin(v, i)) : "";
     $("card").innerHTML = "<div class=\"hd\">" + badge(v, i) + "<div><div class=\"nm\">" + esc(nameOf(s)) + "</div><div class=\"alt\">" + esc(altName(s)) + "</div></div><button class=\"x\" id=\"cardX\" type=\"button\" aria-label=\"" + t("close") + "\">" + ICON.close + "</button></div>" +
-      "<div class=\"says\">" + (o.text ? "<span class=\"state " + o.cls + "\">" + (observed && o.cls !== "x" ? t("fArrive") + sep() : "") + o.text + "</span>" : "") + (turn ? "<span>" + turn + "</span>" : "") +
+      "<div class=\"says\">" + (o.text ? "<span class=\"state " + o.cls + "\">" + (observed && o.cls !== "x" ? t(kind === "dock" ? "fArriveDock" : "fArriveBike") + sep() : "") + o.text + "</span>" : "") + (turn ? "<span>" + turn + "</span>" : "") +
       (isCampus(s) ? "<span class=\"tag\">" + t("inCampus") + "</span>" : (s.group === "gateway" ? "<span class=\"tag\">" + t("nearCampus") + "</span>" : "")) + (isFav ? "<span class=\"tag\">★ " + t("fav") + "</span>" : "") + "</div>" +
-      (rp != null ? "<div class=\"relaynote\"><span class=\"relay\">" + t("relayTag") + "</span>" + t(kind === "dock" ? "relayCardRet" : "relayCardBor", { o: tenth(rp) }) + "</div>" : "") +
+      (rp != null ? "<div class=\"relaynote\"><span class=\"relay\">" + t("relayTag") + "</span>" + t(kind === "dock" ? "relayCardRet" : "relayCardBor", { p: 10 * tenth(rp) }) + "</div>" : "") +
       (un ? "<div class=\"usualnote\">" + un + "</div>" : "") +
-      "<div class=\"facts two\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] + "<small>/ " + s.cap + "</small>" : "–") + "</div><div class=\"k\">" + t("fBikes") + "</div></div>" +
+      "<div class=\"facts two\"><div class=\"fact\"><div class=\"v\">" + (observed ? v.bikes[i] : "–") + "</div><div class=\"k\">" + t("fBikes", { c: s.cap }) + "</div></div>" +
       "<div class=\"fact\"><div class=\"v\">" + (docks != null ? docks : "–") + "</div><div class=\"k\">" + t("fDocks") + "</div></div></div>" + (observed ? aheadStrip(v, i, kind) : "") +
       "<div class=\"chart\"><div class=\"cap\">" + t("chartCap") + "</div>" + sparkline(v, i) + "</div>" + (foot.length ? "<div class=\"foot\">" + foot.join(lang === "zh" ? "；" : "; ") + "</div>" : "") +
       "<div class=\"actions\"><button class=\"btn\" id=\"favBtn\" type=\"button\" aria-pressed=\"" + (isFav ? "true" : "false") + "\">" + ICON.star.replace("FILL", isFav ? "currentColor" : "none") + (isFav ? t("rmFav") : t("addFav")) + "</button>" +
