@@ -32,7 +32,7 @@
   "after": 144
  },
  "Table 5": {
-  "after": 159
+  "after": 157
  },
  "fig_architecture_final.png": {
   "after": 22
@@ -49,5 +49,8 @@
  "fig_final_sim.png": {
   "after": 150,
   "frac": 0.9
+ },
+ "fig_final_reward.png": {
+  "after": 156
  }
 }
