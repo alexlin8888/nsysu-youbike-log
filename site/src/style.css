@@ -226,6 +226,9 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .stop .eta b { font: 600 15px var(--font-num); color: var(--ink); }
 .load { height: 4px; background: var(--surface-3); border-radius: 2px; overflow: hidden; margin-top: 5px; width: 120px; }
 .load i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.riskhead { display: grid; grid-template-columns: minmax(0, 1fr) 52px 64px 40px; gap: 10px; margin: 0 calc(-1 * var(--pad)); padding: 0 var(--pad) 2px; font-size: 11.5px; color: var(--ink-3); }
+.riskhead .bk { justify-self: end; white-space: nowrap; }
+.riskhead .pv { grid-column: 3 / 5; justify-self: end; white-space: nowrap; }
 .risk { list-style: none; margin: 0 calc(-1 * var(--pad)); padding: 0; }
 .risk li { display: grid; grid-template-columns: minmax(0, 1fr) 52px 64px 40px; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; padding: 7px var(--pad); min-height: 40px; }
 .risk li:hover { background: var(--surface-2); }

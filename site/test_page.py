@@ -638,14 +638,16 @@ async def check_ops(browser, size):
     record(size, "dispatch numbers are for the stations around campus", "校園周邊" in scope and "19 站" in scope, scope)
     rows = await page.locator("#risk li").count()
     vals = [float(v.strip("%")) for v in await page.locator("#risk .pv").all_inner_texts()]
-    record(size, "risk list: ten stations, highest first", rows == 10 and vals == sorted(vals, reverse=True), str(vals))
+    head30 = await page.inner_text("#riskHead")
+    record(size, "risk list: ten stations, highest first, columns named", rows == 10 and vals == sorted(vals, reverse=True) and "車數／車位" in head30 and "30 分鐘內沒車的機率" in head30, f"{vals} | {head30}")
     outside = await page.evaluate("Array.from(document.querySelectorAll('#risk .nm')).map(e => e.textContent).filter(n => !/中山大學|哈瑪星|鼓山|哨船|濱海|西子灣|船渠|新濱/.test(n))")
     record(size, "risk list stays within the stations around campus", not outside, str(outside))
     await page.click("#hU"); await page.wait_for_timeout(300)
-    h_u = await page.inner_text("#hRisk"); vals_u = [float(v) for v in await page.locator("#risk .pv").all_inner_texts()]
+    h_u = await page.inner_text("#hRisk"); head_u = await page.inner_text("#riskHead"); vals_u = [float(v) for v in await page.locator("#risk .pv").all_inner_texts()]
     await page.click("#h60"); await page.wait_for_timeout(300)
-    h_60 = await page.inner_text("#hRisk")
-    record(size, "30 / 60 min / 90-min shortfall switch re-ranks the list", "90" in h_u and vals_u == sorted(vals_u, reverse=True) and "90" not in h_60 and await page.get_attribute("#h60", "aria-pressed") == "true", f"{h_u} | {h_60}")
+    h_60 = await page.inner_text("#hRisk"); head_60 = await page.inner_text("#riskHead")
+    record(size, "30 / 60 min / shortfall switch re-ranks the list and renames its column", h_u == "借不到車最多的站" and "預估借不到車人次" in head_u and vals_u == sorted(vals_u, reverse=True)
+           and h_60 == "最可能沒車的站" and "60 分鐘內沒車的機率" in head_60 and await page.get_attribute("#h60", "aria-pressed") == "true", f"{h_u} / {head_u} | {h_60} / {head_60}")
     await page.locator("#risk li").first.click(); await page.wait_for_timeout(500)
     record(size, "a risk row opens its station", await page.get_attribute("#cardWrap", "hidden") is None)
     plan_or_note = await page.locator("#plans .stop").count() + await page.locator("#plans .empty").count()
@@ -688,6 +690,8 @@ async def check_replay(browser, size):
         await page.click("#copyAll"); await page.wait_for_timeout(400)
         clip = await page.evaluate("navigator.clipboard.readText()")
         record(size, "copy route puts the stops on the clipboard", "卡車 1" in clip and clip.count("\n") >= stops and await page.inner_text("#copyAll") == "已複製", clip.replace("\n", " / ")[:110])
+        meta = [m.replace("\n", "") for m in await page.locator("#plans .stop .meta").all_inner_texts()]
+        record(size, "each stop gives the bikes, the docks and the load after it", bool(meta) and all(re.fullmatch(r"現有 \d+ 台，共 \d+ 個車位[，・ ]+離站時車上 \d+ 台", m) for m in meta), " / ".join(meta)[:120])
         name = await page.locator("#plans .stop .nm").first.inner_text()
         await page.locator("#plans .stop").first.click(); await page.wait_for_timeout(500)
         record(size, "a stop opens its station", await page.locator("#card .nm").inner_text() == name, name)
@@ -696,15 +700,15 @@ async def check_replay(browser, size):
     ctx, page = await new_page(browser, size, query=f"?replay={REPLAY_DAY}&t=16:00&tab=ops")
     await page.wait_for_timeout(1200)
     await open_sheet(page, size)
-    unmet = float(re.search(r"[\d.]+", await page.inner_text("#tUnmet")).group()); saved = await page.inner_text("#tSaved")
-    pct = re.search(r"(\d+)%", saved)
-    record(size, "the trip's gain is shown against the corridor's shortfall", unmet > 0 and pct is not None and 1 <= int(pct.group(1)) <= 100, f"shortfall {unmet:.0f}, trip {saved.replace(chr(10), ' ')}")
+    unmet = float(re.search(r"[\d.]+", await page.inner_text("#tUnmet")).group()); saved = await page.inner_text("#tSaved"); said = await page.inner_text("#kSaved")
+    pct = re.search(r"^派這趟車可減少 (\d+)%$", said)
+    record(size, "the trip's gain is shown against the corridor's shortfall, the share in words", unmet > 0 and pct is not None and 1 <= int(pct.group(1)) <= 100 and "%" not in saved, f"shortfall {unmet:.0f}, trip {saved.replace(chr(10), ' ')} | {said}")
     await ctx.close()
 
 
 async def check_about_lang(browser, size):
     days = {"2026-11-18": {"teaching": 1, "w": {"leave": [120, 444, 468, 450, 96, 78, 110, 6, 9, 7, 120, 96, 110, 143, 100, 150, 90, 153],
-                                               "arrive": [80, 224, 240, 232, 70, 62, 72, 1, 2, 1, 80, 40, 70, 77, 60, 72, 50, 65],
+                                               "arrive": [80, 232, 232, 232, 70, 62, 72, 1, 2, 1, 80, 40, 70, 77, 60, 72, 50, 65],
                                                "dock": [60, 84, 96, 90, 55, 50, 53, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], "bike_day": [0] * 18, "dock_day": [0] * 18}},
             "2026-11-21": {"teaching": 0, "w": {"leave": [50, 500, 500, 500] + [0] * 14, "arrive": [0] * 18, "dock": [0] * 18, "bike_day": [0] * 18, "dock_day": [0] * 18}}}
     ctx, page = await new_page(browser, size, state_patch=fresh, track={"rule": "v2", "since": "2026-11-18", "updated": "2026-11-21 12:00", "fields": TRACK_FIELDS, "days": days})
@@ -713,8 +717,9 @@ async def check_about_lang(browser, size):
     what = await page.inner_text("#aboutWhat")
     record(size, "about tab explains the colours and the numbers", await page.locator("#aboutKey li").count() == 7 and "LightGBM" in await page.inner_text("#aboutHow") and "3.7 分鐘" in what and "0.86" in what and "93%" not in what and "晚點出發的找車時間" in what and "9%" in what)
     rec = (await page.inner_text("#aboutTrack")).replace("\n", " ") if await page.get_attribute("#aboutTrack", "hidden") is None else ""
-    record(size, "about tab shows the record of the page's advice, teaching days only", "從 11/18 起" in rec and "目前累積 1 個上課日" in rec and "共 120 次。平均借到車的時間：照網站建議 3.7 分鐘，看官方 App 找最近有車的站 3.8 分鐘，直接走到最近的站 3.9 分鐘" in rec
-           and "出發前 20 分鐘預估的找車時間，平均誤差 1.5 分鐘" in rec and "共 60 次。還車平均多花的時間：照網站建議 1.4 分鐘" in rec, rec[:260])
+    record(size, "about tab shows the record of the page's advice, teaching days only", "從 11/18 起" in rec and "目前累積 1 個上課日" in rec and "共檢查 120 次。平均借到車的時間：照網站建議 3.7 分鐘，看官方 App 找最近有車的站 3.8 分鐘，直接走到最近的站 3.9 分鐘" in rec
+           and "出發前 20 分鐘預估的找車時間，平均誤差 1.5 分鐘" in rec and "共檢查 60 次。還車平均多花的時間：照網站建議 1.4 分鐘" in rec
+           and "早上在山下借車 共檢查 80 次。照網站建議、看官方 App 找最近有車的站、直接走到最近的站，平均都約 2.9 分鐘借到車" in rec.replace("，共", " 共"), rec[:260])
     await page.click("#lEn"); await page.wait_for_timeout(400)
     en = [await page.inner_text(i) for i in ("#tabRiderT", "#tabDockT", "#tabOpsT", "#tabAboutT", "#mLive")]
     left_about = await page.evaluate("Array.from(document.querySelectorAll('#paneAbout section:not(.langrow) *')).filter(e => e.children.length === 0 && /[\\u4e00-\\u9fff]/.test(e.textContent)).map(e => e.textContent.trim()).filter(Boolean).slice(0, 4)")
@@ -738,7 +743,7 @@ async def check_about_lang(browser, size):
     ctx, page = await new_page(browser, size, state_patch=fresh, track={"rule": "v2", "since": "2026-11-18", "updated": "2026-11-18 16:00", "fields": TRACK_FIELDS, "days": {"2026-11-18": {"teaching": 1, "w": {"leave": [4, 12, 12, 12] + [0] * 14}}}}, query="?tab=about")
     await open_sheet(page, size)
     rec = (await page.inner_text("#aboutTrack")).replace("\n", " ") if await page.get_attribute("#aboutTrack", "hidden") is None else ""
-    record(size, "a record with too few cases says it has just started", "紀錄剛開始" in rec and "次。照建議" not in rec, rec[:120])
+    record(size, "a record with too few cases says it has just started", "紀錄剛開始" in rec and "共檢查" not in rec, rec[:120])
     await ctx.close()
     ctx, page = await new_page(browser, size, query="?tab=ops&lang=en")
     record(size, "links can set the tab and the language", await page.get_attribute("#tabOps", "aria-selected") == "true" and await page.inner_text("#tabOpsT") == "Dispatch")
@@ -751,6 +756,29 @@ async def check_about_lang(browser, size):
     name = await page.locator("#card .nm").inner_text() if await page.locator("#card .nm").count() else ""
     record(size, "a link can open one station", "體育館" in name, name)
     await ctx.close()
+
+
+async def check_labels(browser, size):
+    # "likely" only at the two ends; in between the chance itself, so a 55% station is never called "likely none"
+    ok_bike = {"g": r"很可能有車", "y": r"有車機率約 [1-9]0%", "r": r"有車機率約 [1-9]0%|很可能沒車", "x": r"現在沒車"}
+    ok_dock = {"g": r"很可能有空位", "y": r"有空位機率約 [1-9]0%", "r": r"有空位機率約 [1-9]0%|很可能停滿", "x": r"現在停滿"}
+    for q, ok, cap, want in ((f"?replay={REPLAY_DAY}&t=17:40&from=eng&to=", ok_bike, "數字是現在的車數，顏色是走到時有車的機率", ["90% 以上", "60%–90%", "不到 60%", "現在沒車"]),
+                             (f"?replay={REPLAY_DAY}&t=09:20&tab=dock&to=eng", ok_dock, "數字是現在的空位，顏色是騎到時有空位的機率", ["95% 以上", "70%–95%", "不到 70%", "現在停滿"])):
+        which = "return" if "dock" in q else "borrow"
+        ctx, page = await new_page(browser, size, query=q)
+        await page.wait_for_timeout(1200)
+        await open_sheet(page, size)
+        rows = await page.evaluate("Array.from(document.querySelectorAll('#near .row, #best .pick')).map(r => { const s = r.querySelector('.state'); return s ? [s.className.replace('state', '').trim(), s.textContent, r.querySelector('.sub').textContent] : null; }).filter(Boolean)")
+        bad = [r for r in rows if r[0] in ok and not re.fullmatch(ok[r[0]], r[1])]
+        record(size, f"each status states its chance ({which})", len(rows) >= 6 and not bad and len({r[0] for r in rows}) >= 2, f"{bad[:3]} of {len(rows)}: {sorted({r[0] for r in rows})}")
+        clash = [r for r in rows if "很可能有" in r[1] and "平常這時段常" in r[2]]
+        edge = [r for r in rows if re.search(r"預估到 \d\d:\d\d|\d\d:\d\d 前都沒", r[2])]
+        record(size, f"no line contradicts its status or reads the forecast's end as a change ({which})", not clash and not edge, str((clash + edge)[:2]))
+        record(size, f"the list says what the number and the colour mean ({which})", await page.inner_text("#hNearSub") == cap, await page.inner_text("#hNearSub"))
+        if not is_phone(size) and SIZES[size][0] >= 1100:
+            leg = (await page.inner_text("#legend")).replace("\n", " ")
+            record(size, f"the map legend gives the chance behind each colour ({which})", all(w in leg for w in want), leg[:70])
+        await ctx.close()
 
 
 async def check_states(browser, size):
@@ -886,7 +914,7 @@ async def main():
         await ctx.close()
         print("replay day used for the plan checks:", REPLAY_DAY, flush=True)
         for size in SIZES:
-            for check in (check_load, check_rider, check_when, check_trip, check_dock, check_relay, check_remind, check_search, check_origin, check_fresh, check_ops, check_replay, check_about_lang, check_states, check_keyboard_a11y):
+            for check in (check_load, check_rider, check_when, check_trip, check_dock, check_relay, check_remind, check_search, check_origin, check_fresh, check_ops, check_replay, check_about_lang, check_labels, check_states, check_keyboard_a11y):
                 try:
                     await check(browser, size)
                 except Exception as exc:  # noqa: BLE001 - a crashed check is a failed check

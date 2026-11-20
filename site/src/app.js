@@ -95,8 +95,10 @@
     var c = chance(v, i, kind, at), h = have(v, i, kind), bike = kind === "bike";
     if (c == null) return { cls: "n", text: "" };
     if (c >= SURE[kind]) return { cls: "g", text: t(bike ? "cBikeYes" : "cDockYes") };
-    if (c >= MAYBE[kind]) return { cls: "y", text: t(bike ? "cBikeMaybe" : "cDockMaybe") };
-    return h === 0 ? { cls: "x", text: t(bike ? "sGone" : "sFullNow") } : { cls: "r", text: t(bike ? "cBikeNo" : "cDockNo") };
+    var cls = c >= MAYBE[kind] ? "y" : h === 0 ? "x" : "r";
+    if (cls === "x") return { cls: cls, text: t(bike ? "sGone" : "sFullNow") };
+    // between the two ends the chance itself is the honest label: "likely none" would be wrong at 55%
+    return { cls: cls, text: c <= 0.05 ? t(bike ? "cBikeNo" : "cDockNo") : odds(c, kind) };
   }
   function look(v, i) { return verdict(v, i, need(), arriveMin(v, i)); }
   // The operator's reward ("friendship relay", in Kaohsiung since 1 July 2026): a NT$5 ride voucher for borrowing at a station
@@ -133,10 +135,12 @@
   // when the answer changes: "likely out by 17:20", or for an empty station "a bike likely back by 18:10"
   function turnText(v, i, kind, cls) {
     var a = aheadOf(v, i, kind), h = have(v, i, kind), bike = kind === "bike", k; if (!a || h == null) return "";
-    var b0 = baseMin(v, i), end = hm((b0 + 10 * a.length) % 1440), at = function (n) { return hm((b0 + 10 * (n + 1)) % 1440); };
-    if (h > 0) { for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) < 32) return t(bike ? "tGone" : "tFull", { t: at(k) }); return cls === "g" ? t(bike ? "tKeep" : "tFree", { t: end }) : ""; }   // "bikes until 20:30" would contradict a "may be out"
+    var b0 = baseMin(v, i), at = function (n) { return hm((b0 + 10 * (n + 1)) % 1440); };
+    // the forecast ends here; "for the next 90 min" reads as that, while "until 23:13" reads as a change at 23:13
+    var left = { m: Math.max(10, 10 * Math.floor((b0 + 10 * a.length - nowMin(v)) / 10)) };
+    if (h > 0) { for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) < 32) return t(bike ? "tGone" : "tFull", { t: at(k) }); return cls === "g" ? t(bike ? "tKeep" : "tFree", left) : ""; }   // "bikes for the next hour" would contradict a "may be out"
     for (k = 0; k < a.length; k++) if (A64.indexOf(a.charAt(k)) >= 32) return t(bike ? "tBack" : "tOpen", { t: at(k) });
-    return t(bike ? "tNoBack" : "tNoOpen", { t: end });
+    return t(bike ? "tNoBack" : "tNoOpen", left);
   }
   function ramp(p) { if (p == null) return tok("--r0"); return tok(p < 0.1 ? "--r0" : p < 0.3 ? "--r1" : p < 0.5 ? "--r2" : p < 0.75 ? "--r3" : "--r4"); }
   function rampU(u) { if (u == null) return tok("--r0"); return tok(u < 0.5 ? "--r0" : u < 2 ? "--r1" : u < 5 ? "--r2" : u < 10 ? "--r3" : "--r4"); }
@@ -544,13 +548,14 @@
   function pickRow(v, x, kind, why, cellLabel, cell) {
     var s = v.stations[x.i], o = verdict(v, x.i, kind, x.at), el = document.createElement("button");
     el.type = "button"; el.className = "pick" + (x.p >= SURE[kind] ? "" : x.p >= MAYBE[kind] ? " weak" : " poor");
-    // when the station is not sure, the chance itself says more than "may be out"
-    var sub = "<span class=\"state " + o.cls + "\">" + (x.p < SURE[kind] && x.p > 0.05 ? odds(x.p, kind) : o.text) + "</span>";
+    var sub = "<span class=\"state " + o.cls + "\">" + o.text + "</span>";
     if (kind === "dock") sub += "<span>" + t(v.docks && v.docks[x.i] === 1 ? "docksNow1" : "docksNow", { d: v.docks && v.docks[x.i] != null ? v.docks[x.i] : "–" }) + "</span>";
-    var us = usualShare(v, s, kind, x.at), eb = expectAt(v, x.i, x.at);
-    if (us && us.p >= 0.4) sub += "<span>" + t(kind === "dock" ? "usualHotDock" : "usualHotBike") + "</span>";
-    else if (kind === "dock") { if (eb != null && x.p >= SURE[kind]) sub += "<span>" + t("expectDock", { d: Math.max(0, s.cap - eb) }) + "</span>"; }
-    else sub += "<span>" + (eb != null && x.p >= SURE[kind] ? t("expect", { b: eb }) : t("bikesNow", { b: v.bikes[x.i] })) + "</span>";
+    // a sure station gets the count to expect; "often empty at this time" beside "likely has bikes" would only confuse,
+    // so the usual day is mentioned when the station is not sure
+    var us = usualShare(v, s, kind, x.at), eb = expectAt(v, x.i, x.at), sure = x.p >= SURE[kind];
+    if (sure && eb != null) sub += "<span>" + (kind === "dock" ? t("expectDock", { d: Math.max(0, s.cap - eb) }) : t("expect", { b: eb })) + "</span>";
+    else if (!sure && us && us.p >= 0.4) sub += "<span>" + t(kind === "dock" ? "usualHotDock" : "usualHotBike") + "</span>";
+    else if (kind !== "dock") sub += "<span>" + t("bikesNow", { b: v.bikes[x.i] }) + "</span>";
     el.innerHTML = badgeAt(v, x.i, kind, x.at) + "<span><span class=\"why\">" + why + "</span><span class=\"nm\">" + esc(nameOf(s)) + relayTag(v, x.i, kind, x.at) + "</span><span class=\"sub\">" + sub + "</span></span>" + walkCell(cell, cellLabel);
     el.addEventListener("click", function () { select(x.i); focusStation(s); });
     return el;
@@ -562,7 +567,10 @@
       if (b.p < MAYBE[kind] && !pl.sure) out.push(t(dock ? "weakDock" : "weakBike"));
       if (b.on) out.push(t(dock ? "tipOnDock" : "tipOn", { m: b.on.hop, n: shortName(v.stations[b.on.i]) }));
       if (pl.sure && pl.sure !== b) out.push(t(dock ? "tipSureDock" : "tipSure", { n: shortName(v.stations[pl.sure.i]), m: dock ? pl.sure.tail : pl.sure.leg }));
-    } else if (pl.skipped) out.push(t(dock ? "skipDock" : "skipBike", { n: shortName(v.stations[pl.skipped.i]) }));
+    } else if (pl.skipped) {
+      var sk = pl.skipped, skn = shortName(v.stations[sk.i]);
+      out.push(sk.p <= 0.05 ? t(dock ? "skipDock" : "skipBike", { n: skn }) : t(dock ? "skipDockP" : "skipBikeP", { n: skn, p: 10 * tenth(sk.p) }));
+    }
     return out;
   }
   // one line about the reward: the suggested station if it is likely to pay, else the likeliest station that costs at most three minutes more
@@ -873,8 +881,10 @@
     $("tEmpty").innerHTML = fmt(empty) + unit("uSta"); $("kEmpty").textContent = t("kEmpty");
     $("tRisk").innerHTML = fmt(soon) + unit("uSta"); $("kRisk").textContent = t("kRisk");
     $("tUnmet").innerHTML = v.in_window ? fmt(unmet) + unit("uRide") : "–"; $("kUnmet").textContent = t("kUnmet", { h: v.meta.horizon_min });
-    $("tSaved").innerHTML = v.in_window ? fmt(tt.plan_value) + unit("uRide") + (tt.plan_value > 0 && unmet >= 1 ? "<small>" + Math.min(100, Math.round(100 * tt.plan_value / unmet)) + "%</small>" : "") : "–";
-    $("kSaved").textContent = t("kSaved");
+    // the share goes into the words ("cuts it by 34%"): a bare "34%" beside "19 riders" said nothing
+    var share = v.in_window && tt.plan_value > 0 && unmet >= 1 ? Math.min(100, Math.round(100 * tt.plan_value / unmet)) : null;
+    $("tSaved").innerHTML = v.in_window ? fmt(tt.plan_value) + unit("uRide") : "–";
+    $("kSaved").textContent = share != null ? t("kSavedP", { p: share }) : t("kSaved");
   }
   function actText(st) { return st.d > 0 ? t("dropN", { n: st.d }) : t("pickN", { n: -st.d }); }
   function copyText(text, done) {
@@ -913,6 +923,8 @@
     idx.sort(function (a, b) { return arr[b] - arr[a]; });
     $("hRisk").textContent = key === "unmet" ? t("unmetH") : t("riskH");
     $("h30").textContent = t("h30"); $("h60").textContent = t("h60"); $("hU").textContent = t("hU");
+    // column names, so that "0 / 20" and "78%" say what they are
+    $("riskHead").innerHTML = "<span></span><span class=\"bk\">" + t("riskColBk") + "</span><span class=\"pv\">" + (key === "unmet" ? t("riskColU") : t("riskColP", { h: horizon })) + "</span>";
     var ol = $("risk"); ol.innerHTML = "";
     var top = key === "unmet" ? Math.max(1, arr[idx[0]] || 1) : 1;
     idx.slice(0, 10).forEach(function (i) {
@@ -949,8 +961,10 @@
     var h = "<h3>" + t("trackH") + "</h3><p>" + t("trackSub", { d: md(track.since || ""), n: days }) + "</p>", any = false;
     [["leave", "trackLeave"], ["arrive", "trackArrive"], ["dock", "trackDock"]].forEach(function (x) {
       var a = sum[x[0]]; if (!a || a[F.cases] < 20) return; any = true;
-      var n = a[F.cases], f1 = function (k) { return (a[F[k]] / n).toFixed(1); };
-      h += "<p><b>" + t(x[1]) + "</b>" + sep() + t(x[0] === "dock" ? "trackLineDock" : "trackLine", { n: Math.round(n), a: f1("min_pick"), b: f1("min_alt"), c: f1("min_near") });
+      var n = a[F.cases], f1 = function (k) { return (a[F[k]] / n).toFixed(1); }, m = { n: Math.round(n), a: f1("min_pick"), b: f1("min_alt"), c: f1("min_near") };
+      // three equal numbers in a row look like a fault, so equal ones are said once
+      var same = m.a === m.b && m.b === m.c, key = x[0] === "dock" ? "trackLineDock" : "trackLine";
+      h += "<p><b>" + t(x[1]) + "</b>" + sep() + t(same ? key + "Same" : key, m);
       if (x[0] !== "dock" && a[F.n20] >= 20) h += t("trackSee", { x: (a[F.err20] / a[F.n20]).toFixed(1) });
       h += "</p>";
     });
@@ -966,8 +980,10 @@
       return;
     }
     var it = function (c, k) { return "<div class=\"it\"><span class=\"sw\" style=\"background:var(" + c + ")\"></span>" + t(k) + "</div>"; };
-    var bike = need() === "bike";
-    el.innerHTML = "<div class=\"ttl\">" + t(bike ? "legBike" : "legDock") + "</div>" + it("--ok-fill", bike ? "cBikeYes" : "cDockYes") + it("--low-fill", bike ? "cBikeMaybe" : "cDockMaybe") + it("--out-fill", bike ? "cBikeNo" : "cDockNo") + it("--gone", bike ? "sGone" : "sFullNow") +
+    var kind = need(), bike = kind === "bike", hi = Math.round(100 * SURE[kind]), lo = Math.round(100 * MAYBE[kind]);
+    var band = function (c, text) { return "<div class=\"it\"><span class=\"sw\" style=\"background:var(" + c + ")\"></span>" + text + "</div>"; };
+    // the colours are bands of the chance, and the legend says which
+    el.innerHTML = "<div class=\"ttl\">" + t(bike ? "legBike" : "legDock") + "</div>" + band("--ok-fill", t("bandHi", { a: hi })) + band("--low-fill", t("bandMid", { a: lo, b: hi })) + band("--out-fill", t("bandLo", { a: lo })) + it("--gone", bike ? "sGone" : "sFullNow") +
       "<div class=\"it gap\">" + t(bike ? "legNumBike" : "legNumDock") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
   }
   function dayLabel(d) {
