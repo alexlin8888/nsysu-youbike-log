@@ -55,7 +55,9 @@
 | `final_spread.py` | 期末報告：頁面上每個出發時間的 10 個點（第一站就有車／換一站 8 分鐘內／超過 8 分鐘）準不準。現在出發照建議的站算；晚一點出發假設出發時再看一次車數，各站一起空的程度用 θ 調整（θ = 0.6，留一個測試日選出）。出發前 0–60 分鐘的預告對照實際，算可靠度與 Brier 分數，基準是平常那個時段的比例和常數 |
 | `final_docks.py` | 期末報告：早上校內個別站停滿，車柱挪一挪有沒有用。生滅鏈從每三小時的實際車數往後推，算每站每天預期借不到、還不了的次數；容量正負 12 個車柱，一次移一個車柱的貪婪搜尋，以及體育館移 0–10 個車柱到工學院 |
 | `final_labels.py` | 期末報告：頁面上四種站的標示（有車／車不多／快沒車／現在沒車，還車是有空位／空位不多／快停滿／現在停滿）各有多少比例說對。12 個測試日、校園到捷運之間 19 站、07:00–21:50，每個快照往後 1 到 30 分鐘到站，用頁面同一套機率分類，再查紀錄器到站那一刻有沒有車。「有車」99%、「車不多」81%、「快沒車」62%、「現在沒車」22% 在到站前補進車 |
-| `final_policy.py` | 期末報告（初步試算）：查車資訊救不了整個校園一起沒車，所以改問學校、市府或營運商能改什麼。8 個校內站、12 個測試日，用生滅鏈比較：一半的課提早或延後 10 分鐘下課、16:00–17:00 多 20 或 40 人把車騎回校內（類似友愛騎乘券或 Citi Bike 的 Bike Angels）、16:50 補 20 台或 16:50 與 17:50 各補 20 台；早上比較體育館移 4 個車柱給工學院、9–11 點多 20 或 40 人從滿站借走、9 點載走 20 台。絕對數字偏粗，只看相對效果 |
+| `final_reward.py` | 期末報告 3.10 節：官方友愛接力（空站還車、滿站借車送 5 元）付錢的時間對不對。8 個校內站、12 個測試日，每半小時算還到校內的車、現行規則和預測型規則（40 分鐘內借空機率至少一半就付）各付給幾台、每多一台車兩小時內少幾次借不到車；預測型規則事先標出幾成借空、提早幾分鐘、標得準不準；以及騎回校內的人多 25%、50%、一倍時傍晚和早上各少多少 |
+| `final_policy.py` | 期末報告 3.10 節與政策分頁的試算：同一條生滅鏈從 15:00（早上 08:00）的實際車數出發，組合預測型友愛接力（多 0、25%、50%、一倍）、下課前補車（16:50 補 20 台，或 16:50 與 17:50 各 20 台；早上 09:00 載走 20 台）和一半的課提早 10 分鐘下課，算傍晚借不到車、早上還不了車少幾成，以及多發幾張券。第四個參數給 `../docs/policy.json` 時，順便寫出頁面讀的檔案（要先跑 `final_reward.py`） |
+| `final_policy_figs.py` | 期末報告 Fig. 21 和建議書的圖：每半小時還到校內的車依規則分色、校內站沒車的時間、各項做法少多少 |
 | `final_rider.py` | 期末報告的第一版檢驗，只看第一站：照頁面的建議走，到站時真的有車（有位子）的比例。三個難用的時段各自重播 12 個測試日，對照最近的站、看現在車數挑站（至少 K 台）與生滅鏈門檻；另外輸出三個時段沒車、沒位子的比例（`hard_hours.csv`） |
 | `final_avail.py` | 期末報告：生滅鏈的「k 步後有車／有位子」機率，對照保序校正與疊在鏈上的 LightGBM（兩個區塊交叉擬合）；輸出 `avail_oof.npz` 給 `final_rider.py --avail` |
 | `nsysu_sim.py` | 期末報告：中山的卡車模擬。需求由後段資料估的速率抽 Poisson，規劃器用前段資料估的速率；早上與傍晚各一個班次，比較不派車、1–3 台只補校園走廊的車、1 或 3 台不限區域的車 |
@@ -105,7 +107,9 @@ python code/final_relay.py ../data results/final/rates_fit_to_1029 results/final
 python code/final_city.py ../data results/final/city
 python code/final_spread.py ../data results/final/rates_fit_to_1029 ../docs/places.json results/final/spread
 python code/final_labels.py ../data results/final/rates_fit_to_1029 results/final/labels
-python code/final_policy.py ../data results/final/rates_fit_to_1029 results/final/policy
+python code/final_reward.py ../data results/final/rates_fit_to_1029 results/final/reward
+python code/final_policy.py ../data results/final/rates_fit_to_1029 results/final/policy ../docs/policy.json
+python code/final_policy_figs.py results/final ../report/figs
 python code/final_docks.py ../data results/final/rates_fit_to_1029 results/final/docks
 python code/demo_places.py ../data ../docs/places.json                            # 需要網路；地點或站有變動時才重跑
 python code/final_time.py ../data results/final/rates_fit_to_1029 ../docs/places.json results/final/time
@@ -132,7 +136,7 @@ TT_SPLIT=week python code/timetable_nsysu.py ../data work/model results/nsysu/ti
 - `model/`：預測模型的指標、可靠度曲線、特徵重要性、測試集預測；`model/sweep/` 時距掃描與 Poisson 推演
   （`sweep_metrics.csv`、`rates_train.csv`、`sweep_setup.json` 含 MC 對照）；`model/transfer/` 遷移；`model/ci/` 信賴區間；`model/timetable/` 課表特徵實驗（逐日留一；`week/` 為第一週訓練、第二週測試）。
 - `nsysu/rates/`：中山各站速率 `rates.csv`（`lam_r`、`lam_q` 每小時；`lam_*_gross` 為毛變化量下界）、全站同時段平均 `rates_prior.csv`、最後 7 天的檢驗 `rates_holdout.csv`（每筆轉移的對數概似：鏈估計 −1.51、毛變化量 −1.59、同時段平均 −1.72）。
-- `final/`：期末報告新增實驗的結果。`final_nsysu_*.csv/json` 六週的下課缺車數字與紀錄器完整度；`forecast/` 下課後預估的檢驗；`transfer/` 幾週本地資料的遷移；`planner/` 規劃器在中山的時段彙整；`lost_demand.json` 臺大流失需求；`rates_fit_to_1029/` 檢驗用的速率（只估到 10/29）；`rider/` 第一站借不借得到的比例與三個難用時段的比例；`time/` 幾分鐘騎得上車（`time_summary.csv` 各規則的平均與日拔靴區間、`time_by_minute.csv` 依出發時間、`time_foresight_summary.csv` 事前預估的準度；逐筆的 `time_cases.csv` 太大不放進 repo），`time_late/`、`time_early/` 是計分方式的敏感度；`relay/` 友愛接力標記的準度；`city/` 見車率與校內車柱分布；`avail/` 生滅鏈與疊加模型的比較；`sim/` 卡車模擬；`rates_fit_from_1030/` 模擬裡產生需求用的速率（10/30 到 11/16）。
+- `final/`：期末報告新增實驗的結果。`final_nsysu_*.csv/json` 六週的下課缺車數字與紀錄器完整度；`forecast/` 下課後預估的檢驗；`transfer/` 幾週本地資料的遷移；`planner/` 規劃器在中山的時段彙整；`lost_demand.json` 臺大流失需求；`rates_fit_to_1029/` 檢驗用的速率（只估到 10/29）；`rider/` 第一站借不借得到的比例與三個難用時段的比例；`time/` 幾分鐘騎得上車（`time_summary.csv` 各規則的平均與日拔靴區間、`time_by_minute.csv` 依出發時間、`time_foresight_summary.csv` 事前預估的準度；逐筆的 `time_cases.csv` 太大不放進 repo），`time_late/`、`time_early/` 是計分方式的敏感度；`relay/` 友愛接力標記的準度；`city/` 見車率與校內車柱分布；`avail/` 生滅鏈與疊加模型的比較；`sim/` 卡車模擬；`rates_fit_from_1030/` 模擬裡產生需求用的速率（10/30 到 11/16）；`labels/` 四種標示的準度；`docks/` 挪車柱的試算；`reward/` 友愛接力付錢的時間、預測型規則的預警與試算；`policy/` 政策分頁的試算格子（`policy_grid.csv`）。
 - `nsysu/rates/rates_slots.csv`：走廊 19 站上課日每 10 分鐘的速率（`slot` 0–143）；`rates_slots_tuning.csv` 是先驗權重的驗證。
 - `sim/k1,k3,k6/`：重播模擬每日結果與摘要（含 `route`、`route1`）；`sim/route/` 路徑搜尋的原始輸出與設定；`sim/tuning/sim_tune_summary.csv` 驗證日調參結果；`sim/sim_numbers.json` 報告引用的數字與區間。
 

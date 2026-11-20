@@ -24,6 +24,12 @@
   "Marine Eng.",
   "Marine Res."
  ],
+ "evening": "15:00-20:00 refused rentals",
+ "morning": "08:00-11:00 refused returns",
+ "baseline": {
+  "evening": 203.56053863837835,
+  "morning": 75.35739472367446
+ },
  "weights_evening": {
   "Library": 0.163,
   "Xiziwan Hall": 0.081,
@@ -43,7 +49,5 @@
   "Gymnasium": 0.103,
   "Marine Eng.": 0.238,
   "Marine Res.": 0.108
- },
- "baseline_evening": 191.10546687756403,
- "baseline_morning": 75.35739472367446
+ }
 }

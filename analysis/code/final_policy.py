@@ -1,33 +1,36 @@
-"""What would a policy change on campus? A first what-if with the birth-death chain (preliminary).
+"""What would a policy change on campus? The what-if grid behind the page's Policy tab and Sec. 3.10 of the report.
 
-Usage: python final_policy.py DATA_DIR RATES_DIR OUT_DIR [--fit-end 2026-10-29] [--test-end 2026-11-16]
+Usage: python final_policy.py DATA_DIR RATES_DIR OUT_DIR [PAGE_JSON] [--fit-end 2026-10-29] [--test-end 2026-11-16]
 
-Information alone cannot help when every campus station is empty at once, so the question moves to what the school,
-the city or the operator could change. For the eight campus stations on the held-out teaching days, the chain of
-final_docks.py (rates per 10-minute slot, fitted up to --fit-end) is run from the logged stock at 16:00 to 20:00 for
-rentals refused at an empty rack, and from 08:00 to 11:00 for returns refused at a full one, under these changes:
+Information cannot help when every campus station is empty at once, so the question moves to what the school, the
+city or the operator could change. For the eight campus stations on the held-out teaching days, the birth-death
+chain (rates per 10-minute slot fitted up to --fit-end, as in final_docks.py) is run from the logged stock
 
-  evening (16:00-20:00, refused rentals)
-    stagger_early  half of the classes ending at 17:00 and 18:00 end 10 minutes earlier: the rental rate of every slot
-                   from 16:40 to 18:40 becomes the mean of its own and the next slot's (total demand unchanged)
-    stagger_late   the same with half ending 10 minutes later
-    reward_N       N more bikes ridden back to campus between 16:00 and 17:00 (a return reward such as the city's
-                   NT$5 voucher, or Citi Bike's Bike Angels), spread over the stations by their evening outflow
-    truck_20       a truck brings 20 bikes at 16:50, spread the same way (capacity caps what a station can take)
-    truck_20x2     20 bikes at 16:50 and 20 more at 17:50
-  morning (08:00-11:00, refused returns)
-    docks_4        4 docks moved from the Gymnasium to Engineering (as in final_docks.py)
-    ride_off_N     N more bikes taken off the full campus racks between 09:00 and 11:00 (the voucher pays for
-                   borrowing at a full station)
-    truck_out_20   a truck takes 20 bikes off campus at 09:00, from the stations by their morning inflow
+  evening  15:00 to 20:00, counting rentals refused at an empty rack, under every combination of
+    reward   the predictive voucher of final_reward.py (pay a return where the chain gives the station an even chance
+             of running empty within 40 minutes) raising returns there by 0, 25, 50 or 100%; the response is not known
+    truck    no truck, 20 bikes brought at 16:50, or 20 at 16:50 and 20 more at 17:50, spread over the stations by
+             their evening outflow (a station takes what its free docks allow)
+    stagger  all classes end at the bell, or half of those ending at 17:00 and 18:00 end 10 minutes earlier: the
+             rental rate of every slot from 16:40 to 18:40 becomes the mean of its own and the next slot's
+  morning  08:00 to 11:00, counting returns refused at a full rack, under every combination of
+    reward   the predictive voucher for borrowing where the chain gives an even chance of the rack filling within 40
+             minutes, raising rentals there by 0, 25, 50 or 100%
+    truck    none, or 20 bikes taken off campus at 09:00 from the stations by their morning inflow
+  (moving docks is left to final_docks.py: Engineering full 0.47 -> 0.20 of the morning, the campus day only -2.6%)
 
-The chain runs without the operator's own trucks inside a window, it finds full campus racks less often than the
-logger does (report Sec. 3.7), and a refused rider is counted once, so the levels are rough; the comparison between
-the changes is the point. Writes policy_summary.csv and policy_setup.json.
+Today's voucher (pay at an empty or full rack) is in the data the rates were fitted on, so only the predictive part is
+added. The chain runs without the operator's own trucks inside a window, so the levels are high; the cuts are the
+result. Vouchers count every paid return or rental, also those that would have happened anyway.
+
+Writes policy_grid.csv and policy_setup.json, and with PAGE_JSON the file the page reads (docs/policy.json), which also
+carries the timing and warning results of final_reward.py (run it first) and the truck simulation of nsysu_sim.py.
 """
 import json
 import math
 import sys
+from datetime import datetime, timedelta, timezone
+from itertools import product
 from pathlib import Path
 
 import numpy as np
@@ -38,60 +41,64 @@ sys.path.insert(0, str(Path(__file__).parent))
 from nsysu_data import CAMPUS, HOLIDAYS, load_logger, load_stations  # noqa: E402
 from route_planner import STEP  # noqa: E402
 
-DATA, RATES, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
+ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
+DATA, RATES, OUT = Path(ARGS[0]), Path(ARGS[1]), Path(ARGS[2])
+PAGE = Path(ARGS[3]) if len(ARGS) > 3 and ARGS[3].endswith(".json") else None
 OUT.mkdir(parents=True, exist_ok=True)
 ARG = lambda name, default: sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
 FIT_END, TEST_END = ARG("--fit-end", "2026-10-29"), ARG("--test-end", "2026-11-16")
 OFFDAYS = set(HOLIDAYS) | {"2026-10-23"}
-EVE, MORN = (96, 120), (48, 66)                   # 16:00-20:00, 08:00-11:00 in 10-minute slots
-DONOR, TAKER = "501209069", "501209051"           # the Gymnasium, Engineering
+EVE, MORN = (90, 120), (48, 66)                   # 15:00-20:00, 08:00-11:00 in 10-minute slots
+K_PRED, THETA = 4, 0.5                            # the predictive voucher: an even chance within 40 minutes
+REWARDS = [0.0, 0.25, 0.5, 1.0]
 
 st = load_stations(DATA)
 camp = [s for s in CAMPUS if s in set(st.sno)]
 cap0 = {s: int(st.set_index("sno").capacity[s]) for s in camp}
 slots = pd.read_csv(RATES / "rates_slots.csv", dtype={"sno": str})
-hourly = pd.read_csv(RATES / "rates.csv", dtype={"sno": str})
-hourly = hourly[hourly.offday == 0]
+hourly = pd.read_csv(RATES / "rates.csv", dtype={"sno": str}); hourly = hourly[hourly.offday == 0]
 SL = {(r.sno, r.slot): (r.lam_r, r.lam_q) for r in slots.itertuples()}
 HR = {(r.sno, r.hod): (r.lam_r, r.lam_q) for r in hourly.itertuples()}
+base_rates = lambda s, slot: SL.get((s, slot)) or HR.get((s, slot // 6), (0.0, 0.0))
+_k, _h = {}, {}
 
 
-def base_rates(s, slot):
-    return SL.get((s, slot)) or HR.get((s, slot // 6), (0.0, 0.0))
-
-
-_cache = {}
-
-
-def step_tables(lam_r, lam_q, c):
+def kern(lam_r, lam_q, c):
+    """One 10-minute step at capacity c: transition matrix, expected refused rentals and refused returns by stock."""
     key = (round(lam_r, 6), round(lam_q, 6), c)
-    if key in _cache:
-        return _cache[key]
-    a, b = lam_r * STEP / 60, lam_q * STEP / 60
-    M = int(max(a, b) + 8 * math.sqrt(max(a, b) + 1e-9) + 20) + c
-    r = np.arange(M + 1)
-    pr, pq = poisson.pmf(r, a), poisson.pmf(r, b)
-    K = np.zeros((c + 1, c + 1)); ur = np.zeros(c + 1); uq = np.zeros(c + 1)
-    for i in range(c + 1):
-        prc = pr[:i + 1].copy(); prc[i] = pr[i:].sum()
-        pqc = pq[:c - i + 1].copy(); pqc[c - i] = pq[c - i:].sum()
-        K[i] = np.convolve(pqc, prc[::-1])
-        ur[i] = ((r[i + 1:] - i) * pr[i + 1:]).sum()
-        f = c - i
-        uq[i] = ((r[f + 1:] - f) * pq[f + 1:]).sum()
-    _cache[key] = (K, ur, uq)
-    return _cache[key]
+    if key not in _k:
+        a, b = lam_r * STEP / 60, lam_q * STEP / 60
+        M = int(max(a, b) + 8 * math.sqrt(max(a, b) + 1e-9) + 20) + c
+        r = np.arange(M + 1); pr, pq = poisson.pmf(r, a), poisson.pmf(r, b)
+        K = np.zeros((c + 1, c + 1)); ur = np.zeros(c + 1); uq = np.zeros(c + 1)
+        for i in range(c + 1):
+            prc = pr[:i + 1].copy(); prc[i] = pr[i:].sum()
+            pqc = pq[:c - i + 1].copy(); pqc[c - i] = pq[c - i:].sum()
+            K[i] = np.convolve(pqc, prc[::-1])
+            ur[i] = ((r[i + 1:] - i) * pr[i + 1:]).sum(); uq[i] = ((r[c - i + 1:] - (c - i)) * pq[c - i + 1:]).sum()
+        _k[key] = (K, ur, uq)
+    return _k[key]
+
+
+def hit(s, t, c, target, rates_fn):
+    """P(stock reaches `target` within K_PRED steps from slot t), for every starting stock: what the voucher pays on."""
+    key = (s, t, c, target, rates_fn.__name__)
+    if key not in _h:
+        h = (np.arange(c + 1) == target).astype(float)
+        for step in range(K_PRED - 1, -1, -1):
+            h = np.where(np.arange(c + 1) == target, 1.0, kern(*rates_fn(s, t + step), c)[0] @ h)
+        _h[key] = h
+    return _h[key]
 
 
 df = load_logger(DATA)
 df = df[df.sno.isin(camp) & (df.age <= 20) & df.bikes.notna()].copy()
 dstr = df.date.astype(str).str.slice(0, 10)
 days = sorted(d for d in dstr.unique() if pd.Timestamp(d).dayofweek < 5 and d not in OFFDAYS and FIT_END < d <= TEST_END)
-stock = {(d, s, sl): b for d, s, sl, b in zip(dstr, df.sno, df.slot, df.bikes)}
+stock = {(d, s, sl): int(b) for d, s, sl, b in zip(dstr, df.sno, df.slot, df.bikes)}
 
-# where the extra bikes go: evening by net outflow, morning by net inflow (rates in bikes per hour)
-out_e = {s: max(0.0, sum(base_rates(s, k)[0] - base_rates(s, k)[1] for k in range(*EVE))) for s in camp}
-in_m = {s: max(0.0, sum(base_rates(s, k)[1] - base_rates(s, k)[0] for k in range(54, 66))) for s in camp}
+out_e = {s: max(0.0, sum(base_rates(s, k)[0] - base_rates(s, k)[1] for k in range(96, 120))) for s in camp}   # 16:00-20:00
+in_m = {s: max(0.0, sum(base_rates(s, k)[1] - base_rates(s, k)[0] for k in range(54, 66))) for s in camp}     # 09:00-11:00
 w_e = {s: out_e[s] / sum(out_e.values()) for s in camp}
 w_m = {s: in_m[s] / sum(in_m.values()) for s in camp}
 
@@ -104,84 +111,88 @@ def split(total, w):
     return got
 
 
-def run(window, metric, rates_fn, cap_fn=lambda s: cap0[s], shift_fn=None):
-    """Expected refused rentals ('rent') or returns ('return') per teaching day on campus over the window."""
-    total = 0.0
-    for day in days:
+def staggered(s, slot):
+    """Half of the classes ending at 17:00 and 18:00 end 10 minutes earlier."""
+    r, q = base_rates(s, slot)
+    if 100 <= slot < 112:
+        r = 0.5 * r + 0.5 * base_rates(s, slot + 1)[0]
+    return r, q
+
+
+def run(kind, reward, truck_plan, rates_fn=base_rates):
+    """Expected refused rentals ('rent', evening) or returns ('return', morning) and vouchers paid, per teaching day."""
+    window = EVE if kind == "rent" else MORN
+    w = w_e if kind == "rent" else w_m
+    per = {sl: split(abs(n), w) for sl, n in truck_plan.items()}
+    lost = paid = 0.0
+    for d in days:
         for s in camp:
-            b0 = stock.get((day, s, window[0]))
+            c = cap0[s]; b0 = stock.get((d, s, window[0]))
             if b0 is None:
                 continue
-            c = cap_fn(s)
-            P = np.zeros(c + 1); P[int(min(max(b0, 0), c))] = 1.0
-            for slot in range(*window):
-                if shift_fn:
-                    k = shift_fn(s, slot)
-                    if k:
-                        Q = np.zeros(c + 1)
-                        for i, p in enumerate(P):
-                            Q[min(max(i + k, 0), c)] += p
-                        P = Q
-                K, ur, uq = step_tables(*rates_fn(s, slot), c)
-                total += float(P @ (ur if metric == "rent" else uq))
+            P = np.zeros(c + 1); P[min(max(b0, 0), c)] = 1.0
+            for t in range(*window):
+                if t in truck_plan and per[t][s]:
+                    k = per[t][s] * (1 if truck_plan[t] > 0 else -1)
+                    Q = np.zeros(c + 1)
+                    for i, p in enumerate(P):
+                        Q[min(max(i + k, 0), c)] += p
+                    P = Q
+                lr, lq = rates_fn(s, t)
+                if kind == "rent":
+                    now = np.arange(c + 1) == 0
+                    pays = now | (hit(s, t, c, 0, rates_fn) >= THETA) if reward > 0 else now     # no predictive voucher: today's rule
+                    K0, u0, _ = kern(lr, lq, c); K1, u1, _ = kern(lr, lq * (1 + reward), c)
+                    flow = np.where(pays & ~now, lq * (1 + reward), lq) * STEP / 60
+                else:
+                    now = np.arange(c + 1) == c
+                    pays = now | (hit(s, t, c, c, rates_fn) >= THETA) if reward > 0 else now
+                    K0, _, u0 = kern(lr, lq, c); K1, _, u1 = kern(lr * (1 + reward), lq, c)
+                    flow = np.where(pays & ~now, lr * (1 + reward), lr) * STEP / 60
+                extra = pays & ~now
+                K = np.where(extra[:, None], K1, K0); u = np.where(extra, u1, u0)
+                lost += float(P @ u); paid += float(P @ (flow * pays))
                 P = P @ K
-    return total / len(days)
-
-
-def stagger(direction):
-    lo, hi = 100, 112                                   # 16:40-18:40
-    def f(s, slot):
-        r, q = base_rates(s, slot)
-        if lo <= slot < hi:
-            r2 = base_rates(s, slot + direction)[0]
-            r = 0.5 * r + 0.5 * r2
-        return r, q
-    return f
-
-
-def reward(n):
-    extra = {s: n * w_e[s] for s in camp}               # bikes per hour over 16:00-17:00
-    def f(s, slot):
-        r, q = base_rates(s, slot)
-        return (r, q + extra[s]) if 96 <= slot < 102 else (r, q)
-    return f
-
-
-def ride_off(n):
-    extra = {s: n * w_m[s] / 2 for s in camp}           # bikes per hour over 09:00-11:00
-    def f(s, slot):
-        r, q = base_rates(s, slot)
-        return (r + extra[s], q) if 54 <= slot < 66 else (r, q)
-    return f
-
-
-def trucks(plan):                                       # {slot: bikes}, + to bring, - to take
-    per = {sl: split(abs(n), w_e if n > 0 else w_m) for sl, n in plan.items()}
-    def f(s, slot):
-        return (1 if plan[slot] > 0 else -1) * per[slot][s] if slot in plan else 0
-    return f
+    return lost / len(days), paid / len(days)
 
 
 rows = []
-base_e = run(EVE, "rent", base_rates)
-base_m = run(MORN, "return", base_rates)
-for name, kw in [("stagger_early", dict(rates_fn=stagger(+1))), ("stagger_late", dict(rates_fn=stagger(-1))),
-                 ("reward_20", dict(rates_fn=reward(20))), ("reward_40", dict(rates_fn=reward(40))),
-                 ("truck_20", dict(rates_fn=base_rates, shift_fn=trucks({101: 20}))),
-                 ("truck_20x2", dict(rates_fn=base_rates, shift_fn=trucks({101: 20, 107: 20}))),
-                 ("stagger_early+truck_20", dict(rates_fn=stagger(+1), shift_fn=trucks({101: 20})))]:
-    v = run(EVE, "rent", **kw)
-    rows.append({"window": "evening 16:00-20:00", "measure": "refused rentals per teaching day", "change": name, "value": v, "baseline": base_e, "cut": 1 - v / base_e})
-for name, kw in [("docks_4", dict(rates_fn=base_rates, cap_fn=lambda s: cap0[s] + (4 if s == TAKER else -4 if s == DONOR else 0))),
-                 ("ride_off_20", dict(rates_fn=ride_off(20))), ("ride_off_40", dict(rates_fn=ride_off(40))),
-                 ("truck_out_20", dict(rates_fn=base_rates, shift_fn=trucks({54: -20})))]:
-    v = run(MORN, "return", **kw)
-    rows.append({"window": "morning 08:00-11:00", "measure": "refused returns per teaching day", "change": name, "value": v, "baseline": base_m, "cut": 1 - v / base_m})
-res = pd.DataFrame(rows)
-res.to_csv(OUT / "policy_summary.csv", index=False)
-json.dump({"fit_end": FIT_END, "test_days": days, "stations": [CAMPUS[s] for s in camp], "weights_evening": {CAMPUS[s]: round(w_e[s], 3) for s in camp},
-           "weights_morning": {CAMPUS[s]: round(w_m[s], 3) for s in camp}, "baseline_evening": base_e, "baseline_morning": base_m},
-          open(OUT / "policy_setup.json", "w"), ensure_ascii=False, indent=1)
+for reward, truck, stagger in product(REWARDS, [0, 1, 2], [0, 1]):
+    plan = {101: 20} if truck == 1 else {101: 20, 107: 20} if truck == 2 else {}
+    lost, paid = run("rent", reward, plan, rates_fn=staggered if stagger else base_rates)
+    rows.append({"window": "evening", "reward": reward, "truck": truck, "stagger": stagger, "docks": 0, "lost": lost, "vouchers": paid})
+for reward, truck in product(REWARDS, [0, 1]):
+    lost, paid = run("return", reward, {54: -20} if truck else {})
+    rows.append({"window": "morning", "reward": reward, "truck": truck, "stagger": 0, "docks": 0, "lost": lost, "vouchers": paid})
+G = pd.DataFrame(rows)
+base = {w: float(G[(G.window == w) & (G.reward == 0) & (G.truck == 0) & (G.stagger == 0) & (G.docks == 0)].lost.iloc[0]) for w in ("evening", "morning")}
+G["cut"] = 1 - G.lost / G.window.map(base)
+G.to_csv(OUT / "policy_grid.csv", index=False)
+setup = {"fit_end": FIT_END, "test_days": days, "stations": [CAMPUS[s] for s in camp], "evening": "15:00-20:00 refused rentals", "morning": "08:00-11:00 refused returns",
+         "baseline": base, "weights_evening": {CAMPUS[s]: round(w_e[s], 3) for s in camp}, "weights_morning": {CAMPUS[s]: round(w_m[s], 3) for s in camp}}
+json.dump(setup, open(OUT / "policy_setup.json", "w"), ensure_ascii=False, indent=1)
 pd.set_option("display.width", 200)
-print(f"baseline: evening {base_e:.1f} refused rentals, morning {base_m:.1f} refused returns per teaching day ({len(days)} days)")
-print(res[["window", "change", "value", "cut"]].round(3).to_string(index=False))
+print(G.round(3).to_string(index=False))
+
+if PAGE:
+    res = OUT.parent
+    tim = pd.read_csv(res / "reward" / "reward_timing.csv")
+    warn = pd.read_csv(res / "reward" / "reward_warning.csv").iloc[0]
+    rv = pd.read_csv(res / "reward" / "reward_value.csv")
+    day_rows = rv[rv.window == "14:00-20:00"]
+    pred_row, now_row = day_rows[day_rows.rule.str.startswith("predictive")].iloc[0], day_rows[day_rows.rule.str.startswith("today")].iloc[0]
+    # what one paid return is worth under each rule, and what a return the predictive rule leaves unpaid is worth
+    worth, worth_now, worth_unpaid = float(pred_row.value_per_paid_return), float(now_row.value_per_paid_return), float(pred_row.value_per_return_unpaid)
+    sim = pd.read_csv(res / "sim" / "sim_summary.csv")
+    ev = sim[(sim["shift"] == "evening") & (sim.policy == "campus")].sort_values("trucks")
+    mo = sim[(sim["shift"] == "morning") & (sim.policy == "campus")].sort_values("trucks")
+    page = {"made": datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d"), "days": len(days), "first": days[0], "last": days[-1],
+            "evening": {"base": round(base["evening"], 1), "grid": [[r.reward, int(r.truck), int(r.stagger), round(r.lost, 1), round(r.vouchers, 1)] for r in G[G.window == "evening"].itertuples()]},
+            "morning": {"base": round(base["morning"], 1), "grid": [[r.reward, int(r.truck), round(r.lost, 1), round(r.vouchers, 1)] for r in G[G.window == "morning"].itertuples()]},
+            "timing": [[r.time, round(r.empty_share, 3), round(r.returns_per_day, 1), round(r.paid_now_per_day, 1), round(r.paid_pred_per_day, 1), round(r.value_mean, 2)] for r in tim.itertuples()],
+            "warning": {"events": int(warn.empty_events), "flagged": round(float(warn.flagged_before), 3), "lead_median": int(warn.lead_median_min),
+                        "precision": round(float(warn.flag_then_empty_share), 3), "base": round(float(warn.base_empty40_share_with_bikes), 3), "worth": round(worth, 2),
+                        "worth_now": round(worth_now, 2), "worth_unpaid": round(worth_unpaid, 2)},
+            "sim": {"evening": [round(float(x), 3) for x in ev.unmet_campus_avoided], "morning_refused": [round(float(x), 3) for x in mo.refused_campus_avoided]}}
+    json.dump(page, open(PAGE, "w"), ensure_ascii=False, separators=(",", ":"))
+    print("page file", PAGE, len(json.dumps(page)), "bytes")

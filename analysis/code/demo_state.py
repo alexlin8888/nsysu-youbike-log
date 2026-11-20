@@ -74,6 +74,7 @@ TUNED = (RESULTS / "model" / "lgb_inv_30_nsysu.txt").exists() and (RESULTS / "mo
 M30 = lgb.Booster(model_file=str(RESULTS / "model" / ("lgb_inv_30_nsysu.txt" if TUNED else "lgb_inv_30.txt")))
 M60 = lgb.Booster(model_file=str(RESULTS / "model" / ("lgb_inv_60_nsysu.txt" if TUNED else "lgb_inv_60.txt")))
 AHEAD_STEPS = 9                   # the page asks "will there be a bike / a dock when I get there": answer for 10 .. 90 minutes ahead
+REWARD_STEPS = 4                  # the predictive voucher of the Policy tab looks 40 minutes ahead (final_reward.py)
 A64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"   # one character per value: probabilities in 64ths, counts as they are
 rates = pd.read_csv(RESULTS / "nsysu" / "rates" / "rates.csv", dtype={"sno": str})
 prior = pd.read_csv(RESULTS / "nsysu" / "rates" / "rates_prior.csv")
@@ -140,7 +141,7 @@ def compute(df, ts, trucks=K, with_history=True):
     in_window = WINDOW[0] <= t_min < WINDOW[1]
     plans, unmet = [], np.zeros(N)
     nxt = [b for b in BELL_MIN if b > t_min]
-    ahead, fresh, quant = None, None, None
+    ahead, fresh, quant, reward = None, None, None, None
     if in_window:
         values = chain_values(offday)
         # the chain run forward without a truck: chance of a bike, chance of a free dock and expected bikes after 1..AHEAD_STEPS steps
@@ -153,6 +154,18 @@ def compute(df, ts, trucks=K, with_history=True):
         code = lambda cols, top: ["".join(A64[min(63, int(c[i] * top + 0.5))] for c in cols) if observed[i] else "" for i in range(N)]
         ahead = {"step": STEP, "bike": code(pb, 63), "dock": code(pk, 63), "bikes": code(eb, 1)}
         quant = (np.array([(c * 63 + 0.5).astype(int) for c in pb]), np.array([(c * 63 + 0.5).astype(int) for c in pk]))   # what the page reads, as numbers
+        # the chance that a corridor station runs empty, or fills up, within the next 40 minutes: the predictive voucher the
+        # Policy tab proposes pays a return (a rental) there from an even chance on (analysis/code/final_reward.py scores it)
+        pe, pf = [None] * N, [None] * N
+        for i in np.nonzero(CORRIDOR & observed)[0]:
+            c = int(CAP[i]); lv = np.arange(values.C + 1)
+            he, hf = (lv == 0).astype(float), (lv == c).astype(float)
+            for k in range(REWARD_STEPS - 1, -1, -1):
+                Ki = values.kernel_at(t_min + STEP * k, i)
+                he = np.where(lv == 0, 1.0, Ki @ he); hf = np.where(lv == c, 1.0, Ki @ hf)
+            b = int(min(max(bikes[i], 0), c))
+            pe[i], pf[i] = round(float(he[b]), 2), round(float(hf[b]), 2)
+        reward = {"minutes": REWARD_STEPS * STEP, "empty": pe, "full": pf}
         if with_history:
             # the same forecast from every stock a corridor station could have now: rows of AHEAD_STEPS characters, stock 0 first
             fresh = {"sno": [], "bike": [], "dock": [], "bikes": []}
@@ -199,7 +212,7 @@ def compute(df, ts, trucks=K, with_history=True):
            "bikes": [int(b) if o else None for b, o in zip(bikes, observed)], "docks": [int(x) if o else None for x, o in zip(docks, observed)],
            "status": [None if np.isnan(x) else int(x) for x in status], "age": [None if np.isnan(x) else int(x) for x in age],
            "p30": [round(float(x), 3) if o else None for x, o in zip(p30, observed)], "p60": [round(float(x), 3) if o else None for x, o in zip(p60, observed)],
-           "unmet": [round(float(x), 2) if (o and in_window) else None for x, o in zip(unmet, observed)], "ahead": ahead}
+           "unmet": [round(float(x), 2) if (o and in_window) else None for x, o in zip(unmet, observed)], "ahead": ahead, "reward": reward}
     if with_history:
         out["fresh"] = fresh
         out["_track"] = {"quant": quant, "bikes": bikes, "docks": docks, "observed": observed, "day": dstr, "t_min": int(t_min)}
@@ -234,7 +247,7 @@ if __name__ == "__main__":
             s = compute(df, ts, with_history=False)
             if s["snapshot_at"] != ts.strftime("%Y-%m-%d %H:%M"):
                 continue                                  # no snapshot for this slot
-            slots.append({k: s[k] for k in ("snapshot_at", "t_min", "next_bell", "totals", "plans", "bikes", "docks", "p30", "p60", "unmet", "ahead")})
+            slots.append({k: s[k] for k in ("snapshot_at", "t_min", "next_bell", "totals", "plans", "bikes", "docks", "p30", "p60", "unmet", "ahead", "reward")})
             print(f"{s['snapshot_at']} unmet {s['totals']['expected_unmet']} plan {s['totals']['plan_value']}", flush=True)
         dstr = day.strftime("%Y-%m-%d")
         replay = dict(META, generated_at=datetime.now(TZ).isoformat(timespec="seconds"), date=REPLAY, trucks=K,
