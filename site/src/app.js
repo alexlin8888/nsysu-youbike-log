@@ -230,7 +230,7 @@
     if (!r || !r0) return "";
     var lost = r[e ? 3 : 2], base = policy[win].base, cut = 1 - lost / base, more = Math.round(r[e ? 4 : 3] - r0[e ? 4 : 3]), same = cut < 0.005;
     // rides the reward adds, and the extra ride time it hands out (policy.reward_min minutes per reward)
-    var rides = Math.round(r[e ? 5 : 4] || 0), hours = Math.round((r[e ? 4 : 3] - r0[e ? 4 : 3]) * (policy.reward_min || 30) / 60);
+    var rides = Math.round(r[e ? 5 : 4] || 0), hours = Math.round((r[e ? 4 : 3] - r0[e ? 4 : 3]) * (policy.reward_min || 60) / 60);
     // today's count and the count with the chosen measures as two bars on one scale
     var bar = function (label, val, cls) {
       return "<div class=\"simbar " + cls + "\"><span class=\"k\">" + t(label) + "</span><span class=\"track\"><i style=\"width:" + (100 * val / base).toFixed(1) + "%\"></i></span><span class=\"v\">" + Math.round(val) + "</span></div>";
@@ -258,9 +258,9 @@
       "<p class=\"note\">" + t("simRef", { a: pct(P.sim.evening[0]), b: pct(P.sim.evening[1]) }) + "</p>";
     $("simMorn").innerHTML = "<h3>" + t("simMornH") + "</h3>" + simSeg("mr", "simRewardM", ["simR0", "simR1", "simR2", "simR3"]) + simSeg("mt", "simTruckM", ["simM0", "simM1"]) + simOut("morning");
     $("polSimNote").textContent = t("polSimNote");
-    // a reward is policy.reward_min minutes of riding: one 30-minute block, NT$10 at the full Kaohsiung fare
-    var r2 = polRow("evening", 2, 0, 0), r0 = polRow("evening", 0, 0, 0), extra = Math.round(r2[4] - r0[4]), mins30 = policy.reward_min || 30;
-    $("polAsks").innerHTML = "<li>" + t("ask1", { a: pct(polCut("evening", 2, 0, 0)), r: Math.round(r2[5] || 0), h: Math.round((r2[4] - r0[4]) * mins30 / 60), c: 10 * extra * mins30 / 30 }) + "</li><li>" + t("ask2", { b: pct(polCut("evening", 0, 2, 0)), c: pct(polCut("morning", 0, 1)), d: pct(polCut("evening", 2, 2, 0)) }) + "</li><li>" + t("ask3", { e: pct(polCut("evening", 0, 0, 1)) }) + "</li>";
+    // a reward is policy.reward_min minutes of riding: an hour is two 30-minute blocks, NT$10 each at the full Kaohsiung fare
+    var r2 = polRow("evening", 2, 0, 0), r0 = polRow("evening", 0, 0, 0), extra = Math.round(r2[4] - r0[4]), rmin = policy.reward_min || 60;
+    $("polAsks").innerHTML = "<li>" + t("ask1", { a: pct(polCut("evening", 2, 0, 0)), r: Math.round(r2[5] || 0), h: Math.round((r2[4] - r0[4]) * rmin / 60), c: 10 * extra * rmin / 30 }) + "</li><li>" + t("ask2", { b: pct(polCut("evening", 0, 2, 0)), c: pct(polCut("morning", 0, 1)), d: pct(polCut("evening", 2, 2, 0)) }) + "</li><li>" + t("ask3", { e: pct(polCut("evening", 0, 0, 1)) }) + "</li>";
   }
 
   // ---------- current view: live state or one replay slot, in one shape ----------

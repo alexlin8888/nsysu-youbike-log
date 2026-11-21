@@ -71,15 +71,18 @@ function desk(ctx, x, y, s) { ctx.fillStyle = "#A9805A"; ctx.fillRect(x - 0.1 * 
 function voucher(ctx, x, y, s, o = {}) {
   if (s <= 0) return;
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.globalAlpha *= o.alpha == null ? 1 : o.alpha;
-  const w = 460, h = 150;
+  // the value "5 元" sits on the stub, the name and the note on the main part, which grows to fit the note
+  const note = o.note || "只能折抵 YouBike 車資", stub = 150, h = 150;
+  const w = Math.max(460, stub + textW(ctx, note, 24, 500) + 80), mainX = stub / 2;
   ctx.shadowColor = "rgba(16,32,47,0.25)"; ctx.shadowBlur = 24; ctx.shadowOffsetY = 8;
   ctx.beginPath(); ctx.moveTo(-w / 2, -h / 2); ctx.lineTo(w / 2, -h / 2); ctx.lineTo(w / 2, -18); ctx.arc(w / 2, 0, 18, -Math.PI / 2, Math.PI / 2, true); ctx.lineTo(w / 2, h / 2);
   ctx.lineTo(-w / 2, h / 2); ctx.lineTo(-w / 2, 18); ctx.arc(-w / 2, 0, 18, Math.PI / 2, -Math.PI / 2, true); ctx.closePath();
   ctx.fillStyle = "#FFF6DA"; ctx.fill(); ctx.shadowColor = "transparent"; ctx.lineWidth = 4; ctx.strokeStyle = "#E8B83A"; ctx.stroke();
-  ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.moveTo(-w / 2 + 130, -h / 2 + 14); ctx.lineTo(-w / 2 + 130, h / 2 - 14); ctx.stroke(); ctx.setLineDash([]);
-  text(ctx, "5", -w / 2 + 65, 30, { size: 92, weight: 900, color: "#B7860F", align: "center" });
-  text(ctx, "元騎乘券", 60, 16, { size: 52, weight: 900, color: C.ink, align: "center" });
-  text(ctx, o.note || "只能折抵 YouBike 車資", 60, 58, { size: 24, weight: 500, color: C.ink2, align: "center" });
+  ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.moveTo(-w / 2 + stub, -h / 2 + 14); ctx.lineTo(-w / 2 + stub, h / 2 - 14); ctx.stroke(); ctx.setLineDash([]);
+  text(ctx, "5", -w / 2 + 62, 32, { size: 92, weight: 900, color: "#B7860F", align: "center" });
+  text(ctx, "元", -w / 2 + 112, 26, { size: 38, weight: 900, color: "#B7860F", align: "center" });
+  text(ctx, "騎乘券", mainX, 14, { size: 52, weight: 900, color: C.ink, align: "center" });
+  text(ctx, note, mainX, 56, { size: 24, weight: 500, color: C.ink2, align: "center" });
   ctx.restore();
 }
 
@@ -130,10 +133,10 @@ function badge30(ctx, x, y, s) {
   if (s <= 0) return;
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
-  rrect(ctx, -80, -30, 160, 60, 30); ctx.fillStyle = C.white; ctx.fill(); ctx.shadowColor = "transparent";
+  rrect(ctx, -92, -30, 184, 60, 30); ctx.fillStyle = C.white; ctx.fill(); ctx.shadowColor = "transparent";
   ctx.lineWidth = 4; ctx.strokeStyle = C.blue; ctx.stroke();
-  clockIcon(ctx, -46, 0, 15, C.blue);
-  text(ctx, "+30分", 14, 12, { size: 32, weight: 900, color: C.blue, align: "center" });
+  clockIcon(ctx, -58, 0, 15, C.blue);
+  text(ctx, "+1小時", 20, 12, { size: 32, weight: 900, color: C.blue, align: "center" });
   ctx.restore();
 }
 function campusStreet(ctx, t, phase) {
@@ -189,13 +192,14 @@ function sceneHook(ctx, t, T) {
     pill(ctx, "17:00 下課", 1770, 258, { size: 34, fill: C.orange, scale: pop(t, 0.5), alpha: prog(t, 0.5, 0.6) });
     [[300, 0], [1450, 1]].forEach(([x, i]) => {
       const up = t > tRun + 0.2 + i * 0.3, s = 70;
-      chair(ctx, x, 860, s); student(ctx, up ? x + (t - tRun - 0.2 - i * 0.3) * 260 : x, 860, s, { pose: up ? "walk" : "sit", t, pal: MATES[i], expr: up ? "happy" : "neutral", shadow: up }); desk(ctx, x + 0.25 * s, 860, s);
+      // seated with the hips at the back of the chair, facing the board; the desk stands in front of the knees
+      chair(ctx, x, 860, s); student(ctx, x - 0.3 * s + (up ? (t - tRun - 0.2 - i * 0.3) * 260 : 0), 860, s, { pose: up ? "walk" : "sit", t, pal: MATES[i], expr: up ? "happy" : "neutral", shadow: up }); desk(ctx, x + 0.45 * s, 860, s);
     });
     const s = 120, x0 = 720;
     chair(ctx, x0, 860, s);
-    if (t < tName + 0.5) { student(ctx, x0, 860, s, { pose: "sit", t, expr: t > 0.6 ? "surprised" : "neutral" }); desk(ctx, x0 + 0.25 * s, 860, s); }
-    else if (t < tRun) { desk(ctx, x0 + 0.25 * s, 860, s); student(ctx, x0 - 20, 860, s, { pose: "stand", t, expr: "happy" }); }
-    else { desk(ctx, x0 + 0.25 * s, 860, s); const k = t - tRun; student(ctx, x0 - 20 + k * 900 + 300 * k * k, 860, s, { pose: "run", t: t * 1.2, expr: "happy" }); }
+    if (t < tName + 0.5) { student(ctx, x0 - 0.3 * s, 860, s, { pose: "sit", t, expr: t > 0.6 ? "surprised" : "neutral" }); desk(ctx, x0 + 0.45 * s, 860, s); }
+    else if (t < tRun) { desk(ctx, x0 + 0.45 * s, 860, s); student(ctx, x0 - 20, 860, s, { pose: "stand", t, expr: "happy" }); }
+    else { desk(ctx, x0 + 0.45 * s, 860, s); const k = t - tRun; student(ctx, x0 - 20 + k * 900 + 300 * k * k, 860, s, { pose: "run", t: t * 1.2, expr: "happy" }); }
     const nk = fadeIO(t, tName, tRun + 0.5, 0.3);
     if (nk > 0) {
       ctx.save(); ctx.globalAlpha = nk; ctx.translate(0, (1 - nk) * 20);
@@ -506,15 +510,34 @@ function sceneIdea(ctx, t, T) {
     // the reward in ride time
     const tl = t - L[3];
     PAPER_BG(ctx);
-    text(ctx, "獎勵改成 30 分鐘免費騎乘", 960, 200, { size: 64, weight: 900, color: C.ink, align: "center", alpha: easeOut(prog(tl, 0, 0.4)) });
-    voucher(ctx, 540, 520, pop(t, L[3] + 0.1), { note: "現在的友愛接力" });
+    text(ctx, "獎勵改成一小時免費騎乘", 960, 170, { size: 64, weight: 900, color: C.ink, align: "center", alpha: easeOut(prog(tl, 0, 0.4)) });
+    voucher(ctx, 600, 360, 0.9 * pop(t, L[3] + 0.1), { note: "現在的友愛接力" });
     const ak = easeOut(prog(t, L[3] + 0.8, L[3] + 1.2));
-    ctx.save(); ctx.globalAlpha *= ak; ctx.strokeStyle = C.ink; ctx.lineWidth = 10; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(840, 520); ctx.lineTo(1020, 520); ctx.moveTo(985, 484); ctx.lineTo(1020, 520); ctx.lineTo(985, 556); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.globalAlpha *= ak; ctx.strokeStyle = C.ink; ctx.lineWidth = 10; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(870, 360); ctx.lineTo(1030, 360); ctx.moveTo(995, 324); ctx.lineTo(1030, 360); ctx.lineTo(995, 396); ctx.stroke(); ctx.restore();
     const bk = pop(t, L[3] + 1.1);
-    if (bk > 0) { ctx.save(); ctx.translate(1350, 520); ctx.scale(bk, bk); card(ctx, -250, -180, 500, 360, { fill: C.white, r: 40, stroke: C.blue, lw: 8 }); clockIcon(ctx, 0, -55, 70, C.blue); text(ctx, "30 分鐘", 0, 100, { size: 80, weight: 900, color: C.blue, align: "center" }); text(ctx, "免費騎乘", 0, 152, { size: 40, weight: 700, color: C.ink, align: "center" }); ctx.restore(); }
-    headline(ctx, "剛好是高雄 YouBike 一個計費時段（一般票價 10 元）", 960, 820, t, p(3, 1), { size: 36, weight: 500, color: C.ink2, align: "center" });
+    if (bk > 0) { ctx.save(); ctx.translate(1330, 360); ctx.scale(bk, bk); card(ctx, -220, -130, 440, 260, { fill: C.white, r: 36, stroke: C.blue, lw: 8 }); clockIcon(ctx, -120, 0, 58, C.blue); text(ctx, "1 小時", 70, 12, { size: 76, weight: 900, color: C.blue, align: "center" }); text(ctx, "免費騎乘", 70, 70, { size: 38, weight: 700, color: C.ink, align: "center" }); ctx.restore(); }
+    // who already rides the first 30 minutes free, on a 0-60 minute bar: pass holders gain the second half hour,
+    // other members (who pay NT$5 for the first) ride the whole hour free
+    const X0 = 620, X1 = 1580, half = (X1 - X0) / 2, bh = 74;
+    const row = (y, label, sub, a0, segs) => {
+      const k = easeOut(prog(t, a0, a0 + 0.4)); if (k <= 0) return;
+      ctx.save(); ctx.globalAlpha *= k;
+      text(ctx, label, X0 - 30, y + 12, { size: 40, weight: 900, color: C.ink, align: "right" });
+      text(ctx, sub, X0 - 30, y + 52, { size: 24, weight: 500, color: C.ink2, align: "right" });
+      segs.forEach(([from, to, fill, txt, col, at]) => {
+        const g = easeOut(prog(t, at, at + 0.45)); if (g <= 0) return;
+        const x = X0 + from * half, w = (to - from) * half * g;
+        rrect(ctx, x + 3, y - bh / 2, Math.max(0, w - 6), bh, 16); ctx.fillStyle = fill; ctx.fill();
+        if (g > 0.6) text(ctx, txt, x + (to - from) * half / 2, y + 12, { size: 32, weight: 800, color: col, align: "center", alpha: (g - 0.6) / 0.4 });
+      });
+      ctx.restore();
+    };
+    row(600, "月票、學生卡", "TPASS、MeNGo、學生認同卡", p(3, 1), [[0, 1, "#D7DEE5", "本來就免費", C.ink2, p(3, 2)], [1, 2, C.green, "+30 分鐘免費", C.white, p(3, 3)]]);
+    row(760, "一般會員", "前 30 分鐘原本付 5 元", p(3, 3) + 0.5, [[0, 2, C.green, "一小時內都免費", C.white, p(3, 3) + 0.7]]);
+    const tk = easeOut(prog(t, p(3, 1), p(3, 1) + 0.4));
+    if (tk > 0) [["0", 0], ["30 分", 1], ["60 分", 2]].forEach(([s, i]) => text(ctx, s, X0 + i * half, 870, { size: 26, weight: 600, color: C.ink2, align: "center", alpha: tk }));
     chapter(ctx, "我們的做法", 9);
-    sourceTag(ctx, "費率：YouBike 高雄官網", t, L[3]);
+    sourceTag(ctx, "費率：YouBike 高雄官網（TPASS、MeNGo、學生認同卡前 30 分鐘免費；會員前 30 分鐘市府補助 5 元）", t, L[3]);
     fadeFrom(ctx, tl, 0.3, C.paper);
   } else if (part === 4) {
     // and riding is exercise
@@ -644,7 +667,7 @@ function sceneImpact(ctx, t, T) {
     text(ctx, "也多了騎車的人", 960, 220, { size: 60, weight: 900, color: C.ink, align: "center" });
     const k1 = pop(t, p(2, 0)), k2 = pop(t, p(2, 1));
     if (k1 > 0) { ctx.save(); ctx.translate(560, 560); ctx.scale(k1, k1); card(ctx, -330, -230, 660, 460, { fill: C.white, r: 34 }); ctx.save(); ctx.translate(0, -18); rider(ctx, 0, 40, 70, { t, expr: "happy" }); ctx.restore(); text(ctx, "+25 趟", 0, 130, { size: 84, weight: 900, color: C.blue, align: "center" }); text(ctx, "每天多騎回學校", 0, 186, { size: 34, weight: 700, color: C.ink2, align: "center" }); ctx.restore(); }
-    if (k2 > 0) { ctx.save(); ctx.translate(1360, 560); ctx.scale(k2, k2); card(ctx, -330, -230, 660, 460, { fill: C.white, r: 34 }); clockIcon(ctx, 0, -70, 90, C.green); text(ctx, "+34 小時", 0, 130, { size: 84, weight: 900, color: C.green, align: "center" }); text(ctx, "每天送出的免費騎乘", 0, 186, { size: 34, weight: 700, color: C.ink2, align: "center" }); ctx.restore(); }
+    if (k2 > 0) { ctx.save(); ctx.translate(1360, 560); ctx.scale(k2, k2); card(ctx, -330, -230, 660, 460, { fill: C.white, r: 34 }); clockIcon(ctx, 0, -70, 90, C.green); text(ctx, "+69 小時", 0, 130, { size: 84, weight: 900, color: C.green, align: "center" }); text(ctx, "每天送出的免費騎乘", 0, 186, { size: 34, weight: 700, color: C.ink2, align: "center" }); ctx.restore(); }
   });
   over(ctx, easeOut(prog(t, L[3] - 0.05, L[3] + 0.35)), () => {
     const img = IMG["brief.jpg"], k = easeOut(prog(t, L[3], L[3] + 0.6));
@@ -694,7 +717,7 @@ function sceneEnd(ctx, t, T) {
   text(ctx, "國立中山大學　人工智慧導論（TAICA）第 54 組", 960, 550, { size: 38, weight: 500, color: LIGHT, align: "center", alpha: easeOut(prog(t, 0.4, 1.0)) });
   text(ctx, "林沛霆　陳佳晨　林詩穎", 960, 615, { size: 44, weight: 700, color: C.white, align: "center", alpha: easeOut(prog(t, 0.5, 1.1)) });
   ["資料：YouBike 官方開放資料（本組紀錄器）；臺大周邊騎乘資料（tses89214/youbike-historical-data）",
-    "友愛接力：中央社、數位時代；健康數據：國民健康署、WHO；國外案例：Citi Bike、Vélib'；地圖：OpenStreetMap",
+    "友愛接力：中央社、數位時代；票價：YouBike 高雄；健康數據：國民健康署、WHO；國外案例：Citi Bike、Vélib'；地圖：OpenStreetMap",
     "動畫、音樂與音效：本組自製；阿哲為虛構角色"].forEach((s, i) => text(ctx, s, 960, 770 + i * 50, { size: 28, weight: 400, color: DIM, align: "center", alpha: easeOut(prog(t, 0.9 + i * 0.15, 1.5 + i * 0.15)) }));
   fadeFrom(ctx, t, 0.4);
   fadeTo(ctx, t, T, 0.6, "#000000");

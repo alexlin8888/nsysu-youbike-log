@@ -188,7 +188,9 @@ function student(ctx, x, y, s, o = {}) {
     L.fa2 = L.fa1 + 1.5; L.ba2 = L.ba1 + 1.5;
   }
   if (pose === "cheer") { bob = Math.abs(Math.sin(t * 6)) * 0.06 * s; L = { fa1: 2.25, fa2: 2.75, ba1: -2.3, ba2: -2.8, fl1: 0.05, fl2: 0.03, bl1: -0.05, bl2: -0.03 }; }
-  if (pose === "sit") { hipY = -0.62 * s; L = { fl1: -Math.PI / 2 + 0.05, fl2: 0.05, bl1: -Math.PI / 2 + 0.1, bl2: 0.12, fa1: -0.65, fa2: -1.45, ba1: -0.5, ba2: -1.4 }; }
+  // sit: thighs forward along the seat, shins down, hands forward on the desk (the caller puts the hips at the back
+  // of the chair, about 0.3 units behind its x)
+  if (pose === "sit") { hipY = -0.62 * s; L = { fl1: Math.PI / 2 - 0.08, fl2: -0.02, bl1: Math.PI / 2 - 0.14, bl2: 0.06, fa1: 0.9, fa2: 1.75, ba1: 0.75, ba2: 1.65 }; }
   const hx = 0, hy = hipY - bob;
   const sx = hx + Math.sin(lean) * torso * 0.98, sy = hy - Math.cos(lean) * torso;      // shoulder
   // ride: legs follow the pedals, hands hold the bar (positions given in o.ride, relative to the feet point)

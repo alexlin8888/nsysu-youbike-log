@@ -24,8 +24,8 @@ added. The chain runs without the operator's own trucks inside a window, so the 
 result. Rewards count every paid return or rental, also those that would have happened anyway; "induced" counts only the
 returns (morning: rentals) the reward adds, each one a ride that would not have been made.
 
-The page pays the reward in ride time, 30 minutes per paid return or rental (one billing block of the Kaohsiung fare),
-instead of the NT$5 voucher: REWARD_MIN below, and RIDE_MIN, the median ride from the Hamasen metro station to the campus buildings in
+The page pays the reward in ride time, an hour per paid return or rental (two billing blocks of the Kaohsiung fare; pass
+holders and students with a student card already ride the first 30 minutes free), instead of the NT$5 voucher: REWARD_MIN below, and RIDE_MIN, the median ride from the Hamasen metro station to the campus buildings in
 places.json, are written into the page file so that it can show hours of ride time and minutes of riding.
 
 Writes policy_grid.csv and policy_setup.json, and with PAGE_JSON the file the page reads (docs/policy.json), which also
@@ -55,7 +55,7 @@ FIT_END, TEST_END = ARG("--fit-end", "2026-10-29"), ARG("--test-end", "2026-11-1
 OFFDAYS = set(HOLIDAYS) | {"2026-10-23"}
 EVE, MORN = (90, 120), (48, 66)                   # 15:00-20:00, 08:00-11:00 in 10-minute slots
 K_PRED, THETA = 4, 0.5                            # the predictive voucher: an even chance within 40 minutes
-REWARD_MIN = 30                                   # ride time paid per reward, in minutes
+REWARD_MIN = 60                                   # ride time paid per reward, in minutes
 REWARDS = [0.0, 0.25, 0.5, 1.0]
 
 st = load_stations(DATA)
