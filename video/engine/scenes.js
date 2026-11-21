@@ -516,8 +516,8 @@ function sceneIdea(ctx, t, T) {
     ctx.save(); ctx.globalAlpha *= ak; ctx.strokeStyle = C.ink; ctx.lineWidth = 10; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(870, 360); ctx.lineTo(1030, 360); ctx.moveTo(995, 324); ctx.lineTo(1030, 360); ctx.lineTo(995, 396); ctx.stroke(); ctx.restore();
     const bk = pop(t, L[3] + 1.1);
     if (bk > 0) { ctx.save(); ctx.translate(1330, 360); ctx.scale(bk, bk); card(ctx, -220, -130, 440, 260, { fill: C.white, r: 36, stroke: C.blue, lw: 8 }); clockIcon(ctx, -120, 0, 58, C.blue); text(ctx, "1 小時", 70, 12, { size: 76, weight: 900, color: C.blue, align: "center" }); text(ctx, "免費騎乘", 70, 70, { size: 38, weight: 700, color: C.ink, align: "center" }); ctx.restore(); }
-    // who already rides the first 30 minutes free, on a 0-60 minute bar: pass holders gain the second half hour,
-    // other members (who pay NT$5 for the first) ride the whole hour free
+    // who already rides the first 30 minutes free, on a 0-60 minute bar: students riding with their iPass student ID
+    // and pass holders gain the second half hour, other members (who pay NT$5 for the first) ride the whole hour free
     const X0 = 620, X1 = 1580, half = (X1 - X0) / 2, bh = 74;
     const row = (y, label, sub, a0, segs) => {
       const k = easeOut(prog(t, a0, a0 + 0.4)); if (k <= 0) return;
@@ -532,12 +532,12 @@ function sceneIdea(ctx, t, T) {
       });
       ctx.restore();
     };
-    row(600, "月票、學生卡", "TPASS、MeNGo、學生認同卡", p(3, 1), [[0, 1, "#D7DEE5", "本來就免費", C.ink2, p(3, 2)], [1, 2, C.green, "+30 分鐘免費", C.white, p(3, 3)]]);
+    row(600, "月票、學生卡", "TPASS、MeNGo、一卡通學生證", p(3, 1), [[0, 1, "#D7DEE5", "本來就免費", C.ink2, p(3, 2)], [1, 2, C.green, "+30 分鐘免費", C.white, p(3, 3)]]);
     row(760, "一般會員", "前 30 分鐘原本付 5 元", p(3, 3) + 0.5, [[0, 2, C.green, "一小時內都免費", C.white, p(3, 3) + 0.7]]);
     const tk = easeOut(prog(t, p(3, 1), p(3, 1) + 0.4));
     if (tk > 0) [["0", 0], ["30 分", 1], ["60 分", 2]].forEach(([s, i]) => text(ctx, s, X0 + i * half, 870, { size: 26, weight: 600, color: C.ink2, align: "center", alpha: tk }));
     chapter(ctx, "我們的做法", 9);
-    sourceTag(ctx, "費率：YouBike 高雄官網（TPASS、MeNGo、學生認同卡前 30 分鐘免費；會員前 30 分鐘市府補助 5 元）", t, L[3]);
+    sourceTag(ctx, "費率：YouBike 高雄官網（TPASS、MeNGo、一卡通數位學生證、學生認同卡前 30 分鐘免費；會員前 30 分鐘市府補助 5 元）", t, L[3]);
     fadeFrom(ctx, tl, 0.3, C.paper);
   } else if (part === 4) {
     // and riding is exercise
