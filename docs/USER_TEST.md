@@ -38,9 +38,9 @@
 
 ## 寫進報告
 
-一段話就夠：找了幾個人、每個任務幾個人不用提示就完成、最常卡住的地方、他們說會用和不會用的理由。5 個人不做統計檢定，照實寫人數。報告 3.8 節最後一句「No rider has yet been asked whether the page changed a decision」和第 4 節對應的那一句，換成這一段。影片第 40 句「會有多少人因此提早還車還不知道」也可以換成試用時問到的結果：改 `video/script.py` 裡那一句，重錄那一句旁白，再跑 `python video/script.py`、`python video/audio.py` 和 `python video/render.py results end`。
+一段話就夠：找了幾個人、每個任務幾個人不用提示就完成、最常卡住的地方、他們說會用和不會用的理由。5 個人不做統計檢定，照實寫人數。報告 3.8 節最後一句「No rider has yet been asked whether the page changed a decision」和第 4 節對應的那一句，換成這一段。影片第 24 句最後的「看實際有多少人參與」也可以換成試用時問到的結果：改 `video/script.py` 裡那一句，重錄那一句旁白，再跑 `python video/script.py`、`python video/audio.py` 和 `python video/render.py impact ending end`。
 
-第 4 題的回答是報告 3.10 節最缺的數字：獎勵能讓多少人改變還車地點，以及大家想要時數還是現金。5 個人說的不能當成真正的反應比例，但可以寫「5 人中有幾人說一週會做幾次」，放在 3.10 節「the response is the least certain number here」那一句後面，也可以放進建議書的試辦段落。
+第 4 題的回答是報告 3.10 節最缺的數字：獎勵能讓多少人改變還車地點，以及大家想要 30 分鐘騎乘時數還是 5 元騎乘券。5 個人說的不能當成真正的反應比例，但可以寫「5 人中有幾人說一週會做幾次」，放在 3.10 節「the response is the least certain number here」那一句後面，也可以放進建議書的試辦段落。
 
 同一個地方卡住三個人以上，就先改頁面，再找下一個人。
 

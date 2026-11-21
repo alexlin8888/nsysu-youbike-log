@@ -22,79 +22,62 @@ from pathlib import Path
 
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "build"
 OUT.mkdir(parents=True, exist_ok=True)
-RATE = 3.8          # syllables per second
-GAP = 0.32          # silence between two lines of a scene
+RATE = 4.1          # syllables per second
+GAP = 0.3           # silence between two lines of a scene
 MIN_LINE = 1.5      # no subtitle shorter than this
 
 # scene id, seconds before the first line, seconds after the last line, minimum length, lines.
 # A line may be (text, seconds) to hold the picture that much longer after it.
 SCENES = [
-    ("hook", 2.4, 0.9, 0, [
-        "這是中山大學資管系的阿哲",
-        "每天五點下課鐘一響　他就衝去 YouBike 站",
-        "可是常常一台車都沒有",
+    ("hook", 2.4, 0.8, 0, [
+        "下午五點下課　阿哲衝去 YouBike 站　一台車都沒有　換了三個站　也都是空的",
+        "我們記錄了將近兩個月　上課日傍晚五點半到六點半　校內的站有一半以上的時間沒車",
+        "所以我們做了一套 AI 系統　讓車在下課之前就回到學校",
     ]),
     ("title", 0, 0, 3.4, []),
-    ("data", 0.7, 0.9, 0, [
-        "我們從十月開始　每十分鐘記錄一次　中山大學五公里內的 309 個站",
-        "上課日傍晚五點到八點　校內的站有四成時間是空的",
-        "五點半到六點半　超過一半",
-        "早上剛好反過來　車停滿了　還不了",
+    ("cause", 0.6, 0.8, 0, [
+        "這是因為　下課鐘一響　上百人同時借車　校內的站半小時左右就空了　傍晚騎回學校的車又少",
+        "早上剛好相反　大家騎車來上課　站被停滿　車還不進去",
     ]),
-    ("app", 0.5, 0.8, 0, [
-        "更麻煩的是　這時校內大部分的站同時沒車",
-        "App 只能叫你走遠一點去借",
-        "車　必須在下課前就回到校內",
+    ("relay", 0.6, 0.8, 0, [
+        "高雄今年七月開始有一個獎勵　叫做「友愛接力」　從停滿的站借車　或把車還到空的站　就送你一張 5 元的騎乘券",
+        "北北桃先試辦過　發出四百多萬張騎乘券　四十四萬人次參與",
+        "可是它要等站已經空了才給　對學校來說太晚了　車要在五點下課之前回來　下課的人才借得到",
+        "我們的資料顯示　下午騎回學校的車　七成在五點前就到了　那時站還沒空　所以只有 3% 拿到獎勵",
     ]),
-    ("timing", 0.6, 1.0, 0, [
-        "車有回來　只是回得太早",
-        "下午兩點到晚上八點還到校內的車　將近七成在五點前就到了",
-        "可是官方的友愛接力　要等站空了才送五元",
-        "所以這些車　只有 3% 拿到獎勵",
+    ("idea", 0.6, 0.8, 0, [
+        "我們把它改成預測型　系統每 10 分鐘預測一次　哪一站四十分鐘內可能被借光　就提前開放獎勵",
+        "資料是我們自己記錄的　中山大學附近 309 個站　從十月起每 10 分鐘一筆",
+        "拿 12 個模型沒看過的上課日來測試　91% 的空站　系統大約在 40 分鐘前就抓到了",
+        "獎勵也改成 30 分鐘的免費騎乘　剛好是一個計費時段",
+        "國健署的調查裡　將近一半的人每週身體活動不到 150 分鐘",
+        "紐約和巴黎的公共自行車　也用過類似的獎勵",
     ]),
-    ("sitting", 0.6, 0.9, 0, [
-        "阿哲還有另一個問題　他一整天都坐著",
-        "國健署的調查裡　近五成國人每週身體活動不到 150 分鐘",
-        "世界衛生組織說　騎腳踏車通勤也算運動",
+    ("demo", 0.6, 0.8, 0, [
+        "這些都做進了我們的網站　用手機打開就能用",
+        "學生用「借車」分頁　選你在哪棟樓　它告訴你去哪一站借　走幾分鐘　最晚幾點要出發",
+        "早上看「還車」分頁　哪一站還有位子　滿了要改去哪裡　都寫在上面",
+        "學校和營運商看「政策」分頁　地圖上標著「+30分」的站　就是現在應該提前發獎勵的站",
+        "下面還能試算　按下「多 50%」　代表因為獎勵　回來還車的人多一半　網站就算出借不到車的人會少多少",
     ]),
-    ("idea", 0.6, 1.0, 0, [
-        "所以我們提出預測型友愛接力",
-        "模型每十分鐘算一次　哪一站四十分鐘內可能借空",
-        "就提前開放還車獎勵",
-        "而且不送現金　改送三十分鐘騎乘時數",
-        "時數只能拿來騎車　等於鼓勵大家多騎一段",
+    ("impact", 0.6, 0.8, 0, [
+        "按下去會看到　光靠獎勵　每天傍晚少 23 人次借不到車",
+        "如果營運商也照預測在下課前補兩趟車　每天少 56 人次　借不到車的人少了四分之一以上",
+        "獎勵也讓每天多出 25 趟騎車回學校　送出去的免費騎乘　加起來大約 34 小時",
+        "我們把這些寫成一頁建議書　給學校、市政府和營運商　建議先在校內試辦四週　看實際有多少人參與",
     ]),
-    ("method", 0.6, 0.9, 0, [
-        "方法分三步　先記錄車數",
-        "從車數的變化　估出每一站每十分鐘借和還的速度",
-        ("再往後推算借空的機率", 1.2),
-        "紐約的 Citi Bike　照各站將來缺多少車給點數",
-        "巴黎的 Vélib' 曾送十五分鐘　給把車騎上坡的人",
-        "我們把這兩個做法　用在中山的上下課",
-    ]),
-    ("demo", 0.6, 1.0, 0, [
-        "這是我們的網站",
-        "借車分頁告訴你去哪一站　最晚幾點出發",
-        "政策分頁算給學校和營運商看",
-        "十一月十一日下午四點半　現行規則一站都不付",
-        "提案會在海資館　體育館和材料大樓送三十分鐘",
-        "試算顯示　如果騎回校內的人多一半",
-        "傍晚借不到車少 11%　每天多 25 趟騎車",
-        "再加上下課前兩趟補車　少 27%",
-    ]),
-    ("results", 0.6, 1.2, 0, [
-        "我們用十二個沒有參與訓練的上課日檢驗",
-        "91% 的借空　在發生前大約四十分鐘就被標出來",
-        "我們寫了一頁建議書給學校　市府和營運商",
-        "會有多少人因此提早還車還不知道　所以建議在校內試辦四週",
-        "下次下課鐘響　阿哲走到圖資站　就有車可以騎",
+    ("ending", 0.8, 3.2, 0, [
+        "下次五點的鐘聲響起　希望阿哲走到站　車已經在那裡等他",
     ]),
     ("end", 0, 0, 6.0, []),
 ]
 
 # how the numbers are read aloud: syllable count for the timing, and the reading printed in NARRATION.md
-READ = {"309": "三百零九", "150": "一百五十", "3%": "百分之三", "11%": "百分之十一", "25": "二十五", "27%": "百分之二十七", "91%": "百分之九十一"}
+READ = {"309": "三百零九", "150": "一百五十", "3%": "百分之三", "91%": "百分之九十一", "50%": "百分之五十", "+30分": "加三十分",
+        "10": "十", "12": "十二", "23": "二十三", "25": "二十五", "30": "三十", "34": "三十四", "40": "四十", "56": "五十六", "5": "五"}
 SPOKEN = {k: len(v) for k, v in READ.items()}
+NAMES = {"hook": "問題", "title": "片名", "cause": "原因", "relay": "現在的獎勵：友愛接力", "idea": "我們的做法", "demo": "怎麼用",
+         "impact": "改善多少", "ending": "結尾", "end": "片尾"}
 SUB_MAX = 18       # a subtitle wider than this many CJK characters is split at its full-width spaces
 LATIN = {"YouBike": 2, "App": 1, "Citi": 2, "Bike": 1, "Vélib'": 2}
 
@@ -149,7 +132,14 @@ def build():
         for k, item in enumerate(ls):
             text, hold = item if isinstance(item, tuple) else (item, 0.0)
             dur = max(MIN_LINE, syllables(text) / RATE)
-            lines.append({"scene": sid, "i": len(lines), "k": k, "text": text, "start": round(cur, 2), "end": round(cur + dur, 2), "syll": syllables(text)})
+            # the phrases of the line (split at its full-width spaces), each timed by its share of the syllables, so an
+            # animation can start on a phrase rather than on the whole line
+            parts, at, tot = [], cur, sum(max(1, syllables(x)) for x in text.split("　"))
+            for x in text.split("　"):
+                d = dur * max(1, syllables(x)) / tot
+                parts.append({"text": x, "start": round(at, 2), "end": round(at + d, 2)})
+                at += d
+            lines.append({"scene": sid, "i": len(lines), "k": k, "text": text, "start": round(cur, 2), "end": round(cur + dur, 2), "syll": syllables(text), "parts": parts})
             cur += dur + GAP + hold
         end = max(cur - (GAP if ls else 0) + tail, start + minimum)
         scenes.append({"id": sid, "start": round(start, 2), "dur": round(end - start, 2)})
@@ -184,14 +174,14 @@ if __name__ == "__main__":
     (OUT / "subtitles.ass").write_text("\n".join(ass) + "\n", encoding="utf-8")
     md = ["# 期末影片旁白稿", "",
           f"影片長度 {int(total // 60)} 分 {total % 60:04.1f} 秒。每一行旁白對應一句字幕，下面的時間是那句字幕出現和消失的時間；"
-          "照著影片裡的字幕念，念完一句停一下，速度和字幕一致就會對上。數字照括號裡的念法。"
+          "照著影片裡的字幕念，念完一句停一下，速度和字幕一致就會對上。語氣像在跟同學解釋，不用念稿的腔調。數字照括號裡的念法。"
           "每一句可以單獨錄成一個檔，檔名用句子前面的編號（例如 07.wav），mix_voice.py 會把它放到那句的時間。", ""]
     for s in scenes:
-        md.append(f"## {ts(s['start'], '.')[3:8]}　{s['id']}（{s['dur']:.1f} 秒）")
+        md.append(f"## {ts(s['start'], '.')[3:8]}　{NAMES.get(s['id'], s['id'])}（{s['dur']:.1f} 秒）")
         for l in [l for l in lines if l["scene"] == s["id"]]:
-            spoken = l["text"].replace("　", "，")
-            for k, v in READ.items():
-                spoken = re.sub(rf"(?<![0-9]){re.escape(k)}(?![0-9%])", f"{k}（{v}）", spoken)
+            keys = sorted(READ, key=len, reverse=True)
+            pat = re.compile("|".join(rf"(?<![0-9]){re.escape(k)}(?![0-9%])" for k in keys))
+            spoken = pat.sub(lambda m: f"{m.group(0)}（{READ[m.group(0)]}）", l["text"].replace("　", "，"))
             md.append(f"- {l['i'] + 1:02d}　`{ts(l['start'], '.')[3:10]}–{ts(l['end'], '.')[3:10]}`　{spoken}")
         md.append("")
     (OUT / "NARRATION.md").write_text("\n".join(md), encoding="utf-8")

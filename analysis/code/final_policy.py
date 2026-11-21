@@ -25,7 +25,7 @@ result. Rewards count every paid return or rental, also those that would have ha
 returns (morning: rentals) the reward adds, each one a ride that would not have been made.
 
 The page pays the reward in ride time, 30 minutes per paid return or rental (one billing block of the Kaohsiung fare),
-not in cash: REWARD_MIN below, and RIDE_MIN, the median ride from the Hamasen metro station to the campus buildings in
+instead of the NT$5 voucher: REWARD_MIN below, and RIDE_MIN, the median ride from the Hamasen metro station to the campus buildings in
 places.json, are written into the page file so that it can show hours of ride time and minutes of riding.
 
 Writes policy_grid.csv and policy_setup.json, and with PAGE_JSON the file the page reads (docs/policy.json), which also

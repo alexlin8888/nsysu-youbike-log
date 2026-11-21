@@ -196,7 +196,7 @@ def freewheel():
     return lp(y, 5000)
 
 
-SFX = {"school_bell": lambda: school_bell(0), "school_bell_soft": lambda: school_bell(1) * 0.8, "bike_bell": bike_bell,
+SFX = {"school_bell": lambda: school_bell(0), "school_bell_soft": lambda: school_bell(1) * 0.8, "school_bell_short": lambda: school_bell(0)[: int(1.6 * SR)] * np.linspace(1, 0.2, int(1.6 * SR)), "bike_bell": bike_bell,
        "whoosh": whoosh, "zoom": lambda: whoosh(1.0, 200, 2500, 0.8), "swipe": lambda: whoosh(0.25, 800, 4000, 0.4) * 0.8,
        "pop": pop, "ding": ding, "chime": chime, "notify": notify, "tap": tap, "tick": tick, "blip": blip, "bonk": bonk,
        "step": step, "sparkle": sparkle, "alert": alert, "scratch": scratch, "freewheel": freewheel}
@@ -233,6 +233,10 @@ def hat():
     return hp(RNG.standard_normal(n), 7000) * env(n, 0.001, 0.012) * 0.25
 
 
+def line(sid, k):
+    return [l for l in CUES["lines"] if l["scene"] == sid][k]
+
+
 def scene_start(sid):
     return next(s["start"] for s in CUES["scenes"] if s["id"] == sid)
 
@@ -241,7 +245,9 @@ def music():
     n = int((TOTAL + 1) * SR)
     keys, bass, drums = np.zeros(n), np.zeros(n), np.zeros(n)
     t0 = 2.2                                              # after the first bell phrase
-    drums_on = [(scene_start("title"), scene_start("sitting")), (scene_start("idea"), scene_start("results") + CUES["lines"][-1]["start"] - scene_start("results") - 0.5)]
+    # drums from the title through the problem, out while the current reward is shown to come too late, back for the
+    # proposal and the demo, out again for the brief and the ending
+    drums_on = [(scene_start("title"), line("relay", 2)["start"] - 0.3), (scene_start("idea"), line("impact", 3)["start"] - 0.3)]
     bar = 0
     t = t0
     end = scene_start("end") + 2.0
@@ -279,8 +285,9 @@ def music():
     # fade in, fade out, and duck under the narration
     tt = np.arange(n) / SR
     g = np.clip((tt - 1.8) / 1.5, 0, 1) * np.clip((TOTAL - tt) / 3.0, 0, 1)
-    # the music stops when 阿哲 finds the rack empty and comes back with the drums on the title
-    stop, back = CUES["lines"][2]["start"] - 0.15, scene_start("title")
+    # the music stops for a moment when 阿哲 finds the rack empty
+    stop = line("hook", 0)["parts"][2]["start"] - 0.1
+    back = stop + 1.6
     g *= 1 - np.clip(np.minimum((tt - stop) / 0.12, (back - tt) / 0.05), 0, 1)
     duck = np.ones(n)
     for l in CUES["lines"]:

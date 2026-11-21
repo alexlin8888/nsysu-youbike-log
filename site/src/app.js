@@ -213,7 +213,7 @@
     list.sort(function (x, y) { return polChance(v, y) - polChance(v, x); });
     list.forEach(function (i) {
       var now = polPaysNow(v, i), pays = polPays(v, i), ch = polChance(v, i); if (now) a++; if (pays) b++;
-      // today's rule pays NT$5 in cash credit; the proposal pays ride time
+      // today's rule pays a NT$5 ride voucher; the proposal pays ride time
       var cell = function (on, key) { return "<td class=\"" + (on ? "pay" : "no") + "\">" + t(on ? key : "polNoPay") + "</td>"; };
       rows += "<tr data-i=\"" + i + "\"><th scope=\"row\">" + esc(shortName(v.stations[i])) + "</th><td class=\"n\">" + (morn ? v.docks[i] : v.bikes[i]) + "</td><td class=\"n\">" + pct(ch) + "%</td>" + cell(now, "polPay") + cell(pays, "polPayTime") + "</tr>";
     });

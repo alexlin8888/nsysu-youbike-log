@@ -733,7 +733,8 @@ async def check_replay(browser, size):
     await page.evaluate("const s = document.getElementById('slider'); s.value = 10; s.dispatchEvent(new Event('input', { bubbles: true }));"); await page.wait_for_timeout(300)
     t1 = await page.inner_text("#sliderT")
     board = await page.inner_text("#mini" if is_phone(size) else "#board")
-    record(size, "moving the slider changes the time and the bell board", t1 != t0 and bool(re.search(r"\d", board)), f"{t0} -> {t1}; {board.replace(chr(10), ' ')[:40]}")
+    # the board counts down to the next bell, or says there is no class when the replayed day is a weekend
+    record(size, "moving the slider changes the time and the bell board", t1 != t0 and (bool(re.search(r"\d", board)) or "今天沒課" in board), f"{t0} -> {t1}; {board.replace(chr(10), ' ')[:40]}")
     await page.click("#play"); await page.wait_for_timeout(1700)
     t2 = await page.inner_text("#sliderT")
     await page.click("#play"); await page.wait_for_timeout(900); t3 = await page.inner_text("#sliderT"); await page.wait_for_timeout(900)

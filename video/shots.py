@@ -22,6 +22,7 @@ SHOTS = [
     # name, query, sheet (half | full), script run before the shot
     ("rider_1640", DAY + "&t=16:40&from=lib&to=", "half", ""),
     ("rider_1740", DAY + "&t=17:40&from=lib&to=", "half", ""),
+    ("dock_0920", DAY + "&t=09:20&tab=dock&to=eng", "half", ""),
     ("policy_top", DAY + "&t=16:30&tab=policy", "full", ""),
     ("policy_table", DAY + "&t=16:30&tab=policy", "full", SCROLL_TO + "('polNow', 40)"),
     ("policy_map", DAY + "&t=16:30&tab=policy", "half", ""),
@@ -37,7 +38,8 @@ RECT_JS = """(() => {
   const q = (s) => r(document.querySelector(s));
   const vis = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.y < innerHeight && b.y + b.height > 0 && b.x > -20 && b.x < innerWidth; };
   return {
-    best: q('#best'), tip: q('#tip'), tabPolicy: q('#tabPolicy'), tabRider: q('#tabRider'),
+    best: q('#best'), tip: q('#tip'), tabPolicy: q('#tabPolicy'), tabRider: q('#tabRider'), tabDock: q('#tabDock'),
+    trip: q('#tripRow'), from: q('#fromWrap'), to: q('#toWrap'), when: q('#whenGroup'),
     glyphs: Array.from(document.querySelectorAll('.glyph')).filter(vis).map((g) => ({ rect: r(g), text: g.textContent.trim(), mark: !!g.querySelector('.rmark') })).filter((g) => g.rect[1] > 60),
     rows: Array.from(document.querySelectorAll('#polNow tbody tr')).map((tr) => ({ name: tr.querySelector('th').textContent, rect: r(tr), rule: r(tr.children[3]), pred: r(tr.children[4]) })),
     polsum: q('#polNow .polsum'), ruleHead: r(document.querySelectorAll('#polNow thead th')[3]), predHead: r(document.querySelectorAll('#polNow thead th')[4]),
