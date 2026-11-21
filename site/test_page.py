@@ -666,9 +666,9 @@ async def check_policy(browser, size):
     ctx, page = await new_page(browser, size, query="?replay=2026-11-11&t=16:30&tab=policy")
     await page.wait_for_timeout(1200)
     await open_sheet(page, size)
-    why = await page.inner_text("#polWhy")
+    why = await page.inner_text("#polWhy"); timep = await page.inner_text("#polTime")
     record(size, "policy tab opens by link and says why the voucher comes too late", await page.get_attribute("#tabPolicy", "aria-selected") == "true" and await page.get_attribute("#panePolicy", "hidden") is None
-           and re.search(r"\d+% 在 17:00 前就到了", why) is not None and "友愛接力" in why and "17:30 到 18:30" in why, why[:90])
+           and re.search(r"\d+% 在 17:00 前就到了", why) is not None and "友愛接力" in why and "17:30 到 18:30" in why and "150 分鐘" in timep and "41%" in timep, why[:90])
     rects = await page.locator("#polChart svg rect").count(); grid = await page.locator("#polChart svg line").count()
     record(size, "the chart draws twelve half hours with gridlines and a key", rects >= 24 and grid >= 2 and await page.locator("#polChart .dotkey span").count() == 3, f"{rects} rects, {grid} lines")
     facts = [f.replace("\n", " ") for f in await page.locator("#polFacts li").all_inner_texts()]
@@ -676,14 +676,14 @@ async def check_policy(browser, size):
     head = await page.inner_text("#polNow h3")
     chances = [int(x.strip("%")) for x in await page.locator("#polNow tbody td:nth-child(3)").all_inner_texts()]
     stock = [int(x) for x in await page.locator("#polNow tbody td:nth-child(2)").all_inner_texts()]
-    pred = [c == "送 5 元" for c in await page.locator("#polNow tbody td:nth-child(5)").all_inner_texts()]
+    pred = [c == "送 30 分鐘" for c in await page.locator("#polNow tbody td:nth-child(5)").all_inner_texts()]
     now = [c == "送 5 元" for c in await page.locator("#polNow tbody td:nth-child(4)").all_inner_texts()]
     record(size, "the table lists the eight campus stations, likeliest to empty first", head == "16:30 的校內站" and len(chances) == 8 and chances == sorted(chances, reverse=True), f"{head} {chances}")
     rule_ok = all(p == (s == 0 or c >= 50) for p, s, c in zip(pred, stock, chances)) and all(n == (s == 0) for n, s in zip(now, stock))
     summ = await page.inner_text("#polNow .polsum")
     record(size, "each rule pays where it should and the summary counts it", rule_ok and any(pred) and summ == f"現行規則付給 {sum(now)} 站，預測型付給 {sum(pred)} 站。", f"{summ} | pred {pred}")
-    marks = await page.locator(".glyph.paid").count()
-    record(size, "the map marks the stations the predictive rule pays", marks >= sum(pred), f"{marks} marks, {sum(pred)} campus rows")
+    marks = await page.locator(".glyph .rmark").all_inner_texts()
+    record(size, "the map marks the stations the predictive rule pays, in ride time", len(marks) >= sum(pred) and all(m == "+30分" for m in marks), f"{len(marks)} marks {marks[:3]}, {sum(pred)} campus rows")
     b0 = await page.inner_text("#simEve .simout .big"); hint = await page.inner_text("#simEve .simout .meta")
     await page.click("#simEve [data-k=er] [data-v='2']"); await page.wait_for_timeout(300)
     b1 = await page.inner_text("#simEve .simout .big"); v1 = await page.locator("#simEve .simbar .v").all_inner_texts(); meta1 = await page.inner_text("#simEve .simout .meta")
@@ -691,7 +691,7 @@ async def check_policy(browser, size):
     b2 = await page.inner_text("#simEve .simout .big")
     cut = lambda s: int(re.search(r"\d+", s).group()) if re.fullmatch(r"少 \d+%", s) else -1
     record(size, "what-if starts at today, and each measure adds to the cut", b0 == "現況" and "選上面" in hint and 0 < cut(b1) < cut(b2) and len(v1) == 2 and int(v1[1]) < int(v1[0])
-           and re.search(r"多發約 \d+ 張（面額約 \d+ 元）", meta1) is not None and await page.get_attribute("#simEve [data-k=er] [data-v='2']", "aria-pressed") == "true", f"{b0} -> {b1} -> {b2}; {v1}; {meta1}")
+           and re.search(r"每天多 \d+ 趟騎回校內，多送約 \d+ 小時騎乘時數", meta1) is not None and await page.get_attribute("#simEve [data-k=er] [data-v='2']", "aria-pressed") == "true", f"{b0} -> {b1} -> {b2}; {v1}; {meta1}")
     await page.click("#simMorn [data-k=mt] [data-v='1']"); await page.wait_for_timeout(300)
     record(size, "the morning card answers its own levers", cut(await page.inner_text("#simMorn .simout .big")) > 0 and await page.inner_text("#simEve .simout .big") == b2)
     asks = [a.replace("\n", " ") for a in await page.locator("#polAsks li").all_inner_texts()]
@@ -699,7 +699,7 @@ async def check_policy(browser, size):
     record(size, "three suggestions with numbers and a brief to download", len(asks) == 3 and all(re.search(r"\d+%", a) for a in asks) and brief[0] == 200 and "pdf" in (brief[1] or ""), f"{[a[:16] for a in asks]} {brief}")
     if not is_phone(size) and SIZES[size][0] >= 1100:
         leg = (await page.inner_text("#legend")).replace("\n", " ")
-        record(size, "the legend explains the policy map", "40 分鐘內借空的機率" in leg and "+5" in leg, leg[:60])
+        record(size, "the legend explains the policy map", "40 分鐘內借空的機率" in leg and "+30分" in leg and "騎乘時數" in leg, leg[:60])
     await page.locator("#polNow tbody tr").first.click(); await page.wait_for_timeout(500)
     record(size, "a table row opens its station", await page.get_attribute("#cardWrap", "hidden") is None and not page.errors, "; ".join(page.errors[:2]))
     await ctx.close()
@@ -708,7 +708,7 @@ async def check_policy(browser, size):
     await page.wait_for_timeout(1200)
     await open_sheet(page, size)
     cols = await page.inner_text("#polNow thead")
-    pred = sum(c == "送 5 元" for c in await page.locator("#polNow tbody td:nth-child(5)").all_inner_texts())
+    pred = sum(c == "送 30 分鐘" for c in await page.locator("#polNow tbody td:nth-child(5)").all_inner_texts())
     now = sum(c == "送 5 元" for c in await page.locator("#polNow tbody td:nth-child(4)").all_inner_texts())
     record(size, "in the morning the table is about full racks", "空位" in cols and "40 分內會滿" in cols and pred >= now >= 1, f"{cols.replace(chr(10), ' ')} | today {now}, predictive {pred}")
     await ctx.close()

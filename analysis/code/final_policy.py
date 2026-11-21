@@ -21,7 +21,12 @@ chain (rates per 10-minute slot fitted up to --fit-end, as in final_docks.py) is
 
 Today's voucher (pay at an empty or full rack) is in the data the rates were fitted on, so only the predictive part is
 added. The chain runs without the operator's own trucks inside a window, so the levels are high; the cuts are the
-result. Vouchers count every paid return or rental, also those that would have happened anyway.
+result. Rewards count every paid return or rental, also those that would have happened anyway; "induced" counts only the
+returns (morning: rentals) the reward adds, each one a ride that would not have been made.
+
+The page pays the reward in ride time, 30 minutes per paid return or rental (one billing block of the Kaohsiung fare),
+not in cash: REWARD_MIN below, and RIDE_MIN, the median ride from the Hamasen metro station to the campus buildings in
+places.json, are written into the page file so that it can show hours of ride time and minutes of riding.
 
 Writes policy_grid.csv and policy_setup.json, and with PAGE_JSON the file the page reads (docs/policy.json), which also
 carries the timing and warning results of final_reward.py (run it first) and the truck simulation of nsysu_sim.py.
@@ -50,6 +55,7 @@ FIT_END, TEST_END = ARG("--fit-end", "2026-10-29"), ARG("--test-end", "2026-11-1
 OFFDAYS = set(HOLIDAYS) | {"2026-10-23"}
 EVE, MORN = (90, 120), (48, 66)                   # 15:00-20:00, 08:00-11:00 in 10-minute slots
 K_PRED, THETA = 4, 0.5                            # the predictive voucher: an even chance within 40 minutes
+REWARD_MIN = 30                                   # ride time paid per reward, in minutes
 REWARDS = [0.0, 0.25, 0.5, 1.0]
 
 st = load_stations(DATA)
@@ -120,11 +126,11 @@ def staggered(s, slot):
 
 
 def run(kind, reward, truck_plan, rates_fn=base_rates):
-    """Expected refused rentals ('rent', evening) or returns ('return', morning) and vouchers paid, per teaching day."""
+    """Expected refused rentals ('rent', evening) or returns ('return', morning), rewards paid and rides the reward adds, per teaching day."""
     window = EVE if kind == "rent" else MORN
     w = w_e if kind == "rent" else w_m
     per = {sl: split(abs(n), w) for sl, n in truck_plan.items()}
-    lost = paid = 0.0
+    lost = paid = induced = 0.0
     for d in days:
         for s in camp:
             c = cap0[s]; b0 = stock.get((d, s, window[0]))
@@ -151,19 +157,20 @@ def run(kind, reward, truck_plan, rates_fn=base_rates):
                     flow = np.where(pays & ~now, lr * (1 + reward), lr) * STEP / 60
                 extra = pays & ~now
                 K = np.where(extra[:, None], K1, K0); u = np.where(extra, u1, u0)
-                lost += float(P @ u); paid += float(P @ (flow * pays))
+                base_flow = (lq if kind == "rent" else lr) * STEP / 60
+                lost += float(P @ u); paid += float(P @ (flow * pays)); induced += float(P @ np.where(extra, base_flow * reward, 0.0))
                 P = P @ K
-    return lost / len(days), paid / len(days)
+    return lost / len(days), paid / len(days), induced / len(days)
 
 
 rows = []
 for reward, truck, stagger in product(REWARDS, [0, 1, 2], [0, 1]):
     plan = {101: 20} if truck == 1 else {101: 20, 107: 20} if truck == 2 else {}
-    lost, paid = run("rent", reward, plan, rates_fn=staggered if stagger else base_rates)
-    rows.append({"window": "evening", "reward": reward, "truck": truck, "stagger": stagger, "docks": 0, "lost": lost, "vouchers": paid})
+    lost, paid, more = run("rent", reward, plan, rates_fn=staggered if stagger else base_rates)
+    rows.append({"window": "evening", "reward": reward, "truck": truck, "stagger": stagger, "docks": 0, "lost": lost, "vouchers": paid, "induced": more})
 for reward, truck in product(REWARDS, [0, 1]):
-    lost, paid = run("return", reward, {54: -20} if truck else {})
-    rows.append({"window": "morning", "reward": reward, "truck": truck, "stagger": 0, "docks": 0, "lost": lost, "vouchers": paid})
+    lost, paid, more = run("return", reward, {54: -20} if truck else {})
+    rows.append({"window": "morning", "reward": reward, "truck": truck, "stagger": 0, "docks": 0, "lost": lost, "vouchers": paid, "induced": more})
 G = pd.DataFrame(rows)
 base = {w: float(G[(G.window == w) & (G.reward == 0) & (G.truck == 0) & (G.stagger == 0) & (G.docks == 0)].lost.iloc[0]) for w in ("evening", "morning")}
 G["cut"] = 1 - G.lost / G.window.map(base)
@@ -184,11 +191,18 @@ if PAGE:
     # what one paid return is worth under each rule, and what a return the predictive rule leaves unpaid is worth
     worth, worth_now, worth_unpaid = float(pred_row.value_per_paid_return), float(now_row.value_per_paid_return), float(pred_row.value_per_return_unpaid)
     sim = pd.read_csv(res / "sim" / "sim_summary.csv")
+    # minutes by bike from the Hamasen metro station to the campus buildings (the page's own path table)
+    pl = json.load(open(PAGE.parent / "places.json"))
+    a64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+    pos = {n: k for k, n in enumerate([x["id"] for x in pl["places"]] + pl["stations"])}
+    campus_places = [x["id"] for x in pl["places"] if x.get("group") == "campus"]
+    ride_min = float(np.median([a64.index(pl["ride"][pos["krt"]][pos[q]]) for q in campus_places]))
     ev = sim[(sim["shift"] == "evening") & (sim.policy == "campus")].sort_values("trucks")
     mo = sim[(sim["shift"] == "morning") & (sim.policy == "campus")].sort_values("trucks")
     page = {"made": datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d"), "days": len(days), "first": days[0], "last": days[-1],
-            "evening": {"base": round(base["evening"], 1), "grid": [[r.reward, int(r.truck), int(r.stagger), round(r.lost, 1), round(r.vouchers, 1)] for r in G[G.window == "evening"].itertuples()]},
-            "morning": {"base": round(base["morning"], 1), "grid": [[r.reward, int(r.truck), round(r.lost, 1), round(r.vouchers, 1)] for r in G[G.window == "morning"].itertuples()]},
+            "reward_min": REWARD_MIN, "ride_min": ride_min,
+            "evening": {"base": round(base["evening"], 1), "grid": [[r.reward, int(r.truck), int(r.stagger), round(r.lost, 1), round(r.vouchers, 1), round(r.induced, 1)] for r in G[G.window == "evening"].itertuples()]},
+            "morning": {"base": round(base["morning"], 1), "grid": [[r.reward, int(r.truck), round(r.lost, 1), round(r.vouchers, 1), round(r.induced, 1)] for r in G[G.window == "morning"].itertuples()]},
             "timing": [[r.time, round(r.empty_share, 3), round(r.returns_per_day, 1), round(r.paid_now_per_day, 1), round(r.paid_pred_per_day, 1), round(r.value_mean, 2)] for r in tim.itertuples()],
             "warning": {"events": int(warn.empty_events), "flagged": round(float(warn.flagged_before), 3), "lead_median": int(warn.lead_median_min),
                         "precision": round(float(warn.flag_then_empty_share), 3), "base": round(float(warn.base_empty40_share_with_bikes), 3), "worth": round(worth, 2),

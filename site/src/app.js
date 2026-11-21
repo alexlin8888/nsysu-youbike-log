@@ -213,8 +213,9 @@
     list.sort(function (x, y) { return polChance(v, y) - polChance(v, x); });
     list.forEach(function (i) {
       var now = polPaysNow(v, i), pays = polPays(v, i), ch = polChance(v, i); if (now) a++; if (pays) b++;
-      var cell = function (on) { return "<td class=\"" + (on ? "pay" : "no") + "\">" + t(on ? "polPay" : "polNoPay") + "</td>"; };
-      rows += "<tr data-i=\"" + i + "\"><th scope=\"row\">" + esc(shortName(v.stations[i])) + "</th><td class=\"n\">" + (morn ? v.docks[i] : v.bikes[i]) + "</td><td class=\"n\">" + pct(ch) + "%</td>" + cell(now) + cell(pays) + "</tr>";
+      // today's rule pays NT$5 in cash credit; the proposal pays ride time
+      var cell = function (on, key) { return "<td class=\"" + (on ? "pay" : "no") + "\">" + t(on ? key : "polNoPay") + "</td>"; };
+      rows += "<tr data-i=\"" + i + "\"><th scope=\"row\">" + esc(shortName(v.stations[i])) + "</th><td class=\"n\">" + (morn ? v.docks[i] : v.bikes[i]) + "</td><td class=\"n\">" + pct(ch) + "%</td>" + cell(now, "polPay") + cell(pays, "polPayTime") + "</tr>";
     });
     var sum = b === 0 ? t(morn ? "polNowNoneM" : "polNowNone") : t("polNowSum", { a: a, b: b });
     return head + "<p class=\"sub\">" + t(morn ? "polNowMorn" : "polNowEve") + "</p><div class=\"tablewrap\"><table class=\"poltab\"><thead><tr><th scope=\"col\">" + t("polNowSt") + "</th><th scope=\"col\" class=\"n\">" + t(morn ? "polNowDocks" : "polNowBikes") + "</th><th scope=\"col\" class=\"n\">" + t(morn ? "polNowChF" : "polNowChE") +
@@ -228,17 +229,19 @@
     var e = win === "evening", r = e ? polRow("evening", polSel.er, polSel.et, polSel.es) : polRow("morning", polSel.mr, polSel.mt), r0 = e ? polRow("evening", 0, 0, 0) : polRow("morning", 0, 0);
     if (!r || !r0) return "";
     var lost = r[e ? 3 : 2], base = policy[win].base, cut = 1 - lost / base, more = Math.round(r[e ? 4 : 3] - r0[e ? 4 : 3]), same = cut < 0.005;
-    // today's count and the count with the chosen measures as two bars on one scale; a voucher costs NT$5
+    // rides the reward adds, and the extra ride time it hands out (policy.reward_min minutes per reward)
+    var rides = Math.round(r[e ? 5 : 4] || 0), hours = Math.round((r[e ? 4 : 3] - r0[e ? 4 : 3]) * (policy.reward_min || 30) / 60);
+    // today's count and the count with the chosen measures as two bars on one scale
     var bar = function (label, val, cls) {
       return "<div class=\"simbar " + cls + "\"><span class=\"k\">" + t(label) + "</span><span class=\"track\"><i style=\"width:" + (100 * val / base).toFixed(1) + "%\"></i></span><span class=\"v\">" + Math.round(val) + "</span></div>";
     };
     return "<div class=\"simout\" aria-live=\"polite\"><div class=\"big" + (same ? " asis" : "") + "\">" + (same ? t("simAsIs") : t("simCut", { p: pct(cut) })) + "</div>" +
       "<div class=\"unit\">" + t(e ? "simUnit" : "simUnitM") + "</div>" + bar("simNow", base, "now") + (same ? "" : bar("simTry", lost, "try")) +
-      "<div class=\"meta\">" + (same ? t("simPick") : (e ? polSel.er : polSel.mr) > 0 ? t("simVouch", { n: more, c: 5 * more }) : "") + "</div></div>";
+      "<div class=\"meta\">" + (same ? t("simPick") : (e ? polSel.er : polSel.mr) > 0 ? t(e ? "simTime" : "simTimeM", { r: rides, h: hours }) : "") + "</div></div>";
   }
   function renderPolicy(v) {
     $("hPolWhy").textContent = t("polWhyH"); $("hPolIdea").textContent = t("polIdeaH"); $("polIdeaTag").textContent = t("polIdeaTag");
-    $("hPolSim").textContent = t("polSimH"); $("hPolAsk").textContent = t("polAskH"); $("polBrief").textContent = t("polBrief"); $("polIdea").textContent = t("polIdea");
+    $("hPolSim").textContent = t("polSimH"); $("hPolAsk").textContent = t("polAskH"); $("polBrief").textContent = t("polBrief"); $("polIdea").textContent = t("polIdea"); $("polTime").textContent = t("polTime");
     if (!policy) { $("polWhy").textContent = t("loading"); return; }
     var P = policy, all = 0, pre = 0, prePaid = 0, peak = [];
     P.timing.forEach(function (r) { all += r[2]; if (mins(r[0]) < 17 * 60) { pre += r[2]; prePaid += r[3]; } if (r[0] === "17:30" || r[0] === "18:00") peak.push(r[1]); });
@@ -255,8 +258,9 @@
       "<p class=\"note\">" + t("simRef", { a: pct(P.sim.evening[0]), b: pct(P.sim.evening[1]) }) + "</p>";
     $("simMorn").innerHTML = "<h3>" + t("simMornH") + "</h3>" + simSeg("mr", "simRewardM", ["simR0", "simR1", "simR2", "simR3"]) + simSeg("mt", "simTruckM", ["simM0", "simM1"]) + simOut("morning");
     $("polSimNote").textContent = t("polSimNote");
-    var r2 = polRow("evening", 2, 0, 0), r0 = polRow("evening", 0, 0, 0), extra = Math.round(r2[4] - r0[4]);
-    $("polAsks").innerHTML = "<li>" + t("ask1", { a: pct(polCut("evening", 2, 0, 0)), n: extra, c: 5 * extra }) + "</li><li>" + t("ask2", { b: pct(polCut("evening", 0, 2, 0)), c: pct(polCut("morning", 0, 1)), d: pct(polCut("evening", 2, 2, 0)) }) + "</li><li>" + t("ask3", { e: pct(polCut("evening", 0, 0, 1)) }) + "</li>";
+    // a reward is policy.reward_min minutes of riding: one 30-minute block, NT$10 at the full Kaohsiung fare
+    var r2 = polRow("evening", 2, 0, 0), r0 = polRow("evening", 0, 0, 0), extra = Math.round(r2[4] - r0[4]), mins30 = policy.reward_min || 30;
+    $("polAsks").innerHTML = "<li>" + t("ask1", { a: pct(polCut("evening", 2, 0, 0)), r: Math.round(r2[5] || 0), h: Math.round((r2[4] - r0[4]) * mins30 / 60), c: 10 * extra * mins30 / 30 }) + "</li><li>" + t("ask2", { b: pct(polCut("evening", 0, 2, 0)), c: pct(polCut("morning", 0, 1)), d: pct(polCut("evening", 2, 2, 0)) }) + "</li><li>" + t("ask3", { e: pct(polCut("evening", 0, 0, 1)) }) + "</li>";
   }
 
   // ---------- current view: live state or one replay slot, in one shape ----------
@@ -404,7 +408,7 @@
     var label = isCampus(s) && SHORT[s.sno] ? "<span class=\"lbl\">" + SHORT[s.sno][lang === "zh" ? 0 : 1] + "</span>" : "";
     return open + "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + (rr + 1.5) + "\" fill=\"" + tok("--surface") + "\"/>" +
       "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + R + "\" fill=\"none\" stroke=\"" + (isCampus(s) ? tok("--accent") : tok("--line-2")) + "\" stroke-width=\"" + (isCampus(s) ? 2.5 : 1.5) + "\"" + (observed ? "" : " stroke-dasharray=\"3 3\"") + "/>" + arc +
-      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + fill + "\" fill-opacity=\"" + (observed ? 1 : 0.7) + "\"/>" + num + "</svg>" + star + (rl ? "<span class=\"rmark\">+5</span>" : "") + label + "</div>";
+      "<circle cx=\"" + c + "\" cy=\"" + c + "\" r=\"" + rr + "\" fill=\"" + fill + "\" fill-opacity=\"" + (observed ? 1 : 0.7) + "\"/>" + num + "</svg>" + star + (rl ? "<span class=\"rmark\">" + (tab === "policy" ? t("rmPolicy") : "+5") + "</span>" : "") + label + "</div>";
   }
   function drawStations(v) {
     glyphLayer.clearLayers(); markers = {};
@@ -1076,7 +1080,7 @@
     var el = $("legend");
     if (tab === "policy") {
       el.innerHTML = "<div class=\"ttl\">" + t(polMorning(v) ? "legPolF" : "legPolE") + "</div><div class=\"ramp\"><i style=\"background:var(--r0)\"></i><i style=\"background:var(--r1)\"></i><i style=\"background:var(--r2)\"></i><i style=\"background:var(--r3)\"></i><i style=\"background:var(--r4)\"></i></div><div class=\"ends\"><span>0%</span><span>50%</span><span>100%</span></div>" +
-        "<div class=\"it\"><span class=\"rm\">+5</span>" + t("legPolPaid") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
+        "<div class=\"it\"><span class=\"rm\">" + t("rmPolicy") + "</span>" + t("legPolPaid") + "</div><div class=\"it\">" + t("legCampus") + "</div>";
       return;
     }
     if (tab === "ops") {

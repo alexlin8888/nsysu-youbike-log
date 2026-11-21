@@ -62,19 +62,19 @@ def empty_panel(ax):
 
 
 # ======================= report figure =======================
-fig = plt.figure(figsize=(W, 3.9))
+fig = plt.figure(figsize=(W, 3.55))
 ax1 = fig.add_axes([0.125, 0.715, 0.86, 0.19]); ax2 = fig.add_axes([0.125, 0.555, 0.86, 0.085])
 ax3 = fig.add_axes([0.43, 0.085, 0.255, 0.33]); ax4 = fig.add_axes([0.725, 0.085, 0.255, 0.33])
-returns_panel(ax1, ["today's rule pays", "predictive rule also pays", "no voucher"])
+returns_panel(ax1, ["today's rule pays", "predictive rule also pays", "unpaid"])
 ax1.set_ylabel("bikes", labelpad=2)
 ax1.text(bell + 0.12, 49, "17:00 bell", fontsize=6, color=INK2, va="top")
 ax1.legend(loc="lower left", bbox_to_anchor=(-0.13, 1.0), ncol=3, frameon=False, handletextpad=0.3, columnspacing=0.8, borderaxespad=0.1, fontsize=5.9, handlelength=1.1)
 empty_panel(ax2); ax2.set_ylim(0, 82); ax2.set_ylabel("%", labelpad=2)
-rows = [("voucher, +25% response", cut("evening", 0.25, 0), cut("morning", 0.25, 0)),
-        ("voucher, +50%", cut("evening", 0.5, 0), cut("morning", 0.5, 0)),
-        ("voucher, +100%", cut("evening", 1.0, 0), cut("morning", 1.0, 0)),
+rows = [("reward, +25% response", cut("evening", 0.25, 0), cut("morning", 0.25, 0)),
+        ("reward, +50%", cut("evening", 0.5, 0), cut("morning", 0.5, 0)),
+        ("reward, +100%", cut("evening", 1.0, 0), cut("morning", 1.0, 0)),
         ("trucks before the bell", cut("evening", 0, 2), cut("morning", 0, 1)),
-        ("trucks + voucher (+50%)", cut("evening", 0.5, 2), cut("morning", 0.5, 1)),
+        ("trucks + reward (+50%)", cut("evening", 0.5, 2), cut("morning", 0.5, 1)),
         ("staggered class ends", cut("evening", 0, 0, 1), None)]
 y = np.arange(len(rows))[::-1]
 for ax, col, name in ((ax3, 1, "evening"), (ax4, 2, "morning")):
@@ -98,8 +98,8 @@ save(fig, "fig_final_reward.png", ax=ax1)
 # ======================= brief figure (Chinese, wide) =======================
 fm.fontManager.addfont("/usr/share/fonts/truetype/arphic-bkai00mp/bkai00mp.ttf")      # the Kai face that stands in for 標楷體
 plt.rcParams["font.family"] = ["Liberation Sans", "AR PL KaitiM Big5"]
-fig = plt.figure(figsize=(6.85, 1.45))
-ax1 = fig.add_axes([0.05, 0.19, 0.6, 0.56]); ax2 = fig.add_axes([0.72, 0.19, 0.27, 0.56])
+fig = plt.figure(figsize=(6.85, 1.3))
+ax1 = fig.add_axes([0.05, 0.2, 0.6, 0.54]); ax2 = fig.add_axes([0.72, 0.2, 0.27, 0.54])
 returns_panel(ax1, ["現行規則會付", "預測型多付的", "沒有獎勵"])
 ax1.set_xticklabels([tm.time[k] for k in hours])
 ax1.text(bell + 0.12, 49, "17:00 下課", fontsize=7, color=INK2, va="top")
