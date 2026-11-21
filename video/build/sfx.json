@@ -1,0 +1,517 @@
+[
+{
+"t": 0.45,
+"name": "school_bell",
+"gain": 0.85
+},
+{
+"t": 5.98,
+"name": "whoosh",
+"gain": 0.45
+},
+{
+"t": 6.98,
+"name": "whoosh",
+"gain": 0.7
+},
+{
+"t": 7.48,
+"name": "step",
+"gain": 0.3
+},
+{
+"t": 7.72,
+"name": "step",
+"gain": 0.3
+},
+{
+"t": 7.96,
+"name": "step",
+"gain": 0.3
+},
+{
+"t": 8.2,
+"name": "step",
+"gain": 0.3
+},
+{
+"t": 8.44,
+"name": "step",
+"gain": 0.3
+},
+{
+"t": 8.68,
+"name": "step",
+"gain": 0.3
+},
+{
+"t": 10.41,
+"name": "bonk",
+"gain": 0.8
+},
+{
+"t": 13.99,
+"name": "whoosh",
+"gain": 0.6
+},
+{
+"t": 14.19,
+"name": "ding",
+"gain": 0.55
+},
+{
+"t": 17.64,
+"name": "sparkle",
+"gain": 0.3
+},
+{
+"t": 24.65,
+"name": "zoom",
+"gain": 0.55
+},
+{
+"t": 26.55,
+"name": "pop",
+"gain": 0.55
+},
+{
+"t": 32.36,
+"name": "pop",
+"gain": 0.55
+},
+{
+"t": 35.38,
+"name": "whoosh",
+"gain": 0.45
+},
+{
+"t": 35.78,
+"name": "pop",
+"gain": 0.55
+},
+{
+"t": 41.46,
+"name": "alert",
+"gain": 0.4
+},
+{
+"t": 45.92,
+"name": "pop",
+"gain": 0.4
+},
+{
+"t": 48.53,
+"name": "whoosh",
+"gain": 0.5
+},
+{
+"t": 49.33,
+"name": "tick",
+"gain": 0.35
+},
+{
+"t": 49.68,
+"name": "tick",
+"gain": 0.35
+},
+{
+"t": 50.03,
+"name": "tick",
+"gain": 0.35
+},
+{
+"t": 50.38,
+"name": "tick",
+"gain": 0.35
+},
+{
+"t": 53.29,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 53.41,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 53.53,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 53.65,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 53.77,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 53.89,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 54.01,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 54.13,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 54.25,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 54.37,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 54.49,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 54.61,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 57.14,
+"name": "pop",
+"gain": 0.55
+},
+{
+"t": 64.11,
+"name": "pop",
+"gain": 0.45
+},
+{
+"t": 68.86,
+"name": "bonk",
+"gain": 0.55
+},
+{
+"t": 73.81,
+"name": "pop",
+"gain": 0.35
+},
+{
+"t": 74.51,
+"name": "pop",
+"gain": 0.35
+},
+{
+"t": 75.21,
+"name": "pop",
+"gain": 0.35
+},
+{
+"t": 79.14,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 79.26,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 79.38,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 79.5,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 79.62,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 79.74,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 79.86,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 79.98,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 80.1,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 80.22,
+"name": "blip",
+"gain": 0.18
+},
+{
+"t": 85.9,
+"name": "bike_bell",
+"gain": 0.55
+},
+{
+"t": 96.22,
+"name": "ding",
+"gain": 0.5
+},
+{
+"t": 98.49,
+"name": "ding",
+"gain": 0.5
+},
+{
+"t": 98.55,
+"name": "ding",
+"gain": 0.5
+},
+{
+"t": 101.66,
+"name": "pop",
+"gain": 0.45
+},
+{
+"t": 103.45,
+"name": "whoosh",
+"gain": 0.55
+},
+{
+"t": 105.05,
+"name": "scratch",
+"gain": 0.45
+},
+{
+"t": 105.95,
+"name": "chime",
+"gain": 0.65
+},
+{
+"t": 108.68,
+"name": "freewheel",
+"gain": 0.4
+},
+{
+"t": 110.38,
+"name": "notify",
+"gain": 0.65
+},
+{
+"t": 110.88,
+"name": "whoosh",
+"gain": 0.5
+},
+{
+"t": 111.68,
+"name": "bike_bell",
+"gain": 0.45
+},
+{
+"t": 114.62,
+"name": "pop",
+"gain": 0.3
+},
+{
+"t": 114.87,
+"name": "pop",
+"gain": 0.3
+},
+{
+"t": 115.12,
+"name": "pop",
+"gain": 0.3
+},
+{
+"t": 117.97,
+"name": "whoosh",
+"gain": 0.3
+},
+{
+"t": 123.82,
+"name": "whoosh",
+"gain": 0.3
+},
+{
+"t": 127.57,
+"name": "whoosh",
+"gain": 0.45
+},
+{
+"t": 133.03,
+"name": "pop",
+"gain": 0.45
+},
+{
+"t": 138.35,
+"name": "chime",
+"gain": 0.45
+},
+{
+"t": 143.56,
+"name": "whoosh",
+"gain": 0.55
+},
+{
+"t": 151.06,
+"name": "tap",
+"gain": 0.65
+},
+{
+"t": 154.75,
+"name": "swipe",
+"gain": 0.35
+},
+{
+"t": 162.54,
+"name": "swipe",
+"gain": 0.35
+},
+{
+"t": 165.92,
+"name": "swipe",
+"gain": 0.35
+},
+{
+"t": 167.12,
+"name": "tap",
+"gain": 0.65
+},
+{
+"t": 170.49,
+"name": "pop",
+"gain": 0.45
+},
+{
+"t": 176.63,
+"name": "tap",
+"gain": 0.65
+},
+{
+"t": 177.33,
+"name": "pop",
+"gain": 0.45
+},
+{
+"t": 182.01,
+"name": "sparkle",
+"gain": 0.25
+},
+{
+"t": 182.11,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 182.26,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 182.41,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 182.56,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 182.71,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 182.86,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 183.01,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 183.16,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 183.31,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 183.46,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 183.61,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 183.76,
+"name": "blip",
+"gain": 0.16
+},
+{
+"t": 186.96,
+"name": "pop",
+"gain": 0.55
+},
+{
+"t": 193.6,
+"name": "whoosh",
+"gain": 0.45
+},
+{
+"t": 203.06,
+"name": "pop",
+"gain": 0.35
+},
+{
+"t": 205.42,
+"name": "whoosh",
+"gain": 0.55
+},
+{
+"t": 206.02,
+"name": "school_bell_soft",
+"gain": 0.65
+},
+{
+"t": 208.22,
+"name": "bike_bell",
+"gain": 0.65
+},
+{
+"t": 209.82,
+"name": "whoosh",
+"gain": 0.45
+},
+{
+"t": 212.32,
+"name": "ding",
+"gain": 0.45
+}
+]

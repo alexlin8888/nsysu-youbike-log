@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>stage</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style></head>
+<body><canvas id="c" width="1920" height="1080"></canvas>
+<script src="lib.js"></script>
+<script src="scenes.js"></script>
+<script>
+// Loads the timeline, the data and the screenshots, then waits for the renderer to call renderAt(t) for a scene.
+const q = new URLSearchParams(location.search), SCENE = q.get("scene");
+const ctx = document.getElementById("c").getContext("2d");
+window.READY = false;
+(async () => {
+  const [cues, data, rects] = await Promise.all([fetch("../build/cues.json").then((r) => r.json()), fetch("../build/data.json").then((r) => r.json()), fetch("../assets/rects.json").then((r) => r.json())]);
+  window.CUES = cues; window.DATA = data; window.RECTS = rects;
+  const names = (window.IMAGES || []);
+  window.IMG = {};
+  await Promise.all(names.map((n) => new Promise((ok) => { const im = new Image(); im.onload = () => { IMG[n] = im; ok(); }; im.onerror = () => ok(); im.src = "../assets/" + n; })));
+  await document.fonts.load("700 40px 'Noto Sans CJK TC'"); await document.fonts.load("900 40px 'Noto Sans CJK TC'"); await document.fonts.load("400 40px 'Noto Sans CJK TC'");
+  const sc = cues.scenes.find((s) => s.id === SCENE);
+  window.SCENE_DUR = sc ? sc.dur : 5;
+  window.renderAt = (t) => { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.clearRect(0, 0, W, H); SCENES[SCENE](ctx, t, window.SCENE_DUR); };
+  window.frameJpeg = (t, q) => { renderAt(t); return document.getElementById("c").toDataURL("image/jpeg", q); };
+  window.READY = true;
+})();
+</script></body></html>

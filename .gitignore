@@ -6,3 +6,6 @@ analysis/results/final/rider/rider_cases.csv
 analysis/results/final/time*/time_cases.csv
 analysis/results/final/time*/time_foresight.csv
 analysis/results/final/spread/spread_cases.csv
+# the rendered video and its sound tracks, rebuilt by video/render.py and video/audio.py
+video/out/
+video/build/*.wav
