@@ -13,7 +13,7 @@ Writes
                  (audio.py) and the subtitles all read it
   subtitles.srt  for YouTube's caption upload
   subtitles.ass  for burning the subtitles into the video (Noto Sans CJK TC)
-  NARRATION.md   the script for the voice actor, with the time of every line
+  NARRATION.md   the script for the voice: one recording per scene with narration (seven), a pause between lines
 """
 import json
 import re
@@ -172,18 +172,29 @@ if __name__ == "__main__":
     for l in subs:
         ass.append(f"Dialogue: 0,{ass_ts(l['start'])},{ass_ts(l['end'])},Sub,,0,0,0,,{l['text']}")
     (OUT / "subtitles.ass").write_text("\n".join(ass) + "\n", encoding="utf-8")
+    # the script for the voice: one recording per scene that has narration (seven), each line on its own row; the
+    # numbers are the lines of cues.json, and mix_voice.py cuts each recording at its pauses
+    keys = sorted(READ, key=len, reverse=True)
+    pat = re.compile("|".join(rf"(?<![0-9]){re.escape(k)}(?![0-9%])" for k in keys))
+    spoken = lambda l: pat.sub(lambda m: f"{m.group(0)}（{READ[m.group(0)]}）", l["text"].replace("　", "，"))
+    voiced = [s for s in scenes if any(l["scene"] == s["id"] for l in lines)]
     md = ["# 期末影片旁白稿", "",
-          f"影片長度 {int(total // 60)} 分 {total % 60:04.1f} 秒。每一行旁白對應一句字幕，下面的時間是那句字幕出現和消失的時間；"
-          "照著影片裡的字幕念，念完一句停一下，速度和字幕一致就會對上。語氣像在跟同學解釋，不用念稿的腔調。數字照括號裡的念法。"
-          "每一句可以單獨錄成一個檔，檔名用句子前面的編號（例如 07.wav），mix_voice.py 會把它放到那句的時間。", ""]
-    for s in scenes:
-        md.append(f"## {ts(s['start'], '.')[3:8]}　{NAMES.get(s['id'], s['id'])}（{s['dur']:.1f} 秒）")
-        for l in [l for l in lines if l["scene"] == s["id"]]:
-            keys = sorted(READ, key=len, reverse=True)
-            pat = re.compile("|".join(rf"(?<![0-9]){re.escape(k)}(?![0-9%])" for k in keys))
-            spoken = pat.sub(lambda m: f"{m.group(0)}（{READ[m.group(0)]}）", l["text"].replace("　", "，"))
-            md.append(f"- {l['i'] + 1:02d}　`{ts(l['start'], '.')[3:10]}–{ts(l['end'], '.')[3:10]}`　{spoken}")
+          f"影片長 {int(total // 60)} 分 {total % 60:02.0f} 秒，旁白分成 {len(voiced)} 段。一段錄成一個檔，檔名 1 到 {len(voiced)}"
+          "（m4a、mp3、wav 都可以）；也可以全部錄在同一個檔，段和段之間停兩秒。", "",
+          "- 語氣像新聞主播：咬字清楚、速度平穩、語氣肯定，句尾不拖音、不上揚；捲舌音和平舌音要分清楚，不要含糊。",
+          "- 速度和影片字幕一樣，大約每秒 4 個字。先開著影片跟字幕念一遍，再正式錄。",
+          "- 每句念完停一秒再念下一句；句子裡的逗號只要稍微停。",
+          "- 數字照括號裡的念法。念錯了就把那一段整段重錄。",
+          "- 每段標題寫著大約幾秒（含句子之間停的那一秒）。錄完看一下錄音長度，比它多出兩成以上，就念快一點再錄一次。",
+          "- 用手機在安靜的房間錄，嘴巴離手機約 20 公分。", ""]
+    for n, s in enumerate(voiced, 1):
+        ls = [l for l in lines if l["scene"] == s["id"]]
+        secs = sum(l["end"] - l["start"] for l in ls) + (len(ls) - 1) * 1.0
+        md.append(f"## 第 {n} 段：{NAMES.get(s['id'], s['id'])}（檔名 {n}，{len(ls)} 句，約 {secs:.0f} 秒）")
         md.append("")
+        for l in ls:
+            md.append(f"{l['i'] + 1:02d}　{spoken(l)}")
+            md.append("")
     (OUT / "NARRATION.md").write_text("\n".join(md), encoding="utf-8")
     print(f"total {total:.1f} s, {len(lines)} lines, {sum(l['syll'] for l in lines)} syllables")
     for s in scenes:
