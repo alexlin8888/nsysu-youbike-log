@@ -595,6 +595,8 @@ function magnify(ctx, img, src, ph, box, a) {
   ctx.restore();
   return (r) => [x + (r[0] - src[0]) * sc, y + (r[1] - src[1]) * sc, r[2] * sc, r[3] * sc];
 }
+// the part of a screenshot from the top of one element to the bottom of another, full width, with a margin
+const rowBox = (top, bottom) => [24, top[1] - 14, 732, bottom[1] + bottom[3] - top[1] + 28];
 function sceneDemo(ctx, t, T) {
   const p = (k, j) => PT("demo", k, j), L = [0, 1, 2, 3, 4].map((k) => LS("demo", k));
   bg(ctx, "#0E1C2B", "#1C3D63");
@@ -620,7 +622,7 @@ function sceneDemo(ctx, t, T) {
   // the site
   if (PLAY.includes(key)) tapAt(R.play_1600.play, tPlay);
   say(0.4, L[1], "Beat the Bell 網站", "alexlin8888.github.io/nsysu-youbike-log");
-  { const k = win(0.6, L[1]); if (k > 0) ["借車", "還車", "政策", "調度"].forEach((s2, i) => pill(ctx, s2, 650 + i * 150, 300, { size: 30, fill: [C.blue, "#4C5BE0", C.orange, C.ink2][i], alpha: k, scale: pop(t, 0.9 + i * 0.15) })); }
+  { const k = win(0.6, L[1]); if (k > 0) ["借車", "還車", "政策", "補車"].forEach((s2, i) => pill(ctx, s2, 650 + i * 150, 300, { size: 30, fill: [C.blue, "#4C5BE0", C.orange, C.ink2][i], alpha: k, scale: pop(t, 0.9 + i * 0.15) })); }
   // the replay playing, magnified: the campus stations losing bikes as the clock runs to 16:40
   { const k = PLAY.includes(key) || key === "rider_1640" ? win(tPlay - 0.15, L[1]) : 0;
     magnify(ctx, img, [220, 340, 400, 420], ph, [600, 360, 1260, 540], k);
@@ -632,13 +634,13 @@ function sceneDemo(ctx, t, T) {
     } }
   // rider tab: where am I, then where to go and the latest time to leave
   say(L[1], tDock, "借車：去哪一站、最晚幾點出發", "例：16:40 從圖資大樓出發");
-  { const M = magnify(ctx, IMG["rider_1640.jpg"], [24, 985, 732, 150], ph, box, key === "rider_1640" ? win(p(1, 1) - 0.2, p(1, 2) - 0.1) : 0); if (M) hilite(ctx, ...M(R.rider_1640.from), t, p(1, 1) + 0.2, C.yellow); }
+  { const M = magnify(ctx, IMG["rider_1640.jpg"], rowBox(R.rider_1640.trip, R.rider_1640.trip), ph, box, key === "rider_1640" ? win(p(1, 1) - 0.2, p(1, 2) - 0.1) : 0); if (M) hilite(ctx, ...M(R.rider_1640.from), t, p(1, 1) + 0.2, C.yellow); }
   if (key === "rider_1640") tapAt(R.rider_1640.from, p(1, 1));
-  { const M = magnify(ctx, IMG["rider_1640.jpg"], [24, 1262, 732, 290], ph, box, key === "rider_1640" ? win(p(1, 2) - 0.1, tDock) : 0); if (M) { hilite(ctx, ...M(R.rider_1640.best), t, p(1, 2) + 0.2, C.yellow); hilite(ctx, ...M(R.rider_1640.tip), t, p(1, 4), C.yellow); } }
+  { const M = magnify(ctx, IMG["rider_1640.jpg"], rowBox(R.rider_1640.best, R.rider_1640.tip), ph, box, key === "rider_1640" ? win(p(1, 2) - 0.1, tDock) : 0); if (M) { hilite(ctx, ...M(R.rider_1640.best), t, p(1, 2) + 0.2, C.yellow); hilite(ctx, ...M(R.rider_1640.tip), t, p(1, 4), C.yellow); } }
   if (key === "rider_1640") tapAt(R.rider_1640.tabDock, tDock - 0.35);
   // dock tab in the morning
   say(tDock, tPol, "還車：哪一站還有位子", "例：09:20 要騎到工學院");
-  { const M = magnify(ctx, IMG["dock_0920.jpg"], [24, 1262, 732, 290], ph, box, key === "dock_0920" ? win(tDock + 0.1, tPol) : 0); if (M) { hilite(ctx, ...M(R.dock_0920.best), t, p(2, 1), C.yellow); hilite(ctx, ...M(R.dock_0920.tip), t, p(2, 2), C.yellow); } }
+  { const M = magnify(ctx, IMG["dock_0920.jpg"], rowBox(R.dock_0920.best, R.dock_0920.tip), ph, box, key === "dock_0920" ? win(tDock + 0.1, tPol) : 0); if (M) { hilite(ctx, ...M(R.dock_0920.best), t, p(2, 1), C.yellow); hilite(ctx, ...M(R.dock_0920.tip), t, p(2, 2), C.yellow); } }
   if (key === "dock_0920") tapAt(R.dock_0920.tabPolicy, tPol - 0.35);
   // policy tab: where the reward should be paid now
   say(tPol, tSim, "政策：快被借光的站，還車送 1 小時", "模擬提案上路後｜11/11（三）16:30");
