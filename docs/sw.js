@@ -2,7 +2,7 @@
 // answers within a few seconds, and from the last copy otherwise, so the app still opens on a weak campus signal or
 // with no signal at all (the page then says how old its counts are). Replays, map tiles and the operator's counts
 // are left to the network. site/build.py writes this file to docs/sw.js with the version of the page in CACHE.
-var CACHE = "btb-fb6013d374";
+var CACHE = "btb-3deed1a336";
 var SHELL = ["./", "vendor/leaflet.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "places.json", "outlook.json", "policy.json", "state.json"];
 var WAIT = 4000;   // milliseconds to wait for the network before the last copy is used
 

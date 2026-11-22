@@ -268,7 +268,7 @@ function sceneTitle(ctx, t, T) {
   bellIcon(ctx, 600, 420, 90 * k, Math.sin(t * 9) * 0.35 * (1 - prog(t, 0.4, 2.2)));
   text(ctx, "Beat the Bell", 720, 470, { size: 150, weight: 900, color: C.white, alpha: k });
   text(ctx, "搶在下課鐘響前", 726, 580, { size: 66, weight: 700, color: C.yellow, alpha: easeOut(prog(t, 0.6, 1.2)) });
-  text(ctx, "中山大學 YouBike 缺車預測與預測型友愛接力", 726, 660, { size: 44, weight: 500, color: LIGHT, alpha: easeOut(prog(t, 0.9, 1.5)) });
+  text(ctx, "預測中山大學 YouBike 缺車，讓車在下課前回來", 726, 660, { size: 44, weight: 500, color: LIGHT, alpha: easeOut(prog(t, 0.9, 1.5)) });
   text(ctx, "人工智慧導論　第 54 組", 726, 740, { size: 34, weight: 400, color: DIM, alpha: easeOut(prog(t, 1.2, 1.8)) });
   fadeTo(ctx, t, T, 0.3, C.paper);
 }
@@ -392,7 +392,7 @@ function sceneRelay(ctx, t, T) {
     [14, 15, 16, 17, 18, 19, 20].forEach((hh) => { ctx.fillStyle = C.ink2; ctx.fillRect(X(hh * 60) - 2, y - 12, 4, 24); text(ctx, hh + ":00", X(hh * 60), y + 60, { size: 30, weight: 500, color: C.ink2, align: "center" }); });
     bellIcon(ctx, X(17 * 60), y - 92, 34, Math.sin(t * 8) * 0.25, C.orange);
     text(ctx, "下課", X(17 * 60), y - 148, { size: 32, weight: 700, color: C.orange, align: "center" });
-    text(ctx, "友愛接力發獎勵的時候：站已經空了", (X(17 * 60 + 25) + X(19 * 60 + 30)) / 2, y + 140, { size: 32, weight: 700, color: C.red, align: "center", alpha: rk });
+    text(ctx, "友愛接力要等站空了才送", (X(17 * 60 + 25) + X(19 * 60 + 30)) / 2, y + 140, { size: 32, weight: 700, color: C.red, align: "center", alpha: rk });
     text(ctx, "車要在這時候回來", (X(15 * 60) + X(17 * 60)) / 2, y + 140, { size: 34, weight: 700, color: C.blue, align: "center", alpha: bk });
     for (let i = 0; i < 6; i++) personIcon(ctx, X(17 * 60 + 22) + i * 36, y - 64, 30 * pop(t, p(2, 3) + i * 0.08), C.ink2);
   });
@@ -447,15 +447,15 @@ function sceneIdea(ctx, t, T) {
     const tk = easeOut(prog(t, p(0, 0), p(0, 0) + 0.5));
     card(ctx, 1150, 70, 710, 250, { fill: "rgba(255,255,255,0.97)", r: 24, alpha: tk });
     pill(ctx, "提案", 1225, 126, { size: 30, fill: C.orange, alpha: tk });
-    text(ctx, "預測型友愛接力", 1290, 144, { size: 54, weight: 900, color: C.ink, alpha: tk });
+    text(ctx, "快被借光的站先送獎勵", 1290, 144, { size: 54, weight: 900, color: C.ink, alpha: tk });
     text(ctx, "每 10 分鐘預測一次", 1190, 222, { size: 34, weight: 700, color: C.ink, alpha: easeOut(prog(t, p(0, 1), p(0, 1) + 0.4)) });
-    text(ctx, "40 分鐘內借光機率 ≥ 50%，就提前開放", 1190, 276, { size: 30, weight: 500, color: C.ink2, alpha: easeOut(prog(t, p(0, 2), p(0, 2) + 0.4)) });
+    text(ctx, "40 分鐘內被借光的機會過半，還車就送", 1190, 276, { size: 30, weight: 500, color: C.ink2, alpha: easeOut(prog(t, p(0, 2), p(0, 2) + 0.4)) });
     card(ctx, 1150, 350, 710, 140, { fill: "rgba(255,255,255,0.97)", r: 24, alpha: tk });
     text(ctx, t < ideaSnap() ? "這一輪的預測" : "10 分鐘後，下一輪", 1190, 392, { size: 26, weight: 500, color: C.muted, alpha: tk });
     text(ctx, "11/11（三）", 1190, 452, { size: 32, weight: 500, color: C.ink2, alpha: tk });
     text(ctx, hhmm(m), 1820, 452, { size: 80, weight: 900, color: C.ink, align: "right", alpha: tk });
     if (snap > 0 && snap < 1) { ctx.save(); ctx.strokeStyle = rgba(C.orange, 1 - snap); ctx.lineWidth = 6; rrect(ctx, 1150 - 14 * snap, 350 - 14 * snap, 710 + 28 * snap, 140 + 28 * snap, 30); ctx.stroke(); ctx.restore(); }
-    if (t > p(0, 3)) pill(ctx, "17:00 下課前就開放", 1505, 570, { size: 38, fill: C.blue, scale: pop(t, p(0, 3)) });
+    if (t > p(0, 3)) pill(ctx, "17:00 下課前就開始送", 1505, 570, { size: 38, fill: C.blue, scale: pop(t, p(0, 3)) });
     chapter(ctx, "我們的做法", t, true);
     sourceTag(ctx, "11/11 的實際預測（網站重播資料的 reward 欄位）；海岸線為示意", t, p(0, 1), DIM);
     fadeFrom(ctx, t, 0.3, C.paper);
@@ -641,10 +641,10 @@ function sceneDemo(ctx, t, T) {
   { const M = magnify(ctx, IMG["dock_0920.jpg"], [24, 1262, 732, 290], ph, box, key === "dock_0920" ? win(tDock + 0.1, tPol) : 0); if (M) { hilite(ctx, ...M(R.dock_0920.best), t, p(2, 1), C.yellow); hilite(ctx, ...M(R.dock_0920.tip), t, p(2, 2), C.yellow); } }
   if (key === "dock_0920") tapAt(R.dock_0920.tabPolicy, tPol - 0.35);
   // policy tab: where the reward should be paid now
-  say(tPol, tSim, "政策：現在該發獎勵的站", "11/11（三）16:30");
+  say(tPol, tSim, "政策：快被借光的站，還車送 1 小時", "模擬提案上路後｜11/11（三）16:30");
   { const M = magnify(ctx, IMG["policy_map.jpg"], [120, 300, 560, 440], ph, box, key === "policy_map" ? win(tPol + 0.1, tTable) : 0);
     if (M) R.policy_map.glyphs.filter((g) => g.mark && g.rect[1] > 300 && g.rect[1] < 740).forEach((g, i) => { const q = M(g.rect), pulse = 0.5 + 0.5 * Math.sin(t * 6 + i); ctx.save(); ctx.strokeStyle = rgba(C.orange, prog(t, p(3, 1) + i * 0.2, p(3, 1) + 0.3 + i * 0.2)); ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(q[0] + q[2] / 2, q[1] + q[3] / 2, q[2] * 0.85 + 10 * pulse, 0, 7); ctx.stroke(); ctx.restore(); }); }
-  { const M = magnify(ctx, IMG["policy_table.jpg"], [24, 304, 732, 446], ph, box, key === "policy_table" ? win(tTable, tSim) : 0);
+  { const M = magnify(ctx, IMG["policy_table.jpg"], (() => { const top = R.policy_table.ruleHead[1] - 8, r4 = R.policy_table.rows[3].rect; return [24, top, 732, r4[1] + r4[3] + 8 - top]; })(), ph, box, key === "policy_table" ? win(tTable, tSim) : 0);
     if (M) [0, 1, 2].forEach((i) => hilite(ctx, ...M(R.policy_table.rows[i].pred), t, tTable + 0.3 + i * 0.25, C.orange)); }
   // the what-if below it
   say(tSim, T + 1, "試算：還車的人多一半", "按下「多 50%」，網站算出借不到車的人會少多少", C.yellow);
@@ -690,7 +690,7 @@ function sceneImpact(ctx, t, T) {
     ["國立中山大學總務處", "高雄市政府交通局", "微笑單車高雄營運團隊"].forEach((s2, i) => pill(ctx, s2, 1180, 300 + i * 90, { size: 36, fill: [C.blue, C.green, C.orange][i], scale: pop(t, p(3, 1) + i * 0.25) }));
     const kk = easeOut(prog(t, p(3, 2), p(3, 2) + 0.4));
     text(ctx, "建議：校內 8 站試辦四週", 900, 640, { size: 54, weight: 900, color: C.ink, alpha: kk });
-    ["現行", "預測型", "現行", "預測型"].forEach((s2, i) => { const q = pop(t, p(3, 2) + 0.3 + i * 0.18); if (q <= 0) return; ctx.save(); ctx.translate(1000 + i * 210, 770); ctx.scale(q, q); rrect(ctx, -95, -60, 190, 120, 18); ctx.fillStyle = i % 2 ? C.blue : "#9AA3AD"; ctx.fill(); text(ctx, "第 " + (i + 1) + " 週", 0, -12, { size: 28, weight: 500, color: C.white, align: "center" }); text(ctx, s2, 0, 34, { size: 34, weight: 900, color: C.white, align: "center" }); ctx.restore(); });
+    ["現行", "提案", "現行", "提案"].forEach((s2, i) => { const q = pop(t, p(3, 2) + 0.3 + i * 0.18); if (q <= 0) return; ctx.save(); ctx.translate(1000 + i * 210, 770); ctx.scale(q, q); rrect(ctx, -95, -60, 190, 120, 18); ctx.fillStyle = i % 2 ? C.blue : "#9AA3AD"; ctx.fill(); text(ctx, "第 " + (i + 1) + " 週", 0, -12, { size: 28, weight: 500, color: C.white, align: "center" }); text(ctx, s2, 0, 34, { size: 34, weight: 900, color: C.white, align: "center" }); ctx.restore(); });
     text(ctx, "單雙週輪流，量實際有多少人參與、沒車的時間少多少", 900, 890, { size: 30, weight: 500, color: C.ink2, alpha: prog(t, p(3, 3), p(3, 3) + 0.4) });
   });
   sourceTag(ctx, t < L[3] ? "來源：報告 3.10 節；網站「政策」分頁的試算" : "建議書：alexlin8888.github.io/nsysu-youbike-log/policy_brief.pdf", t, 0.6);

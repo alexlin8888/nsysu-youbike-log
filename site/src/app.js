@@ -240,6 +240,7 @@
       "<div class=\"meta\">" + (same ? t("simPick") : (e ? polSel.er : polSel.mr) > 0 ? t(e ? "simTime" : "simTimeM", { r: rides, h: hours }) : "") + "</div></div>";
   }
   function renderPolicy(v) {
+    $("polKey").innerHTML = "<span class=\"rm\">" + t("rmPolicy") + "</span>" + t("polKey");
     $("hPolWhy").textContent = t("polWhyH"); $("hPolIdea").textContent = t("polIdeaH"); $("polIdeaTag").textContent = t("polIdeaTag");
     $("hPolSim").textContent = t("polSimH"); $("hPolAsk").textContent = t("polAskH"); $("polBrief").textContent = t("polBrief"); $("polIdea").textContent = t("polIdea"); $("polTime").textContent = t("polTime");
     if (!policy) { $("polWhy").textContent = t("loading"); return; }

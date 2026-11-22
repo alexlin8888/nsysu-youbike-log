@@ -1028,6 +1028,8 @@ h2 .h2r { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 
 /* ---------- the Policy tab ---------- */
 .policy .lead { font-size: 14.5px; line-height: 1.75; margin: 4px 0 12px; max-width: 34em; }
+.polkey { margin: 2px 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2, #eef3fb); font-size: 14px; line-height: 1.65; max-width: 34em; }
+.polkey .rm { display: inline-block; margin-right: 6px; font-size: 11px; font-weight: 700; line-height: 1.4; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 4px; background: var(--surface); }
 .ptag { font-size: 11.5px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; padding: 0 6px; line-height: 1.6; }
 .polchart svg { display: block; width: 100%; height: auto; }
 .polchart .dotkey { margin-top: 6px; }
@@ -1162,6 +1164,7 @@ h2 .h2r { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
         </div>
 
         <div id="panePolicy" class="pane policy" role="tabpanel" aria-labelledby="tabPolicy" hidden>
+          <p class="polkey" id="polKey"></p>
           <section>
             <h2><span id="hPolWhy"></span><span class="sub" id="hPolWhySub"></span></h2>
             <p class="lead" id="polWhy"></p>
@@ -1248,23 +1251,24 @@ var T = {
     live: "即時", replay: "重播", tabRider: "借車", tabDock: "還車", tabOps: "調度", tabAbout: "說明",
     tabPolicy: "政策",
     polWhyH: "下課後校內一起沒車", polWhySub: "{n} 個上課日平均",
-    polWhy: "17:00 下課後校內的站很快借空，17:30 到 18:30 有一半以上的時間沒車（{e}%）。這時校內各站同時缺車，換一站也借不到，預測再準也只能說沒車，車要在下課前就回到校內。下午兩點到晚上八點還到校內的車，{a}% 在 17:00 前就到了，但現行的友愛接力只付給其中 {b}%：它要等站已經空了才給 5 元騎乘券，而 17:00 前校內的站多半還有車。",
-    polChartRet: "每半小時還到校內的車數（模型估計）", polChartEmpty: "校內站沒車的時間", polKeyNow: "現行規則會付", polKeyPred: "預測型多付的", polKeyNone: "沒有獎勵",
-    polIdeaH: "提案：預測型友愛接力，改送騎乘時數", polIdeaTag: "提案",
-    polIdea: "模型每 10 分鐘算一次各站 40 分鐘內借空的機率，到一半以上就提前開放「還車送一小時騎乘時數」，不必等站空；早上反過來，快停滿的站提前開放「借車送一小時」。在下課前把車騎回校內的人拿得到獎勵，下課的學生也借得到車。",
+    polWhy: "17:00 下課後校內的站很快借空，17:30 到 18:30 有一半以上的時間沒車（{e}%）。這時校內各站同時缺車，換一站也借不到，預測再準也只能說沒車，車要在下課前就回到校內。下午兩點到晚上八點還到校內的車，{a}% 在 17:00 前就到了，但現在的友愛接力只送給其中 {b}%：它要等站已經空了才送 5 元騎乘券，而 17:00 前校內的站多半還有車。",
+    polChartRet: "每半小時還到校內的車數（模型估計）", polChartEmpty: "校內站沒車的時間", polKeyNow: "友愛接力會送的", polKeyPred: "提案多送的", polKeyNone: "都不送",
+    polKey: "地圖上這樣標的站快被借光了。提案上路後，現在把車還到這幾站，就送一小時騎乘時數。這一頁也給學校和營運商試算效果。",
+    polIdeaH: "提案：快被借光的站，還車送一小時", polIdeaTag: "提案",
+    polIdea: "現在的友愛接力要等站空了才送，那時下課的人已經借不到車。提案改看預測：系統每 10 分鐘算一次，哪一站 40 分鐘內被借光的機會超過一半，地圖上就標「+1小時」，這時把車還到那一站，送一小時騎乘時數。早上反過來，快停滿的站借車送一小時。這樣在下課前把車騎回校內的人拿得到獎勵，下課的學生也借得到車。這是提案，還沒有實施。",
     polTime: "現行友愛接力送的是 5 元騎乘券，提案改送一小時騎乘時數。在高雄，刷一卡通數位學生證或學生認同卡的學生，和有 TPASS、MeNGo 月票的人，騎 YouBike 前 30 分鐘本來就免費；一般會員的前 30 分鐘市府補助 5 元，自己付 5 元。所以 30 分鐘的獎勵對前者沒有用，對後者和 5 元券一樣。送一小時，前者騎超過 30 分鐘的那一段也免費，一般會員一小時內都不用付錢。對前者來說，獎勵要騎超過 30 分鐘才用得到，等於鼓勵多騎一段。一小時是兩個計費時段，也是世界衛生組織建議每週至少 150 分鐘身體活動的五分之二；國健署的調查裡，近五成國人每週身體活動不到 150 分鐘。英國 26 萬人的追蹤研究發現，騎車通勤的人全死因死亡風險低 41%。",
-    polFactCatch: "{n} 個上課日裡，{a}% 的借空在發生前就被標出，中位數提早 {m} 分鐘。",
-    polFactRight: "被標出的站有 {p}% 真的在 40 分鐘內借空，其他有車的站只有 {b}%。",
-    polFactWorth: "預測型付錢的車，接下來兩小時平均每台讓 {v} 人借到車，和現行規則付錢的車（{w}）一樣；沒付錢的車只有 {u}。",
-    polNowH: "{t} 的校內站", polNowEve: "傍晚看還車：現行規則送 5 元騎乘券，提案送一小時騎乘時數", polNowMorn: "早上看借車：現行規則送 5 元騎乘券，提案送一小時騎乘時數",
-    polNowSt: "站", polNowBikes: "車數", polNowDocks: "空位", polNowChE: "40 分內會空", polNowChF: "40 分內會滿", polNowRule: "現行規則", polNowPred: "預測型",
+    polFactCatch: "{n} 個上課日裡，站被借光的情況有 {a}% 事先標出了「+1小時」，中位數提早 {m} 分鐘。",
+    polFactRight: "標了「+1小時」的站，{p}% 真的在 40 分鐘內被借光；沒標的站只有 {b}%。",
+    polFactWorth: "提案送獎勵的每一台還車，接下來兩小時平均讓 {v} 人借到車，和友愛接力送的（{w}）一樣；沒送獎勵的只有 {u}。",
+    polNowH: "{t} 的校內站", polNowEve: "傍晚看還車：友愛接力在站空了才送 5 元，提案在快被借光時送一小時", polNowMorn: "早上看借車：友愛接力在站滿了才送 5 元，提案在快停滿時送一小時",
+    polNowSt: "站", polNowBikes: "車數", polNowDocks: "空位", polNowChE: "40 分內借光機會", polNowChF: "40 分內停滿機會", polNowRule: "友愛接力", polNowPred: "提案",
     polPay: "送 5 元", polNoPay: "—",
     polPayTime: "送 1 小時", rmPolicy: "+1小時",
-    polNowSum: "現行規則付給 {a} 站，預測型付給 {b} 站。", polNowNone: "現在沒有快空的站，兩種規則都不用付。", polNowNoneM: "現在沒有快滿的站，兩種規則都不用付。",
+    polNowSum: "友愛接力現在在送的有 {a} 站，提案會送的有 {b} 站。", polNowNone: "現在沒有快被借光的站，兩種都不用送。", polNowNoneM: "現在沒有快停滿的站，兩種都不用送。",
     polNowOff: "今天沒課，校內不缺車。", polNowNight: "23:00 到 06:00 沒有預測。", polNowOld: "這一天的重播還沒有這項預測。",
     polSimH: "政策試算", polSimSub: "{n} 個上課日，模型估計",
     simEveH: "傍晚 15:00–20:00：借不到車", simMornH: "早上 08:00–11:00：還不了車",
-    simReward: "預測型友愛接力（送 1 小時）：多少人因此把車騎回校內", simRewardM: "預測型友愛接力（送 1 小時）：多少人因此從快滿的站借走",
+    simReward: "提案上路後，因為獎勵把車騎回校內的人", simRewardM: "提案上路後，因為獎勵從快滿的站借走的人",
     simR0: "不實施", simR1: "多 25%", simR2: "多 50%", simR3: "多一倍",
     simTruck: "下課前補車", simT0: "不補", simT1: "16:50 補 20 台", simT2: "16:50、17:50 各 20 台",
     simStag: "錯開下課", simS0: "不錯開", simS1: "一半提早 10 分鐘",
@@ -1275,11 +1279,11 @@ var T = {
     simRef: "對照：報告第 3.9 節的模擬裡，依預測整晚調度的校園專車讓 17:00–20:00 借不到車少 {a}%（一台）、{b}%（兩台）。",
     polSimNote: "這是模型估計：15:00 以後營運商的卡車沒有算進去，人次會偏高，請看百分比。一小時騎乘時數能讓多少人改變還車地點還沒有資料，所以列出三種情況。",
     polAskH: "給學校、市府和營運商的建議",
-    ask1: "<b>友愛接力改成預測型，送騎乘時數</b>：校內站在模型預測 40 分鐘內會空時，就開放還車送一小時騎乘時數。騎回校內的人若多一半，傍晚借不到車少 {a}%，每天多 {r} 趟騎車回校，多送約 {h} 小時騎乘時數（以一般票價計，面額上限約 {c} 元）。",
-    ask2: "<b>下課前補車</b>：16:50 和 17:50 各送 20 台到校內，傍晚借不到車少 {b}%；早上 09:00 從校內載走 20 台，還不了車少 {c}%。補車再加上預測型獎勵，傍晚少 {d}%。",
+    ask1: "<b>快被借光的站，還車送一小時</b>：系統預測校內某一站 40 分鐘內會被借光時，把車還到那一站就送一小時騎乘時數，不必等站空。騎回校內的人若多一半，傍晚借不到車少 {a}%，每天多 {r} 趟騎車回校，多送約 {h} 小時騎乘時數（以一般票價計，面額上限約 {c} 元）。",
+    ask2: "<b>下課前補車</b>：16:50 和 17:50 各送 20 台到校內，傍晚借不到車少 {b}%；早上 09:00 從校內載走 20 台，還不了車少 {c}%。補車再加上提案的獎勵，傍晚少 {d}%。",
     ask3: "<b>不必為此錯開下課</b>：一半的課提早 10 分鐘下課只少 {e}%，因為傍晚整個校園的車本來就不夠。",
     polBrief: "下載完整建議書（PDF）",
-    legPolE: "40 分鐘內借空的機率", legPolF: "40 分鐘內停滿的機率", legPolPaid: "預測型送一小時騎乘時數",
+    legPolE: "40 分鐘內被借光的機會", legPolF: "40 分鐘內停滿的機會", legPolPaid: "快被借光，現在還車送一小時（提案）",
     loading: "讀取資料中", liveAt: "{t} 更新", ago: "{m} 分鐘前", agoH: "{h} 小時前", justNow: "剛剛", replayAt: "重播 {d} {t}",
     stale: "讀不到最新資料，目前顯示 {t} 的車數。",
     stalebig: "資料已經 {m} 分鐘沒有更新，車數可能不準。",
@@ -1353,7 +1357,7 @@ var T = {
     keyRing: "圓圈裡的數字是現在的車數（還車頁是空位數）。地圖上圓圈外的弧線越長，這站停的車越多。藍框：校內的站。", keyRoute: "虛線：建議的卡車路線，數字是停靠順序。",
     aboutWhat: "<h3>網站用途</h3><p>中山大學上課日傍晚 17:30 到 18:10，校內的 YouBike 常被借光：從校內出發，平均要 5 分鐘才借得到車，每 8 次有 1 次超過 10 分鐘；其他時段約 2 分鐘。早上 9 點到 11 點則相反，校內的站常停滿，不好還車。</p><p>這個網站算出你走到每一站時有沒有車或空位，直接告訴你去哪一站、最晚幾點出發、騎車和走路哪個快。也可以設定在下課前 5 分鐘用手機行事曆提醒你。</p><p>傍晚整個校園一起沒車時，查車幫不上忙，所以「政策」分頁算給學校、市府和營運商看：現行的 5 元獎勵為什麼發得太晚、提前到下課前改送騎乘時數的效果，以及下課前補車的效果。</p>",
     aboutProof: "<h3>準確度</h3><p>我們用 12 個上課日的紀錄檢驗，這 12 天沒有用來建立預估。</p><p>站的標示：標「有車」的站（占所有情況的 82%），99% 走到時真的有車。標「車不多」的，81% 走到時還有車；「快沒車」的是 62%；現在沒車的站，22% 在你走到前補進車。還車頁的「有空位」也是 99%。檢查的是校園到捷運之間 19 站，07:00 到 21:50，走 1 到 30 分鐘到站的情況。</p><p>出發前的預估：提前 10 到 30 分鐘判斷「這趟會不會要找超過 8 分鐘」，網站的準確度明顯比只看當下車數高（AUC 0.86–0.90，只看車數是 0.69–0.78；AUC 為 1 代表完全正確，0.5 等於隨機猜）。「晚點出發的找車時間」也驗證過：紅點標示 10% 的出發時間，實際有 9% 找超過 8 分鐘；標示 30% 的，實際是 28%；沒有紅點的，實際是 1%。</p><p>選哪一站：假設每 10 分鐘有人在某一站附近要借車，照網站建議、看官方 App 找最近有車的站，或直接走到最近的站，傍晚平均都約 3.7 分鐘借到車；第一站沒車就走到下一站。挑站的結果和看官方 App 差不多，網站的用處是出發前就告訴你會不會難借、最晚幾點要走。網站第一版只推薦有車機率 90% 以上的站，反而要 5.3 分鐘，因為常要多走一段路，所以改成現在的選法。</p><p>騎車和走路：傍晚從校內到捷運站，借車騎過去全程平均 11.6 分鐘，走路 17.3 分鐘。</p>",
-    aboutHow: "<h3>資料與方法</h3><p>資料來源：YouBike 官方開放資料。從 2026 年 10 月 1 日起，每 10 分鐘記錄一次中山大學周邊 5 公里內 {n} 個站的車數和空位。網站開著時，校園到捷運之間的 19 站每分鐘再更新一次。</p><p>預估方法：用過去的紀錄算出每一站在上課日每 10 分鐘的平均借車和還車速度（下課那 10 分鐘特別快），再從現在的車數推算你到達時的車數和有車的機率，統計上稱為生滅過程模型。走到時有車的機率在 90% 以上，標「有車」（綠色）；60% 到 90% 標「車不多」（黃色）；不到 60% 標「快沒車」（紅色）；現在沒車而且機率不到 60%，標「現在沒車」（深紅）。還車看有空位的機率，標準較嚴，分別是 95% 和 70%。</p><p>建議的站：比較每一站「走過去的時間，加上沒車時改去下一站的時間」，選平均最快的一站；差不到半分鐘時，選有車機率較高的一站。步行和騎車時間依 OpenStreetMap 的路線距離計算，步行每分鐘 80 公尺、騎車每分鐘 200 公尺，未考慮坡度。</p><p>調度：調度頁替一台負責校園周邊的卡車規劃路線。先預估每一站未來 {h} 分鐘會有多少人借不到車，再決定去哪一站載車、送到哪一站。卡車一次最多載 {q} 台，時速 {s} 公里，每站停 {st} 分鐘。模擬結果，一台卡車可讓傍晚校內借不到車的人次減少 34%，早上山下減少 70%。用臺大的真實騎乘紀錄測試，1、3、6 台卡車分別減少 13%、30%、45%。</p><p>政策試算：從 12 個上課日每天 15:00（早上 08:00）的實際車數出發，用同一個生滅過程模型往後算，比較不同做法下借不到車和還不了車的人次。預測型友愛接力（送一小時騎乘時數）在 40 分鐘內借空機率一半以上的站提高還車量（早上是在快停滿的站提高借車量）；補車在 16:50、17:50 把車直接加進車數（早上 09:00 載走）；錯開下課是讓 17:00 和 18:00 下課的課有一半提早 10 分鐘，16:40 到 18:40 每 10 分鐘的借車量改成這一格和下一格的平均。程式在 analysis/code/final_reward.py 和 final_policy.py。</p><p>調度頁的「30 分鐘內快借光」使用另一個機器學習模型 LightGBM，先用臺大周邊 10 個月的資料訓練，再用中山的資料調整。</p><p>隱私：「我的站」和你選的地點只存在這台裝置的瀏覽器，不會上傳。</p>",
+    aboutHow: "<h3>資料與方法</h3><p>資料來源：YouBike 官方開放資料。從 2026 年 10 月 1 日起，每 10 分鐘記錄一次中山大學周邊 5 公里內 {n} 個站的車數和空位。網站開著時，校園到捷運之間的 19 站每分鐘再更新一次。</p><p>預估方法：用過去的紀錄算出每一站在上課日每 10 分鐘的平均借車和還車速度（下課那 10 分鐘特別快），再從現在的車數推算你到達時的車數和有車的機率，統計上稱為生滅過程模型。走到時有車的機率在 90% 以上，標「有車」（綠色）；60% 到 90% 標「車不多」（黃色）；不到 60% 標「快沒車」（紅色）；現在沒車而且機率不到 60%，標「現在沒車」（深紅）。還車看有空位的機率，標準較嚴，分別是 95% 和 70%。</p><p>建議的站：比較每一站「走過去的時間，加上沒車時改去下一站的時間」，選平均最快的一站；差不到半分鐘時，選有車機率較高的一站。步行和騎車時間依 OpenStreetMap 的路線距離計算，步行每分鐘 80 公尺、騎車每分鐘 200 公尺，未考慮坡度。</p><p>調度：調度頁替一台負責校園周邊的卡車規劃路線。先預估每一站未來 {h} 分鐘會有多少人借不到車，再決定去哪一站載車、送到哪一站。卡車一次最多載 {q} 台，時速 {s} 公里，每站停 {st} 分鐘。模擬結果，一台卡車可讓傍晚校內借不到車的人次減少 34%，早上山下減少 70%。用臺大的真實騎乘紀錄測試，1、3、6 台卡車分別減少 13%、30%、45%。</p><p>政策試算：從 12 個上課日每天 15:00（早上 08:00）的實際車數出發，用同一個生滅過程模型往後算，比較不同做法下借不到車和還不了車的人次。提案（快被借光的站還車送一小時騎乘時數）在 40 分鐘內被借光機會過半的站提高還車量（早上是在快停滿的站提高借車量）；補車在 16:50、17:50 把車直接加進車數（早上 09:00 載走）；錯開下課是讓 17:00 和 18:00 下課的課有一半提早 10 分鐘，16:40 到 18:40 每 10 分鐘的借車量改成這一格和下一格的平均。程式在 analysis/code/final_reward.py 和 final_policy.py。</p><p>調度頁的「30 分鐘內快借光」使用另一個機器學習模型 LightGBM，先用臺大周邊 10 個月的資料訓練，再用中山的資料調整。</p><p>隱私：「我的站」和你選的地點只存在這台裝置的瀏覽器，不會上傳。</p>",
     langK: "語言", credit: "人工智慧導論期末專案，第 54 組，不是 YouBike 官方服務。程式和資料放在 <a href=\"https://github.com/alexlin8888/nsysu-youbike-log\" target=\"_blank\" rel=\"noopener\">GitHub</a>。",
     gripLabel: "拉高或收合清單", playLabel: "播放", pauseLabel: "暫停", sliderLabel: "時間", dayLabel: "日期", modeLabel: "即時或重播", horizonLabel: "排序依據", mapLabel: "站點地圖",
     weekdays: ["日", "一", "二", "三", "四", "五", "六"]
@@ -1364,22 +1368,23 @@ var T = {
     tabPolicy: "Policy",
     polWhyH: "After class the whole campus runs out", polWhySub: "{n} teaching days",
     polWhy: "Campus stations empty quickly after the 17:00 bell: from 17:30 to 18:30 they have no bike more than half of the time ({e}%). Every campus station is short at once, so the next station does not help, and a better forecast can only say there is no bike: bikes have to come back before the bell. Of the bikes returned to campus between 14:00 and 20:00, {a}% arrive before 17:00, yet today's Friendship Relay pays only {b}% of them, because it pays a NT$5 voucher only once a station is already empty, and before 17:00 most campus stations still have bikes.",
-    polChartRet: "Bikes returned to campus per half hour (model estimate)", polChartEmpty: "Share of time campus stations are empty", polKeyNow: "paid by today's rule", polKeyPred: "also paid by the predictive rule", polKeyNone: "no voucher",
-    polIdeaH: "Proposal: a predictive reward paid in ride time", polIdeaTag: "Proposal",
-    polIdea: "Every 10 minutes the model gives each station its chance of running empty within 40 minutes. From an even chance on, returning a bike there earns an hour of riding, before the station is empty. In the morning the same goes for borrowing at a station about to fill up. A student who rides a bike back before class ends is paid, and the students leaving class find bikes.",
+    polChartRet: "Bikes returned to campus per half hour (model estimate)", polChartEmpty: "Share of time campus stations are empty", polKeyNow: "paid by today's relay", polKeyPred: "added by the proposal", polKeyNone: "not paid",
+    polKey: "Stations marked like this are about to run out of bikes. With the proposal, returning a bike to one of them now earns an hour of riding. This tab also lets the school and the operator try out the effect.",
+    polIdeaH: "Proposal: return a bike where they are about to run out, get an hour", polIdeaTag: "Proposal",
+    polIdea: "Today's Friendship Relay pays only once a station is empty, when the students leaving class can no longer find a bike. The proposal pays on the forecast instead: every 10 minutes the system works out which stations have a better than even chance of running out within 40 minutes and marks them '+1h' on the map, and returning a bike to one of them earns an hour of riding. In the morning the same goes for borrowing at a station about to fill up. A student who rides a bike back before class ends is paid, and the students leaving class find bikes. This is a proposal; it is not in force.",
     polTime: "Today's Friendship Relay pays a NT$5 ride voucher; the proposal pays an hour of ride time instead. In Kaohsiung, students riding with an iPass digital student ID or student identity card and riders with a TPASS or MeNGo pass already ride the first 30 minutes free, and other members pay NT$5 for them after a NT$5 city subsidy, so a 30-minute reward would be worth nothing to the first group and no more than today's voucher to the second. An hour makes the second half hour free for the first group, a reward they can only use by riding longer, and makes a member's ride free for up to an hour. An hour is two billing blocks and two-fifths of the 150 minutes of weekly activity the WHO recommends as a minimum; in a survey by Taiwan's Health Promotion Administration nearly half of adults fall short of 150 minutes. In a UK study of 264,000 people, those who cycled to work had a 41% lower risk of death from any cause.",
     polFactCatch: "On {n} teaching days, {a}% of the times a station ran empty were flagged beforehand, a median of {m} minutes ahead.",
     polFactRight: "{p}% of the flagged stations really ran empty within 40 minutes, against {b}% of the other stations with bikes.",
-    polFactWorth: "Each bike the predictive rule pays for lets {v} students get a bike over the next two hours, the same as a bike paid by today's rule ({w}); an unpaid return lets {u}.",
-    polNowH: "Campus stations at {t}", polNowEve: "Evening: today's rule pays a NT$5 voucher, the proposal an hour of riding", polNowMorn: "Morning: today's rule pays a NT$5 voucher, the proposal an hour of riding",
-    polNowSt: "Station", polNowBikes: "Bikes", polNowDocks: "Docks", polNowChE: "Empty in 40 min", polNowChF: "Full in 40 min", polNowRule: "Today", polNowPred: "Predictive",
+    polFactWorth: "Each return the proposal pays for lets {v} students get a bike over the next two hours, the same as a return paid by today's relay ({w}); an unpaid return lets {u}.",
+    polNowH: "Campus stations at {t}", polNowEve: "Evening: the relay pays NT$5 once a station is empty, the proposal an hour while it is about to run out", polNowMorn: "Morning: the relay pays NT$5 once a station is full, the proposal an hour while it is about to fill",
+    polNowSt: "Station", polNowBikes: "Bikes", polNowDocks: "Docks", polNowChE: "Empty in 40 min", polNowChF: "Full in 40 min", polNowRule: "Relay", polNowPred: "Proposal",
     polPay: "NT$5", polNoPay: "–",
     polPayTime: "1 hour", rmPolicy: "+1h",
-    polNowSum: "Today's rule pays at {a} stations, the predictive rule at {b}.", polNowNone: "No station is about to run empty; neither rule pays.", polNowNoneM: "No station is about to fill up; neither rule pays.",
+    polNowSum: "The relay pays at {a} stations now, the proposal at {b}.", polNowNone: "No station is about to run out; neither pays.", polNowNoneM: "No station is about to fill up; neither pays.",
     polNowOff: "No classes today; campus is not short of bikes.", polNowNight: "No forecast between 23:00 and 06:00.", polNowOld: "This day's replay has no forecast for the voucher yet.",
     polSimH: "Policy what-if", polSimSub: "{n} teaching days, model estimate",
     simEveH: "Evening 15:00–20:00: riders without a bike", simMornH: "Morning 08:00–11:00: returns refused",
-    simReward: "Predictive ride-time reward: more bikes ridden back to campus", simRewardM: "Predictive ride-time reward: more bikes borrowed off full racks",
+    simReward: "With the proposal, bikes ridden back to campus because of the reward", simRewardM: "With the proposal, bikes borrowed off full racks because of the reward",
     simR0: "None", simR1: "+25%", simR2: "+50%", simR3: "Double",
     simTruck: "Truck before the bell", simT0: "None", simT1: "20 bikes at 16:50", simT2: "20 at 16:50 and 17:50",
     simStag: "Stagger class ends", simS0: "No", simS1: "Half end 10 min early",
@@ -1390,11 +1395,11 @@ var T = {
     simRef: "For comparison: in the simulation of report Sec. 3.9, a campus truck routed by the forecast all evening cuts failures from 17:00 to 20:00 by {a}% with one truck and {b}% with two.",
     polSimNote: "Model estimates: the operator's trucks after 15:00 are left out, so the counts are high; read the percentages. How many riders an hour of riding moves is not known yet, hence three cases.",
     polAskH: "What we suggest to the school, the city and the operator",
-    ask1: "<b>Make the reward predictive, and pay it in ride time</b>: as soon as the model expects a campus station to run empty within 40 minutes, a return there earns an hour of riding. If half again as many bikes come back, evening failures fall by {a}%, with {r} more rides to campus a day and about {h} more hours of ride time handed out (at most NT${c} at the full fare).",
-    ask2: "<b>Bring bikes before the bell</b>: 20 bikes at 16:50 and 20 at 17:50 cut evening failures by {b}%; taking 20 bikes off campus at 09:00 cuts refused morning returns by {c}%. Trucks and the predictive voucher together cut the evening by {d}%.",
+    ask1: "<b>Pay an hour for a return where bikes are about to run out</b>: as soon as the system expects a campus station to run out within 40 minutes, a return there earns an hour of riding, without waiting for it to be empty. If half again as many bikes come back, evening failures fall by {a}%, with {r} more rides to campus a day and about {h} more hours of ride time handed out (at most NT${c} at the full fare).",
+    ask2: "<b>Bring bikes before the bell</b>: 20 bikes at 16:50 and 20 at 17:50 cut evening failures by {b}%; taking 20 bikes off campus at 09:00 cuts refused morning returns by {c}%. Trucks and the proposed reward together cut the evening by {d}%.",
     ask3: "<b>No need to stagger classes for this</b>: ending half the classes 10 minutes early cuts failures by only {e}%, because the campus as a whole lacks bikes in the evening.",
     polBrief: "Download the full brief (PDF)",
-    legPolE: "Chance of running empty within 40 min", legPolF: "Chance of filling up within 40 min", legPolPaid: "the predictive rule pays an hour of riding",
+    legPolE: "Chance of running empty within 40 min", legPolF: "Chance of filling up within 40 min", legPolPaid: "about to run out: return a bike now, get an hour (proposal)",
     loading: "Loading data", liveAt: "Updated {t}", ago: "{m} min ago", agoH: "{h} h ago", justNow: "just now", replayAt: "Replay {d} {t}",
     stale: "Can't load new data. Showing counts from {t}.",
     stalebig: "No new data for {m} min. Counts may be out of date.",
@@ -1717,6 +1722,7 @@ var T = {
       "<div class=\"meta\">" + (same ? t("simPick") : (e ? polSel.er : polSel.mr) > 0 ? t(e ? "simTime" : "simTimeM", { r: rides, h: hours }) : "") + "</div></div>";
   }
   function renderPolicy(v) {
+    $("polKey").innerHTML = "<span class=\"rm\">" + t("rmPolicy") + "</span>" + t("polKey");
     $("hPolWhy").textContent = t("polWhyH"); $("hPolIdea").textContent = t("polIdeaH"); $("polIdeaTag").textContent = t("polIdeaTag");
     $("hPolSim").textContent = t("polSimH"); $("hPolAsk").textContent = t("polAskH"); $("polBrief").textContent = t("polBrief"); $("polIdea").textContent = t("polIdea"); $("polTime").textContent = t("polTime");
     if (!policy) { $("polWhy").textContent = t("loading"); return; }
