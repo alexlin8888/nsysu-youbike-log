@@ -415,6 +415,13 @@ h2 .sub { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 h2 .h2r { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .opt.chip { min-height: 30px; padding: 3px 11px; font-size: 12.5px; }
 /* class-end reminders */
+.howbox { margin: 6px 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.howbox summary { cursor: pointer; padding: 10px 14px; font-size: 14px; font-weight: 700; color: var(--ink); min-height: 44px; display: flex; align-items: center; list-style: none; }
+.howbox summary::-webkit-details-marker { display: none; }
+.howbox summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(-45deg); margin-right: 10px; transition: transform .15s; }
+.howbox[open] summary::before { transform: rotate(45deg); }
+.howbox > div { padding: 0 14px 6px; }
+@media (prefers-reduced-motion: reduce) { .howbox summary::before { transition: none; } }
 .remind { margin: 2px 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .remind summary { cursor: pointer; padding: 10px 14px; font-size: 13.5px; color: var(--ink); min-height: 44px; display: flex; align-items: center; list-style: none; }
 .remind summary::-webkit-details-marker { display: none; }

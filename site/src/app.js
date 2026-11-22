@@ -252,7 +252,7 @@
     $("polChart").innerHTML = polChart(P.timing);
     var w = P.warning;
     $("polFacts").innerHTML = "<li>" + t("polFactCatch", { n: P.days, a: pct(w.flagged), m: w.lead_median }) + "</li><li>" + t("polFactRight", { p: pct(w.precision), b: pct(w.base) }) + "</li><li>" +
-      t("polFactWorth", { v: w.worth.toFixed(2), w: (w.worth_now != null ? w.worth_now : w.worth).toFixed(2), u: (w.worth_unpaid != null ? w.worth_unpaid : 0).toFixed(2) }) + "</li>";
+      t("polFactWorth", { v: Math.round(w.worth * 100), w: Math.round((w.worth_now != null ? w.worth_now : w.worth) * 100), u: Math.round((w.worth_unpaid != null ? w.worth_unpaid : 0) * 100) }) + "</li>";
     $("polNow").innerHTML = polNow(v);
     Array.prototype.forEach.call($("polNow").querySelectorAll("tr[data-i]"), function (tr) { tr.addEventListener("click", function () { var i = +tr.getAttribute("data-i"); select(i); focusStation(view().stations[i]); }); });
     $("simEve").innerHTML = "<h3>" + t("simEveH") + "</h3>" + simSeg("er", "simReward", ["simR0", "simR1", "simR2", "simR3"]) + simSeg("et", "simTruck", ["simT0", "simT1", "simT2"]) + simSeg("es", "simStag", ["simS0", "simS1"]) + simOut("evening") +
@@ -1046,7 +1046,7 @@
   // ---------- about, legend, status ----------
   function renderAbout(v) {
     var s = v ? v.meta.settings : { Q: 20, speed_kmh: 15, stop_min: 3 };
-    $("aboutWhat").innerHTML = t("aboutWhat") + t("aboutProof") + t("aboutRelay");
+    $("aboutWhat").innerHTML = t("aboutWhat"); $("aboutMore").innerHTML = t("aboutProof") + t("aboutRelay"); $("aboutHowS").textContent = t("aboutHowS");
     $("aboutKeyH").textContent = t("keyH");
     var sw = function (cls, n) { return "<span class=\"sw\"><span class=\"badge " + cls + "\">" + n + "</span></span>"; };
     $("aboutKey").innerHTML = "<li>" + sw("g", 12) + "<span>" + t("keyYes") + "</span></li><li>" + sw("y", 4) + "<span>" + t("keyMaybe") + "</span></li><li>" + sw("r", 1) + "<span>" + t("keyNo") + "</span></li>" +

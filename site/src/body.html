@@ -30,7 +30,7 @@
         <span id="tabPolicyT">政策</span></button>
       <button role="tab" id="tabOps" type="button" aria-selected="false" aria-controls="paneOps">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9.5h-11zM13.5 9.5h4.2l3.3 3.5V16h-7.5"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-        <span id="tabOpsT">調度</span></button>
+        <span id="tabOpsT">補車</span></button>
       <button role="tab" id="tabAbout" type="button" aria-selected="false" aria-controls="paneAbout">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.2"/></svg>
         <span id="tabAboutT">說明</span></button>
@@ -137,9 +137,10 @@
 
         <div id="paneAbout" class="pane about" role="tabpanel" aria-labelledby="tabAbout" hidden>
           <section id="aboutWhat"></section>
-          <section id="aboutTrack" hidden></section>
           <section><h3 id="aboutKeyH"></h3><ul class="key" id="aboutKey"></ul></section>
-          <section id="aboutHow"></section>
+          <section id="aboutMore"></section>
+          <section id="aboutTrack" hidden></section>
+          <details class="howbox"><summary id="aboutHowS"></summary><div id="aboutHow"></div></details>
           <section class="langrow"><span id="langK"></span><span class="seg" role="group" id="langSeg"><button id="lZh" type="button" aria-pressed="true">中文</button><button id="lEn" type="button" aria-pressed="false">English</button></span></section>
           <section class="credit" id="credit"></section>
         </div>
