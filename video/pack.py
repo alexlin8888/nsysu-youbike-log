@@ -3,7 +3,9 @@
 Usage: python video/pack.py [OUT_PDF]   (default video/out/HW5分工與旁白稿.pdf)
 
 The script starts on a new page, so the person recording can print only that part. Run script.py first.
+Also writes the same content as a Word file (pack_docx.js, Chinese in 標楷體) next to the default PDF.
 """
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -52,3 +54,4 @@ with sync_playwright() as p:
     pg.pdf(path=str(OUT), format="A4", print_background=True, prefer_css_page_size=True)
     b.close()
 print(OUT)
+subprocess.run(["node", str(HERE / "pack_docx.js")], check=True)
