@@ -1,0 +1,102 @@
+{
+ "made": "2026-11-22",
+ "frozen_after": "2026-11-16",
+ "rates_fit_end": "2026-10-29",
+ "from": "2026-11-17",
+ "warning": {
+  "days": [
+   "2026-11-17",
+   "2026-11-18",
+   "2026-11-19",
+   "2026-11-20"
+  ],
+  "n_days": 4,
+  "events": 94,
+  "flagged": 0.9362,
+  "lead_median_min": 50.0,
+  "lead_mean_min": 43.5,
+  "precision": 0.672,
+  "base": 0.2875,
+  "empty_share_1730_1830": 0.6198,
+  "returns_before_17_share": 0.7052,
+  "paid_now_before_17_share": 0.0315,
+  "paid_pred_before_17_per_day": 32.1,
+  "paid_now_before_17_per_day": 7.3,
+  "evening_cut": {
+   "0.25": 0.0527,
+   "0.5": 0.107,
+   "1.0": 0.2151
+  }
+ },
+ "advice": {
+  "leave": {
+   "days": [
+    "2026-11-18",
+    "2026-11-19",
+    "2026-11-20"
+   ],
+   "n_days": 3,
+   "cases": 432,
+   "min_pick": 5.37,
+   "ok_pick": 0.7958,
+   "slow_pick": 0.1111,
+   "min_near": 5.44,
+   "ok_near": 0.4213,
+   "slow_near": 0.1319,
+   "min_alt": 5.4,
+   "ok_alt": 0.844,
+   "slow_alt": 0.1227,
+   "err0": 1.5,
+   "err10": 2.81,
+   "err20": 2.98,
+   "err30": 2.96
+  },
+  "arrive": {
+   "days": [
+    "2026-11-19",
+    "2026-11-20"
+   ],
+   "n_days": 2,
+   "cases": 315,
+   "min_pick": 3.01,
+   "ok_pick": 0.9571,
+   "slow_pick": 0.0032,
+   "min_near": 3.0,
+   "ok_near": 0.7371,
+   "slow_near": 0.0127,
+   "min_alt": 3.02,
+   "ok_alt": 0.9565,
+   "slow_alt": 0.0095,
+   "err0": 0.26,
+   "err10": 0.87,
+   "err20": 1.06,
+   "err30": 1.16
+  },
+  "dock": {
+   "days": [
+    "2026-11-19",
+    "2026-11-20"
+   ],
+   "n_days": 2,
+   "cases": 192,
+   "min_pick": 0.65,
+   "ok_pick": 0.8125,
+   "slow_pick": 0.0,
+   "min_near": 0.65,
+   "ok_near": 0.8021,
+   "slow_near": 0.0,
+   "min_alt": 0.92,
+   "ok_alt": 0.9115,
+   "slow_alt": 0.0,
+   "err0": null,
+   "err10": null,
+   "err20": null,
+   "err30": null
+  }
+ },
+ "logger": {
+  "snapshots": 7176,
+  "first_day": "2026-10-01",
+  "last_day": "2026-11-22"
+ }
+}

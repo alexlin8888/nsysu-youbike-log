@@ -56,7 +56,8 @@
 | `final_docks.py` | 期末報告：早上校內個別站停滿，車柱挪一挪有沒有用。生滅鏈從每三小時的實際車數往後推，算每站每天預期借不到、還不了的次數；容量正負 12 個車柱，一次移一個車柱的貪婪搜尋，以及體育館移 0–10 個車柱到工學院 |
 | `final_labels.py` | 期末報告：頁面上四種站的標示（有車／車不多／快沒車／現在沒車，還車是有空位／空位不多／快停滿／現在停滿）各有多少比例說對。12 個測試日、校園到捷運之間 19 站、07:00–21:50，每個快照往後 1 到 30 分鐘到站，用頁面同一套機率分類，再查紀錄器到站那一刻有沒有車。「有車」99%、「車不多」81%、「快沒車」62%、「現在沒車」22% 在到站前補進車 |
 | `final_reward.py` | 期末報告 3.10 節：官方友愛接力（空站還車、滿站借車送 5 元）付錢的時間對不對。8 個校內站、12 個測試日，每半小時算還到校內的車、現行規則和預測型規則（40 分鐘內借空機率至少一半就付）各付給幾台、每多一台車兩小時內少幾次借不到車；預測型規則事先標出幾成借空、提早幾分鐘、標得準不準；以及騎回校內的人多 25%、50%、一倍時傍晚和早上各少多少 |
-| `final_policy.py` | 期末報告 3.10 節與政策分頁的試算：同一條生滅鏈從 15:00（早上 08:00）的實際車數出發，組合預測型友愛接力（多 0、25%、50%、一倍）、下課前補車（16:50 補 20 台，或 16:50 與 17:50 各 20 台；早上 09:00 載走 20 台）和一半的課提早 10 分鐘下課，算傍晚借不到車、早上還不了車少幾成、多發幾次獎勵，以及獎勵多帶來幾趟騎車（`induced`）。頁面的獎勵是每次 30 分鐘騎乘時數第四個參數給 `../docs/policy.json` 時，順便寫出頁面讀的檔案（要先跑 `final_reward.py`） |
+| `final_policy.py` | 期末報告 3.10 節與政策分頁的試算：同一條生滅鏈從 15:00（早上 08:00）的實際車數出發，組合預測型友愛接力（多 0、25%、50%、一倍）、下課前補車（16:50 補 20 台，或 16:50 與 17:50 各 20 台；早上 09:00 載走 20 台）和一半的課提早 10 分鐘下課，算傍晚借不到車、早上還不了車少幾成、多發幾次獎勵，以及獎勵多帶來幾趟騎車（`induced`）。頁面的獎勵是每次一小時騎乘時數。第四個參數給 `../docs/policy.json` 時，順便寫出頁面讀的檔案（要先跑 `final_reward.py`） |
+| `final_prospective.py` | 期末報告 3.8、3.10 節與第 4 節：評估在 11/16 定案後，紀錄器新記錄的上課日。用仍只擬合到 10/29 的鏈重跑 `final_reward.py`（`--test-from 2026-11-17`），看預測型規則事先標出幾成借空、提早幾分鐘；再把 11/18 起事先寫下的建議紀錄（`demo_track.py`、`docs/track.json`）按上課日加總，比較網站、眼前那一站和即時車數各要幾分鐘騎上車。寫出 `results/final/prospective/prospective.json`，報告的那幾句數字讀這個檔，繳交前重跑一次 |
 | `final_policy_figs.py` | 期末報告 Fig. 21 和建議書的圖：每半小時還到校內的車依規則分色、校內站沒車的時間、各項做法少多少 |
 | `final_rider.py` | 期末報告的第一版檢驗，只看第一站：照頁面的建議走，到站時真的有車（有位子）的比例。三個難用的時段各自重播 12 個測試日，對照最近的站、看現在車數挑站（至少 K 台）與生滅鏈門檻；另外輸出三個時段沒車、沒位子的比例（`hard_hours.csv`） |
 | `final_avail.py` | 期末報告：生滅鏈的「k 步後有車／有位子」機率，對照保序校正與疊在鏈上的 LightGBM（兩個區塊交叉擬合）；輸出 `avail_oof.npz` 給 `final_rider.py --avail` |
@@ -108,6 +109,7 @@ python code/final_city.py ../data results/final/city
 python code/final_spread.py ../data results/final/rates_fit_to_1029 ../docs/places.json results/final/spread
 python code/final_labels.py ../data results/final/rates_fit_to_1029 results/final/labels
 python code/final_reward.py ../data results/final/rates_fit_to_1029 results/final/reward
+python code/final_prospective.py ../data ../docs results/final/prospective           # 評估定案後新記錄的上課日；繳交前重跑
 python code/final_policy.py ../data results/final/rates_fit_to_1029 results/final/policy ../docs/policy.json
 python code/final_policy_figs.py results/final ../report/figs
 python code/final_docks.py ../data results/final/rates_fit_to_1029 results/final/docks

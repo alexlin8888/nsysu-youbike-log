@@ -1,6 +1,9 @@
 """Does the operator's NT$5 voucher pay at the right time? The rule of today against a predictive one, on campus.
 
-Usage: python final_reward.py DATA_DIR RATES_DIR OUT_DIR [--fit-end 2026-10-29] [--test-end 2026-11-16]
+Usage: python final_reward.py DATA_DIR RATES_DIR OUT_DIR [--fit-end 2026-10-29] [--test-end 2026-11-16] [--test-from DAY]
+
+--test-from keeps only the test days from DAY on; with the same RATES_DIR it scores the chain on days logged after the
+evaluation was frozen (final_prospective.py runs it that way).
 
 The voucher (友愛騎乘券, nationwide since 1 July 2026) pays a rider who returns a bike to an empty station, or borrows
 from a full one, at that moment. On campus the evening shortage follows the bells: the stations empty after 17:00,
@@ -43,7 +46,7 @@ from route_planner import STEP  # noqa: E402
 DATA, RATES, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 OUT.mkdir(parents=True, exist_ok=True)
 ARG = lambda name, default: sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
-FIT_END, TEST_END = ARG("--fit-end", "2026-10-29"), ARG("--test-end", "2026-11-16")
+FIT_END, TEST_END, TEST_FROM = ARG("--fit-end", "2026-10-29"), ARG("--test-end", "2026-11-16"), ARG("--test-from", "")
 OFFDAYS = set(HOLIDAYS) | {"2026-10-23"}
 PRED_MIN, THETA, H_VALUE = 40, 0.5, 120           # the predictive rule's horizon and threshold; horizon of a bike's value
 ALPHAS = [0.25, 0.5, 1.0]
@@ -100,7 +103,7 @@ def values(s, t0, t1, c, kind):
 df = load_logger(DATA)
 df = df[df.sno.isin(camp) & (df.age <= 20) & df.bikes.notna()].copy()
 dstr = df.date.astype(str).str.slice(0, 10)
-days = sorted(d for d in dstr.unique() if pd.Timestamp(d).dayofweek < 5 and d not in OFFDAYS and FIT_END < d <= TEST_END)
+days = sorted(d for d in dstr.unique() if pd.Timestamp(d).dayofweek < 5 and d not in OFFDAYS and FIT_END < d <= TEST_END and d >= TEST_FROM)
 stock = {(d, s, sl): int(b) for d, s, sl, b in zip(dstr, df.sno, df.slot, df.bikes)}
 
 # eligibility tables, per station and slot, over the starting stock
@@ -215,7 +218,7 @@ for kind, window, label in (("rent", WHATIF_EVE, "evening 15:00-20:00, refused r
                    "lost_avoided_per_100_extra_vouchers": 100 * (base - v) / (p - paid0) if p > paid0 else np.nan})
 WI = pd.DataFrame(wi)
 WI.to_csv(OUT / "reward_whatif.csv", index=False)
-json.dump({"fit_end": FIT_END, "test_days": days, "stations": [CAMPUS[s] for s in camp], "pred_min": PRED_MIN, "theta": THETA, "value_horizon_min": H_VALUE,
+json.dump({"fit_end": FIT_END, "test_from": TEST_FROM or None, "test_days": days, "stations": [CAMPUS[s] for s in camp], "pred_min": PRED_MIN, "theta": THETA, "value_horizon_min": H_VALUE,
            "alphas": ALPHAS, "rows": int(len(R))}, open(OUT / "reward_setup.json", "w"), ensure_ascii=False, indent=1)
 pd.set_option("display.width", 220)
 print(tim.drop(columns="half").round(3).to_string(index=False))

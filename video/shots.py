@@ -20,6 +20,12 @@ DAY = "?replay=2026-11-11"
 SCROLL_TO = "(function(id, d){var s=document.getElementById('scroll'), e=document.getElementById(id); s.scrollTop = e.offsetTop - d; return s.scrollTop})"
 SHOTS = [
     # name, query, sheet (half | full), script run before the shot
+    # the replay playing from 16:00 to 16:40, one snapshot per frame; the video steps through them at the page's own
+    # pace (one snapshot every 0.7 s) and ends on rider_1640
+    ("play_1600", DAY + "&t=16:00&from=lib&to=", "half", ""),
+    ("play_1610", DAY + "&t=16:10&from=lib&to=", "half", ""),
+    ("play_1620", DAY + "&t=16:20&from=lib&to=", "half", ""),
+    ("play_1630", DAY + "&t=16:30&from=lib&to=", "half", ""),
     ("rider_1640", DAY + "&t=16:40&from=lib&to=", "half", ""),
     ("rider_1740", DAY + "&t=17:40&from=lib&to=", "half", ""),
     ("dock_0920", DAY + "&t=09:20&tab=dock&to=eng", "half", ""),
@@ -38,7 +44,7 @@ RECT_JS = """(() => {
   const q = (s) => r(document.querySelector(s));
   const vis = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.y < innerHeight && b.y + b.height > 0 && b.x > -20 && b.x < innerWidth; };
   return {
-    best: q('#best'), tip: q('#tip'), tabPolicy: q('#tabPolicy'), tabRider: q('#tabRider'), tabDock: q('#tabDock'),
+    play: q('#play'), best: q('#best'), tip: q('#tip'), tabPolicy: q('#tabPolicy'), tabRider: q('#tabRider'), tabDock: q('#tabDock'),
     trip: q('#tripRow'), from: q('#fromWrap'), to: q('#toWrap'), when: q('#whenGroup'),
     glyphs: Array.from(document.querySelectorAll('.glyph')).filter(vis).map((g) => ({ rect: r(g), text: g.textContent.trim(), mark: !!g.querySelector('.rmark') })).filter((g) => g.rect[1] > 60),
     rows: Array.from(document.querySelectorAll('#polNow tbody tr')).map((tr) => ({ name: tr.querySelector('th').textContent, rect: r(tr), rule: r(tr.children[3]), pred: r(tr.children[4]) })),

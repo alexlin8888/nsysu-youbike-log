@@ -1,56 +1,37 @@
 {
+ "fig1_motivation.png": {
+  "after": 6,
+  "frac": 0.9
+ },
+ "fig_final_rates.png": {
+  "after": 90
+ },
  "fig_nsysu_tide_a.png": {
   "after": 105
  },
- "fig_nsysu_tide_b.png": {
-  "after": 105
- },
  "fig_ntu_moves.png": {
-  "after": 108,
+  "after": 110
+ },
+ "fig_model.png": {
+  "after": 117,
   "frac": 0.9
- },
- "fig1_motivation.png": {
-  "after": 6
- },
- "fig_final_weeks.png": {
-  "after": 107
- },
- "fig_final_forecast.png": {
-  "after": 133
- },
- "fig_nsysu.png": {
-  "after": 120
- },
- "fig_final_time.png": {
-  "after": 138
- },
- "fig_sim_ci.png": {
-  "after": 124,
-  "frac": 0.9
- },
- "fig_demo_app.png": {
-  "after": 144
- },
- "Table 5": {
-  "after": 158
- },
- "fig_architecture_final.png": {
-  "after": 22
- },
- "fig_method.png": {
-  "frac": 0.9
- },
- "fig_horizon.png": {
-  "after": 118
  },
  "fig_final_transfer.png": {
   "after": 123
  },
- "fig_final_sim.png": {
-  "after": 150,
-  "frac": 0.9
+ "fig_sim_ci.png": {
+  "after": 127
+ },
+ "fig_demo_app.png": {
+  "after": 146
  },
  "fig_final_reward.png": {
-  "after": 156
+  "after": 153
+ },
+ "Table 5": {
+  "after": 159
+ },
+ "Table 2": {
+  "after": 105
  }
 }

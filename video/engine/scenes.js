@@ -4,7 +4,7 @@
 // PT(id, k, j) the start of its phrase j (the text between full-width spaces), in seconds from the scene start, so a
 // picture changes on the phrase that talks about it.
 // Layout rule: nothing important below y = 930 in the middle of the frame, where the subtitles are burnt in.
-window.IMAGES = ["rider_1640.jpg", "dock_0920.jpg", "policy_map.jpg", "policy_table.jpg", "sim_0.jpg", "sim_50.jpg", "brief.jpg"];
+window.IMAGES = ["play_1600.jpg", "play_1610.jpg", "play_1620.jpg", "play_1630.jpg", "rider_1640.jpg", "dock_0920.jpg", "policy_map.jpg", "policy_table.jpg", "sim_0.jpg", "sim_50.jpg", "brief.jpg"];
 
 function sceneOf(id) { return CUES.scenes.find((s) => s.id === id); }
 function linesOf(id) { return CUES.lines.filter((l) => l.scene === id); }
@@ -599,7 +599,11 @@ function sceneDemo(ctx, t, T) {
   const p = (k, j) => PT("demo", k, j), L = [0, 1, 2, 3, 4].map((k) => LS("demo", k));
   bg(ctx, "#0E1C2B", "#1C3D63");
   const tDock = L[2] - 0.1, tPol = L[3] - 0.1, tTable = p(3, 2), tSim = L[4] - 0.1, t50 = p(4, 1) + 0.5;
-  let key = "rider_1640";
+  // the replay is played on the phone first: a tap on play, then one logged snapshot every 0.7 s (the page's own pace)
+  // from 16:00 to 16:40, the moment the rest of the scene uses
+  const PLAY = ["play_1600", "play_1610", "play_1620", "play_1630"], tPlay = 1.4, STEP_S = 0.7;
+  const steps = Math.floor((t - tPlay - 0.25) / STEP_S) + 1;
+  let key = t < tPlay + 0.25 ? PLAY[0] : steps < PLAY.length ? PLAY[steps] : "rider_1640";
   if (t > tDock) key = "dock_0920";
   if (t > tPol) key = "policy_map";
   if (t > tTable) key = "policy_table";
@@ -614,8 +618,18 @@ function sceneDemo(ctx, t, T) {
   const win = (a, b) => fadeIO(t, a, b, 0.25);
   const tapAt = (r, a) => { const q = P(r); tap(ctx, q[0] + q[2] / 2, q[1] + q[3] / 2, t, a); };
   // the site
+  if (PLAY.includes(key)) tapAt(R.play_1600.play, tPlay);
   say(0.4, L[1], "Beat the Bell 網站", "alexlin8888.github.io/nsysu-youbike-log");
-  { const k = win(0.6, L[1]); if (k > 0) { text(ctx, "手機打開就能用，每 10 分鐘自動更新", 602, 330, { size: 36, weight: 500, color: LIGHT, alpha: k }); ["借車", "還車", "政策", "調度"].forEach((s2, i) => pill(ctx, s2, 680 + i * 170, 430, { size: 36, fill: [C.blue, "#4C5BE0", C.orange, C.ink2][i], alpha: k, scale: pop(t, 0.9 + i * 0.15) })); } }
+  { const k = win(0.6, L[1]); if (k > 0) ["借車", "還車", "政策", "調度"].forEach((s2, i) => pill(ctx, s2, 650 + i * 150, 300, { size: 30, fill: [C.blue, "#4C5BE0", C.orange, C.ink2][i], alpha: k, scale: pop(t, 0.9 + i * 0.15) })); }
+  // the replay playing, magnified: the campus stations losing bikes as the clock runs to 16:40
+  { const k = PLAY.includes(key) || key === "rider_1640" ? win(tPlay - 0.15, L[1]) : 0;
+    magnify(ctx, img, [220, 340, 400, 420], ph, [600, 360, 1260, 540], k);
+    if (k > 0) {
+      const idx = PLAY.includes(key) ? PLAY.indexOf(key) : PLAY.length;
+      text(ctx, `16:${idx}0`, 1240, 560, { size: 150, weight: 900, color: C.white, alpha: k });
+      text(ctx, `距 17:00 下課 ${60 - 10 * idx} 分`, 1246, 650, { size: 44, weight: 700, color: C.yellow, alpha: k });
+      text(ctx, "手機打開就能用，每 10 分鐘自動更新", 1246, 740, { size: 30, weight: 500, color: LIGHT, alpha: k });
+    } }
   // rider tab: where am I, then where to go and the latest time to leave
   say(L[1], tDock, "借車：去哪一站、最晚幾點出發", "例：16:40 從圖資大樓出發");
   { const M = magnify(ctx, IMG["rider_1640.jpg"], [24, 985, 732, 150], ph, box, key === "rider_1640" ? win(p(1, 1) - 0.2, p(1, 2) - 0.1) : 0); if (M) hilite(ctx, ...M(R.rider_1640.from), t, p(1, 1) + 0.2, C.yellow); }
@@ -759,7 +773,7 @@ window.sfxEvents = function () {
   at("idea", I(4) - 0.1, "whoosh", 0.35); for (let i = 0; i < 10; i++) at("idea", PT("idea", 4, 1) + 0.2 + i * 0.1, "blip", 0.16);
   at("idea", I(5) - 0.1, "whoosh", 0.35); at("idea", I(5) + 0.1, "pop", 0.4); at("idea", I(5) + 0.5, "pop", 0.4);
   const D = (k, j) => PT("demo", k, j), DL = (k) => LS("demo", k);
-  at("demo", 0.1, "whoosh", 0.55); at("demo", D(1, 1), "tap", 0.6); at("demo", D(1, 2) - 0.1, "swipe", 0.35);
+  at("demo", 0.1, "whoosh", 0.55); at("demo", 1.4, "tap", 0.5); at("demo", D(1, 1), "tap", 0.6); at("demo", D(1, 2) - 0.1, "swipe", 0.35);
   at("demo", DL(2) - 0.45, "tap", 0.6); at("demo", DL(3) - 0.45, "tap", 0.6); at("demo", D(3, 2), "swipe", 0.35);
   at("demo", D(4, 1) + 0.2, "tap", 0.65); at("demo", D(4, 4), "pop", 0.45);
   const M = (k, j) => PT("impact", k, j), ML = (k) => LS("impact", k);

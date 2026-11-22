@@ -5,7 +5,7 @@ a small penalty for moving away from the source position. Writes layout.json.
 
 The report is chosen by environment variables: BUILD_JS (default build_hw3.js), DOC (default HW3_54), LAYOUT_OUT
 (default layout.json) and LAYOUT_SPACE (module with the candidate anchors, default layout_v14_space). For the
-final report: BUILD_JS=build_final.js DOC=Final_54 LAYOUT_OUT=layout_final.json LAYOUT_SPACE=layout_final_space."""
+final report: BUILD_JS=build_final.js DOC=HW5_54 LAYOUT_OUT=layout_final.json LAYOUT_SPACE=layout_final_space."""
 import json, os, subprocess, sys, time
 import pdfplumber
 from layout_lib import ROOT, TOP, BOTTOM, COLS, SOFFICE

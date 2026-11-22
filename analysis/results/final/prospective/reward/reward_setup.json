@@ -1,0 +1,29 @@
+{
+ "fit_end": "2026-10-29",
+ "test_from": "2026-11-17",
+ "test_days": [
+  "2026-11-17",
+  "2026-11-18",
+  "2026-11-19",
+  "2026-11-20"
+ ],
+ "stations": [
+  "Library",
+  "Xiziwan Hall",
+  "Engineering",
+  "Materials",
+  "Social Sci.",
+  "Gymnasium",
+  "Marine Eng.",
+  "Marine Res."
+ ],
+ "pred_min": 40,
+ "theta": 0.5,
+ "value_horizon_min": 120,
+ "alphas": [
+  0.25,
+  0.5,
+  1.0
+ ],
+ "rows": 1152
+}
