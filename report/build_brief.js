@@ -61,7 +61,7 @@ function sourceTable(list) {
 }
 
 const children = [
-  new Paragraph({ spacing: { after: 60, line: 300 }, children: [b("中山大學傍晚借不到 YouBike：友愛接力改在下課前送騎乘時數", { size: 30 })] }),
+  new Paragraph({ spacing: { after: 60, line: 300 }, children: [b("中山大學傍晚借不到 YouBike：友愛接力改在下課前就送", { size: 30 })] }),
   new Paragraph({ spacing: { after: 0, line: 260 }, children: [run("給：國立中山大學總務處、高雄市政府交通局、微笑單車高雄營運團隊", { size: 18 })] }),
   new Paragraph({ spacing: { after: 0, line: 260 }, children: [run("提出：國立中山大學「人工智慧導論」第 54 組　林沛霆、陳佳晨、林詩穎　2026 年 11 月", { size: 18 })] }),
   new Paragraph({ spacing: { after: 90, line: 260 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "10202F", space: 4 } },
@@ -75,34 +75,33 @@ const children = [
   para([run("2026 年 7 月起，高雄 YouBike 在滿站借車或把一般車還到空站可得 5 元騎乘券，以借還當下的站況為準 [1]。依我們的模型估計，下午兩點到晚上八點還到校內的車有 69% 在 17:00 前到站，這時校內多半還有車，現行規則只付給其中 3%。這些車並非用不到：16:30 還回校內的車，兩小時內平均讓 0.92 人借到車，和 17:30 還的車（0.94）相當。")]),
 
   new Paragraph({ spacing: { before: 40, after: 40 }, alignment: AlignmentType.CENTER, keepNext: true,   // no line rule: an exact line height would clip the picture
-    children: [new ImageRun({ type: "png", data: fs.readFileSync(FIG + "fig_brief_timing.png"), transformation: { width: 668, height: 127 } })] }),
+    children: [new ImageRun({ type: "png", data: fs.readFileSync(FIG + "fig_brief_timing.png"), transformation: { width: 626, height: 119 } })] }),
   head("三、建議"),
-  item(1, "預測型友愛接力：站快被借光時就送，改送騎乘時數。", "系統每 10 分鐘預測一次，校內哪一站 40 分鐘內被借光的機會超過一半，把車還到那一站就送一小時騎乘時數，不必等站空；早上反過來，快停滿的站借車送一小時。紐約 Citi Bike 也依各站接下來需要多少車給點數，點數可換騎乘額度 [2]。在 12 個未參與模型訓練的上課日，219 次借空中有 91% 事先被標出，中位數提早 40 分鐘；被標出的站有 62% 真的在 40 分鐘內借空，其他有車的站只有 25%。若騎回校內的人因此多一半，傍晚借不到車少 11%，每天多 25 趟騎車回校，多送約 69 小時騎乘時數。"),
-  item(2, "獎勵改送一小時騎乘時數。", "現行獎勵是 5 元騎乘券 [1]。刷一卡通數位學生證的學生和有 TPASS、MeNGo 月票的人，騎 YouBike 前 30 分鐘本來就免費，一般會員前 30 分鐘也只付 5 元 [3]，送 30 分鐘等於沒送或只值 5 元；送一小時，前者騎超過 30 分鐘的那一段也免費，一般會員一小時內都免費。一小時是世界衛生組織建議每週至少 150 分鐘身體活動的五分之二，騎車通勤也算在內 [4]；國健署的調查裡，近五成國人每週活動不到 150 分鐘 [5]。英國 26 萬人的追蹤研究發現，騎車通勤的人全死因死亡風險低 41% [6]。巴黎 Vélib' 也曾對還到山上站的人送 15 分鐘騎乘時間 [7]。"),
+  item(1, "預測型友愛接力：站快被借光時就送。", "系統每 10 分鐘預測一次，校內哪一站 40 分鐘內被借光的機會超過一半，把車還到那一站就有獎勵，不必等站空；早上反過來，快停滿的站借車就有獎勵。紐約 Citi Bike 也依各站接下來需要多少車給點數 [2]。在 12 個未參與模型訓練的上課日，219 次借空中有 91% 事先被標出，中位數提早 40 分鐘；被標出的站有 62% 真的在 40 分鐘內借空，其他有車的站只有 25%。若騎回校內的人因此多一半，傍晚借不到車少 11%，每天多 25 趟騎車回校，多送約 69 次獎勵。"),
+  item(2, "獎勵先用現行的 5 元券，一小時騎乘時數是第二個選項。", "刷一卡通數位學生證的學生和有 TPASS、MeNGo 月票的人，前 30 分鐘本來就免費，一般會員付 5 元 [3]，騎乘時數只對超過 30 分鐘的那一段有用。11/24 訪談 10 位每週騎 YouBike 的中山同學：最想要 5 元券和一小時的各 4 位，30 分鐘 1 位，有月票的 1 位都不要；8 位一個月幾乎不曾騎超過 30 分鐘，選 5 元券的人說它能抵電輔車費。提案改的是什麼時候送；送什麼可以沿用現行的 5 元券，每天約 24 次（120 元）就能獎勵 17:00 前騎回校內的車。想一併鼓勵多騎再改送一小時：世界衛生組織建議每週 150 分鐘身體活動 [4]，近五成國人不到 [5]，騎車通勤者死亡風險低 41% [6]。"),
   item(3, "下課前補車。", "16:50 與 17:50 各送 20 台到校內，傍晚借不到車少 16%；早上 09:00 從校內載走 20 台，還不了車少 20%。補車再加上預測型友愛接力，傍晚少 27%。"),
   item(4, "不必為此錯開下課。", "一半的課提早 10 分鐘下課，傍晚借不到車只少 2%，因為傍晚整個校園的車本來就不夠。"),
-  new Paragraph({ spacing: { before: 50, after: 30, line: 230 }, keepNext: true, children: [run("試算：百分比和現況相比；趟數和時數是每天比現行規則多出的部分，每次獎勵一小時。", { size: 17 })] }),
+  new Paragraph({ spacing: { before: 50, after: 30, line: 230 }, keepNext: true, children: [run("試算：百分比和現況相比；趟數和時數是每天比現行規則多出的部分，時數以每次送一小時計，送 5 元券時金額是次數 × 5 元。", { size: 17 })] }),
   grid,
 
   head("四、試辦與限制"),
-  para([run("建議在校內 8 站試辦四週，單雙週輪流使用現行的友愛接力和預測型友愛接力，用我們的紀錄器比較兩種週次的沒車時間。以上數字來自生滅鏈模型：從實際記錄的 15:00 車數出發，沒有算營運商之後的卡車，所以人次偏高，請看百分比；一小時騎乘時數能讓多少人改變還車地點還沒有資料，表中列出三種情況。多送的時數以一般票價計，傍晚每天面額上限約 1,380 元，其中約 44 次付給本來就會在那時還車的人。預測每 10 分鐘自動產生並公開在網站上；營運商提供試辦期間的借還與獎勵紀錄，就能直接量到反應比例。")]),
+  para([run("建議在校內 8 站試辦四週，單雙週輪流使用現行的友愛接力和預測型友愛接力，用我們的紀錄器比較兩種週次的沒車時間。以上數字來自生滅鏈模型：從實際記錄的 15:00 車數出發，沒有算營運商之後的卡車，所以人次偏高，請看百分比；獎勵能讓多少人改變還車地點還沒有資料，表中列出三種情況（訪談裡 7 位說每週至少會為 5 元券這樣還一次車，5 位為一小時）。多送的獎勵若是 5 元券，傍晚每天約 345 元；若是一小時，以一般票價計面額上限約 1,380 元，其中約 44 次付給本來就會在那時還車的人。預測每 10 分鐘自動產生並公開在網站上；營運商提供試辦期間的借還與獎勵紀錄，就能直接量到反應比例。")]),
 
-  new Paragraph({ spacing: { before: 80, after: 10, line: 220 }, children: [b("資料來源", { size: 16 })] }),
+  new Paragraph({ spacing: { before: 50, after: 10, line: 220 }, children: [b("資料來源", { size: 16 })] }),
   // the sources in two columns of a borderless table, to keep the brief on one page
   sourceTable([
-    "[1] 中央社，〈高雄YouBike推「友愛接力」 單次最高可獲10元回饋〉，2026-06-24。",
+    "[1] 中央社，〈高雄YouBike推「友愛接力」〉，2026-06-24。",
     "[2] Citi Bike, Bike Angels points and rewards, citibikenyc.com, 2026-11-22.",
     "[3] YouBike 微笑單車，高雄市收費方式，youbike.com.tw，2026-11-22。",
     "[4] WHO, “Every move counts towards better health,” 2020-11-25.",
-    "[5] 公視新聞網，〈國健署：國人每天久坐5.9小時 運動量不足問題多〉，2020-06-11。",
+    "[5] 公視新聞網，〈國健署：國人每天久坐5.9小時〉，2020-06-11。",
     "[6] C. A. Celis-Morales et al., BMJ 357:j1456, 2017.",
-    "[7] J. Clark, “Winning the uphill battle” (Vélib'), Big Medium, 2008.",
   ]),
 ];
 
 const doc = new Document({
   creator: "NSYSU Group 54",
-  title: "中山大學傍晚借不到 YouBike：友愛接力改在下課前送騎乘時數",
+  title: "中山大學傍晚借不到 YouBike：友愛接力改在下課前就送",
   styles: { default: { document: { run: { font: FONT, size: 20 } } } },
   sections: [{ properties: { page: { margin: { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN } } }, children }],
 });

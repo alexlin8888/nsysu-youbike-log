@@ -1256,7 +1256,7 @@
   $("relayOnly").addEventListener("click", function () { relayOnly = !relayOnly; var v = view(); if (v) { renderRider(v); drawStations(v); } });
   $("remPlace").addEventListener("change", function (e) { remSave(function (r) { r.place = e.target.value; }); });
   $("remEnd").addEventListener("change", function (e) { remSave(function (r) { r.end = parseInt(e.target.value, 10); }); });
-  $("remDays").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; var d = parseInt(b.getAttribute("data-d"), 10); remSave(function (r) { var k = r.days.indexOf(d); if (k >= 0) r.days.splice(k, 1); else r.days.push(d); }); });
+  $("remDays").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; var d = parseInt(b.getAttribute("data-d"), 10); remSave(function (r) { var k = r.days.indexOf(d); if (k >= 0) r.days.splice(k, 1); else r.days.push(d); r.days.sort(); }); });
   $("remIcs").addEventListener("click", function () {
     var v = view(); if (!v) return; var r = remState(v); if (!r.days.length) return;
     var url = URL.createObjectURL(new Blob([icsText(r)], { type: "text/calendar;charset=utf-8" })), a = document.createElement("a");

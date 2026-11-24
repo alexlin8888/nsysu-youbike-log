@@ -1,6 +1,6 @@
 """Results on the teaching days logged after the evaluation was frozen (Secs. 3.8 and 3.10 of the final report).
 
-Usage: python final_prospective.py DATA_DIR DOCS_DIR OUT_DIR [--from 2026-11-17]
+Usage: python final_prospective.py DATA_DIR DOCS_DIR OUT_DIR [--from 2026-11-17] [--to 2026-11-24]
 
 The held-out evaluation ended on 16 Nov, and nothing in the method was changed after it. The logger kept running, so
 two of its checks can be repeated on days no part of the method saw:
@@ -33,8 +33,20 @@ RATES = HERE.parent / "results" / "final" / "rates_fit_to_1029"
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------- warning: the frozen chain on the later days
+# only days logged to the end of the evening window count: the day the script runs on is usually half written
+def logged_to_evening(d):
+    f = DATA / "kaohsiung" / f"{d}.csv"
+    f = f if f.exists() else f.with_suffix(".csv.gz")
+    if not f.exists():
+        return False
+    import gzip
+    opener = gzip.open if f.suffix == ".gz" else open
+    with opener(f, "rt") as h:
+        return any(line[:1].isdigit() and line[:5] >= "20:00" for line in h)
+TO = sys.argv[sys.argv.index("--to") + 1] if "--to" in sys.argv else max(
+    d for d in (p.name[:10] for p in (DATA / "kaohsiung").iterdir() if p.name[:4] == "2026") if logged_to_evening(d))
 subprocess.run([sys.executable, str(HERE / "final_reward.py"), str(DATA), str(RATES), str(OUT / "reward"),
-                "--test-from", FROM, "--test-end", "2099-12-31"], check=True, stdout=subprocess.DEVNULL)
+                "--test-from", FROM, "--test-end", TO], check=True, stdout=subprocess.DEVNULL)
 setup = json.load(open(OUT / "reward" / "reward_setup.json"))
 warn = pd.read_csv(OUT / "reward" / "reward_warning.csv").iloc[0]
 tim = pd.read_csv(OUT / "reward" / "reward_timing.csv")

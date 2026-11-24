@@ -36,6 +36,7 @@ MAX_SPEEDUP = 1.15
 AUDIO = (".wav", ".m4a", ".mp3", ".aac", ".flac")
 FRAME = 0.02                          # seconds per analysis frame
 MIN_PAUSE = 0.18                      # shortest silence that may separate two lines
+MIN_SOUND = 0.12                      # shorter sounds are not speech (a click before the first word)
 W_LEN, W_GAP = 4.0, 1.0               # weights of the length match and of the pause length in the split
 
 
@@ -60,12 +61,17 @@ def level_db(x):
 
 
 def speech(x):
-    """Per frame: is it speech? Above the noise floor by 12 dB and within 35 dB of the loud frames."""
+    """Per frame: is it speech? Above the noise floor by 12 dB and within 35 dB of the loud frames, for at least
+    MIN_SOUND seconds in a row (a click or a page turn before the first word is not speech)."""
     db = level_db(x)
     if len(db) == 0:
         return db.astype(bool)
     floor, loud = np.percentile(db, 10), np.percentile(db, 99)
-    return db > max(floor + 12, loud - 35)
+    on = db > max(floor + 12, loud - 35)
+    k = int(round(MIN_SOUND / FRAME))
+    runs = np.convolve(on.astype(int), np.ones(k, dtype=int), mode="same")
+    keep = runs >= k                                   # frames inside a run of k loud frames
+    return on & (np.convolve(keep.astype(int), np.ones(k, dtype=int), mode="same") > 0)
 
 
 def trim(x):

@@ -30,7 +30,7 @@ MIN_LINE = 1.5      # no subtitle shorter than this
 # A line may be (text, seconds) to hold the picture that much longer after it.
 SCENES = [
     ("hook", 2.4, 0.8, 0, [
-        "下午五點下課　阿哲衝去 YouBike 站　一台車都沒有　換了三個站　也都是空的",
+        ("下午五點下課　阿哲衝去 YouBike 站　一台車都沒有　換了三個站　也都是空的", 3.0),   # then the real station, filmed on 11/23
         "我們記錄了將近兩個月　上課日傍晚五點半到六點半　校內的站有一半以上的時間沒車",
         "所以我們做了一套 AI 系統　讓車在下課之前就回到學校",
     ]),

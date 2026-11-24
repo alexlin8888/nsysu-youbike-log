@@ -4,7 +4,7 @@
 // PT(id, k, j) the start of its phrase j (the text between full-width spaces), in seconds from the scene start, so a
 // picture changes on the phrase that talks about it.
 // Layout rule: nothing important below y = 930 in the middle of the frame, where the subtitles are burnt in.
-window.IMAGES = ["play_1600.jpg", "play_1610.jpg", "play_1620.jpg", "play_1630.jpg", "rider_1640.jpg", "dock_0920.jpg", "policy_map.jpg", "policy_table.jpg", "sim_0.jpg", "sim_50.jpg", "brief.jpg"];
+window.IMAGES = ["play_1600.jpg", "play_1610.jpg", "play_1620.jpg", "play_1630.jpg", "rider_1640.jpg", "dock_0920.jpg", "policy_map.jpg", "policy_table.jpg", "sim_0.jpg", "sim_50.jpg", "brief.jpg", "field_1701.jpg", "field_1701_phone.jpg"];
 
 function sceneOf(id) { return CUES.scenes.find((s) => s.id === id); }
 function linesOf(id) { return CUES.lines.filter((l) => l.scene === id); }
@@ -177,6 +177,7 @@ function lineChart(ctx, x, y, w, h, series, m0, m1, vmax, upto, o = {}) {
 // ---------- 1. hook: the 17:00 bell, an empty station, then the whole campus ----------
 function sceneHook(ctx, t, T) {
   const tName = PT("hook", 0, 0), tRun = PT("hook", 0, 1), tOut = tRun + 1.2, tMap = PT("hook", 0, 3) - 0.2;
+  const tPh = LE("hook", 0) + 0.15, tBack = LS("hook", 1) - 0.25;   // the real station, between the first two lines
   if (t < tOut) {
     // the classroom, seen from the side
     ctx.fillStyle = C.wall; ctx.fillRect(0, 0, W, H);
@@ -220,6 +221,31 @@ function sceneHook(ctx, t, T) {
     else student(ctx, 860, 880, s, { pose: "stand", t, expr: t > tEmpty ? "sad" : "surprised" });
     if (t > tEmpty - 0.05) { const p = pop(t, tEmpty); ctx.save(); ctx.translate(1530, 470); ctx.scale(p, p); card(ctx, -150, -95, 300, 190, { fill: C.white, r: 30 }); text(ctx, "0", -40, 55, { size: 150, weight: 900, color: C.red, align: "center" }); text(ctx, "台", 70, 45, { size: 64, weight: 900, color: C.ink, align: "center" }); ctx.restore(); }
     sourceTag(ctx, "示意動畫", t, tOut + 0.3, C.ink2);
+  } else if (t >= tPh && t < tBack) {
+    // the station for real: 11/23 at 17:01, photographed by a group member, with the site's own screen of that minute
+    const im = IMG["field_1701.jpg"], sh = IMG["field_1701_phone.jpg"], k = prog(t, tPh, tBack);
+    if (im) { const sc = 1.02 + 0.05 * k, w = W * sc, h = H * sc; ctx.drawImage(im, (W - w) / 2, (H - h) / 2 - 16 * k, w, h); }
+    const g = ctx.createLinearGradient(0, 0, 1150, 0); g.addColorStop(0, "rgba(16,32,47,0.86)"); g.addColorStop(1, "rgba(16,32,47,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, 1150, H);
+    const a = prog(t, tPh + 0.25, tPh + 0.6), b = prog(t, tPh + 0.8, tPh + 1.2);
+    pill(ctx, "實拍", 146, 160, { size: 34, fill: C.orange, alpha: a, scale: pop(t, tPh + 0.25) });
+    text(ctx, "11/23（一）17:01", 90, 300, { size: 74, weight: 900, color: C.white, alpha: a });
+    text(ctx, "中山大學圖資大樓站", 90, 392, { size: 74, weight: 900, color: C.white, alpha: a });
+    card(ctx, 90, 470, 820, 200, { fill: "rgba(255,255,255,0.96)", r: 26, alpha: b });
+    text(ctx, "網站顯示 0 台　現場 0 台", 130, 553, { size: 52, weight: 900, color: C.red, alpha: b });
+    text(ctx, "17:01 到 17:50 核對 7 次，網站和現場的車數全部一致", 130, 625, { size: 30, weight: 500, color: C.ink2, alpha: b });
+    if (sh) {
+      const w = 380, bez = 14, sw = w - 2 * bez, shh = sw * sh.height / sh.width, h = shh + 2 * bez, pa = prog(t, tPh + 0.1, tPh + 0.5);
+      const x = 1470, y = 60 + (1 - easeOut(prog(t, tPh + 0.1, tPh + 0.8))) * 90;
+      ctx.save(); ctx.globalAlpha *= pa;
+      ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 20; rrect(ctx, x, y, w, h, 44); ctx.fillStyle = "#111821"; ctx.fill(); ctx.shadowColor = "transparent";
+      ctx.save(); rrect(ctx, x + bez, y + bez, sw, shh, 32); ctx.clip(); ctx.drawImage(sh, x + bez, y + bez, sw, shh); ctx.restore();
+      // the ring around the station's own pin on the site (a red 0)
+      const r = prog(t, tPh + 0.9, tPh + 1.3), ss = sw / sh.width;
+      if (r > 0) { ctx.strokeStyle = rgba(C.yellow, r); ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x + bez + 665 * ss, y + bez + 560 * ss, (46 + 8 * (1 - r)) * ss * 1.6, 0, 7); ctx.stroke(); }
+      ctx.restore();
+      text(ctx, "同一分鐘的網站畫面", x + w / 2, y + h + 52, { size: 28, weight: 500, color: C.white, align: "center", alpha: pa });
+    }
+    sourceTag(ctx, "實拍：2026/11/23 中山大學圖資大樓站，本組拍攝；網站畫面為同一分鐘的截圖", t, tPh + 0.3, LIGHT);
   } else {
     // the whole campus at 17:40 on 11 Nov: most stations are empty at once
     campusMap(ctx, MAP.scale, MAP.cx, MAP.cy);
@@ -256,6 +282,8 @@ function sceneHook(ctx, t, T) {
   }
   wipe(ctx, t, tOut - 0.4, tOut + 0.4);
   wipe(ctx, t, tMap - 0.4, tMap + 0.4);
+  wipe(ctx, t, tPh - 0.4, tPh + 0.4);
+  wipe(ctx, t, tBack - 0.4, tBack + 0.4);
 }
 
 // ---------- 2. title ----------
@@ -734,7 +762,7 @@ function sceneEnd(ctx, t, T) {
   text(ctx, "林沛霆　陳佳晨　林詩穎", 960, 615, { size: 44, weight: 700, color: C.white, align: "center", alpha: easeOut(prog(t, 0.5, 1.1)) });
   ["資料：YouBike 官方開放資料（本組紀錄器）；臺大周邊騎乘資料（tses89214/youbike-historical-data）",
     "友愛接力：中央社、數位時代；票價：YouBike 高雄；健康數據：國民健康署、WHO；國外案例：Citi Bike、Vélib'；地圖：OpenStreetMap",
-    "動畫、音樂與音效：本組自製；阿哲為虛構角色"].forEach((s, i) => text(ctx, s, 960, 770 + i * 50, { size: 28, weight: 400, color: DIM, align: "center", alpha: easeOut(prog(t, 0.9 + i * 0.15, 1.5 + i * 0.15)) }));
+    "動畫、音樂與音效：本組自製；實拍與網站畫面：本組 11/23 攝於圖資大樓站；阿哲為虛構角色"].forEach((s, i) => text(ctx, s, 960, 770 + i * 50, { size: 28, weight: 400, color: DIM, align: "center", alpha: easeOut(prog(t, 0.9 + i * 0.15, 1.5 + i * 0.15)) }));
   fadeFrom(ctx, t, 0.4);
   fadeTo(ctx, t, T, 0.6, "#000000");
 }
