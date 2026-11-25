@@ -573,7 +573,7 @@ const main = [
     ["Unmet rentals avoided, reactive", "about 20%", "7% / 17% / 26% with 1 / 3 / 6 trucks", "{{unchanged}}"],
     ["Unmet rentals avoided, point forecast", "about 40%", "5% / 16% / 25%", "{{unchanged}}"],
     ["Unmet rentals avoided, probabilistic", "about 50%", "13% / 30% / 45% (route search); greedy 7% / 17% / 27%", "{{unchanged at NTU (lost demand, 14%, not in the replay); NSYSU simulation: 34% / 54% / 66% with 1 / 2 / 3 trucks}}"],
-    ["{{Live demo at NSYSU}}", "{{web demo with a pre-bell truck plan}}", "{{mock-up}}", "{{live since 30 Oct; advice as fast as the live counts (3.7 min); slow departures foreseen with AUC 0.86–0.90}}"],
+    ["{{Live demo at NSYSU}}", "{{web demo with a pre-bell truck plan}}", "{{mock-up}}", "{{live since 30 Oct; advice as fast as the live counts (3.7 min); slow departures foreseen with AUC 0.86–0.90; count right at the racks 7 of 7 times; ten riders interviewed}}"],
   ], { aligns: [AlignmentType.LEFT, AlignmentType.LEFT, AlignmentType.LEFT, AlignmentType.LEFT] }),
   spacer(),
   bodyF("Of the items the midterm report left open, the rates for the planner at NSYSU (Sec. 2.7), the live demo (Secs. 2.8, 3.8) and the transfer study by weeks of local data (Sec. 3.5) are done. The censored demand is sized (Sec. 3.6), but no policy has been replayed on it. A two-sided label was not trained; in the app the chain’s chance of a free dock takes its place. It is too high on campus (Sec. 3.7), so the Return tab calls a dock sure only from a chance of 0.95."),
